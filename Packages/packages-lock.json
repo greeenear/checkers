@@ -89,6 +89,13 @@
         "com.unity.modules.imgui": "1.0.0"
       }
     },
+    "xyz.coderiftel.option": {
+      "version": "https://github.com/codeRiftel/option.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "a62e1dfc0b84d232930be6cf6f72890b7d5ff901"
+    },
     "com.unity.modules.ai": {
       "version": "1.0.0",
       "depth": 0,
