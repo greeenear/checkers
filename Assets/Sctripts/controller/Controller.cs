@@ -64,6 +64,8 @@ namespace controller {
         public GameObject blackChecker;
         private Option<Checker>[,] board = new Option<Checker>[8, 8];
         private GameObject[,] boardObj = new GameObject[8, 8];
+        private List<Vector2Int> possibleMoves = new List<Vector2Int>();
+        private Vector2Int lastSelectedPos;
         private Color whoseMove;
         private Action action;
         public GameObject storageHighlightCells;
@@ -92,16 +94,37 @@ namespace controller {
 
             switch (action) {
                 case Action.Select:
+                    DestroyChildrens(storageHighlightCells.transform);
+                    possibleMoves.Clear();
                     var checkerMovement = GetCheckersMovement(board, selectedPos);
-                    var moves = GetMoves(board, checkerMovement);
-                    HighlightCells(moves);
-                    
+                    possibleMoves = GetMoves(board, checkerMovement);
+                    lastSelectedPos = selectedPos;
+                    HighlightCells(possibleMoves);
                     action = Action.Move;
                     break;
                 case Action.Move:
-                    whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
+                    Move(possibleMoves, selectedPos, lastSelectedPos);
+                    DestroyChildrens(storageHighlightCells.transform);
+                    possibleMoves.Clear();
                     action = Action.None;
                     break;
+            }
+        }
+
+        private void Move(List<Vector2Int> possibleMoves, Vector2Int to, Vector2Int from) {
+            var boardPos = gameObject.transform.position;
+            foreach (var move in possibleMoves) {
+                if (move == to) {
+                    board[to.x, to.y] = Option<Checker>.Some(board[from.x, from.y].Peel());
+                    board[from.x, from.y] = Option<Checker>.None();
+                    boardObj[from.x, from.y].transform.position = new Vector3(
+                    to.x + boardPos.x - cellSize.lossyScale.x * 4 + cellSize.lossyScale.x / 2,
+                    boardPos.y + cellSize.lossyScale.x / 2,
+                    to.y + boardPos.z - cellSize.lossyScale.x * 4 + cellSize.lossyScale.x / 2
+                    );
+                    whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
+                    break;
+                }
             }
         }
 
@@ -199,6 +222,12 @@ namespace controller {
                     break;
             }
             return checkerMovements;
+        }
+
+        private void DestroyChildrens(Transform parent) {
+            foreach (Transform child in parent) {
+                Destroy(child.gameObject);
+            }
         }
 
         private GameObject ObjectSpawner(

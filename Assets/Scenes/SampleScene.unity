@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -143,6 +143,8 @@ MonoBehaviour:
   cellSize: {fileID: 1035263047}
   whiteChecker: {fileID: 100000, guid: 6dd29f2903bcf104caa0499f9ae05f67, type: 3}
   blackChecker: {fileID: 100000, guid: cb27fc72b7f3d5f42b41ab875c8daf19, type: 3}
+  storageHighlightCells: {fileID: 1623217556}
+  highlightCell: {fileID: 2348330142078378444, guid: be7b1bda592d7eb4e813375fb462651b, type: 3}
 --- !u!65 &499017175
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -290,19 +292,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -3.7493994e-33
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -6.123234e-17
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 1
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 6.123234e-17
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -310,7 +312,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -496,6 +498,36 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1035263046}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1623217556
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1623217557}
+  m_Layer: 0
+  m_Name: StorageHighlightCells
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1623217557
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1623217556}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 1888861979}
+  m_RootOrder: 1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &1888861979 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
