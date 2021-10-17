@@ -5,19 +5,69 @@ using option;
 namespace controller {
     public struct Checker {
         public Color color;
+        public Type type;
+    }
+
+    public enum MovementType {
+        Move,
+        Attack
+    }
+
+    public struct Linear {
+        public Vector2Int dir;
+        public int length;
+
+        public static Linear Mk(Vector2Int dir, int length) {
+            return new Linear { dir = dir, length = length };
+        }
+    }
+
+    public struct FixedMovement {
+        public Linear linear;
+        public Vector2Int pos;
+
+        public static FixedMovement Mk(Linear linear, Vector2Int pos) {
+            return new FixedMovement { linear = linear, pos = pos };
+        }
+    }
+
+    public struct CheckerMovement {
+        public FixedMovement movement;
+        public MovementType type;
+
+        public static CheckerMovement Mk(FixedMovement movement, MovementType type) {
+            return new CheckerMovement { movement = movement, type = type };
+        }
+    }
+
+
+    public enum Type {
+        Checker,
+        King
     }
 
     public enum Color {
         White,
-        Black
+        Black,
+        Count
+    }
+
+    enum Action {
+        None,
+        Select,
+        Move
     }
 
     public class Controller : MonoBehaviour {
         public Transform cellSize;
         public GameObject whiteChecker;
         public GameObject blackChecker;
-        Option<Checker>[,] board = new Option<Checker>[8, 8];
-        GameObject[,] boardObj = new GameObject[8, 8];
+        private Option<Checker>[,] board = new Option<Checker>[8, 8];
+        private GameObject[,] boardObj = new GameObject[8, 8];
+        private Color whoseMove;
+        private Action action;
+        public GameObject storageHighlightCells;
+        public GameObject highlightCell;
         private void Start() {
             FillingBoard();
             CheckerSpawner(board);
@@ -35,6 +85,24 @@ namespace controller {
             }
             var selectedPosFloat = hit.point - (transform.position - cellSize.lossyScale * 4);
             var selectedPos = new Vector2Int((int)selectedPosFloat.x, (int)selectedPosFloat.z);
+            var pieceOpt = board[selectedPos.x, selectedPos.y];
+            if (action == Action.None && pieceOpt.IsSome() && pieceOpt.Peel().color == whoseMove) {
+                action = Action.Select;
+            }
+
+            switch (action) {
+                case Action.Select:
+                    var checkerMovement = GetCheckersMovement(board, selectedPos);
+                    var moves = GetMoves(board, checkerMovement);
+                    HighlightCells(moves);
+                    
+                    action = Action.Move;
+                    break;
+                case Action.Move:
+                    whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
+                    action = Action.None;
+                    break;
+            }
         }
 
         private void CheckerSpawner(Option<Checker>[,] board) {
@@ -55,6 +123,84 @@ namespace controller {
             }
         }
 
+        public List<Vector2Int> GetMoves(
+            Option<Checker>[,] board,
+            List<CheckerMovement> checkerMovements
+        ) {
+            var moves = new List<Vector2Int>();
+            foreach (var checkerMovement in checkerMovements) {
+                var movement = checkerMovement.movement;
+                var length = GetLength(board, movement.linear, movement.pos);
+                moves.AddRange(GetMoveCells(movement.linear.dir, movement.pos, length));
+            }
+            return moves;
+        }
+
+        public int GetLength(Option<Checker>[,] board, Linear linear, Vector2Int pos) {
+            int length = 0;
+            var boardSize = new Vector2Int (board.GetLength(1), board.GetLength(0));
+            for (int i = 1; i <= linear.length; i++) {
+                var cell = pos + linear.dir * i;
+                if (!IsOnBoard(boardSize, pos)) {
+                    break;
+                }
+                length ++;
+                if (board[cell.x, cell.y].IsSome()) {
+                    break;
+                }
+            }
+            return length;
+        }
+
+        public List<Vector2Int> GetMoveCells(Vector2Int dir, Vector2Int pos, int length) {
+            var moveCells = new List<Vector2Int>();
+            for (int i = 1; i <= length; i++) {
+                var cell = pos + dir * i;
+                moveCells.Add(cell);
+            }
+            return moveCells;
+        }
+
+        public bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {
+            if (pos.x < 0 || pos.x > boardSize.x || pos.y < 0 || pos.y > boardSize.y) {
+                return false;
+            }
+            return true;
+        }
+
+        public List<CheckerMovement> GetCheckersMovement(Option<Checker>[,] board, Vector2Int pos) {
+            if (board[pos.x, pos.y].IsNone()) {
+                return null;
+            }
+            var checker = board[pos.x, pos.y].Peel();
+            List<CheckerMovement> checkerMovements = new List<CheckerMovement>();
+            switch (checker.type) {
+                case Type.Checker:
+                    int dir = 1;
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(1, 1), 1), pos), MovementType.Attack));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(1, -1), 1), pos), MovementType.Attack));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(-1, 1), 1), pos), MovementType.Attack));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(-1, -1), 1), pos), MovementType.Attack));
+                    if (checker.color == Color.Black) {
+                        dir = -1;
+                    }
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(-1, 1) * dir, 1), pos), MovementType.Move));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(-1, -1) * dir, 1), pos), MovementType.Move));
+                    break;
+                case Type.King:
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(1, 1), 8), pos), MovementType.Attack));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(1, -1), 8), pos), MovementType.Attack));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(-1, 1), 8), pos), MovementType.Attack));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(-1, -1), 8), pos), MovementType.Attack));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(1, 1), 8), pos), MovementType.Move));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(1, -1), 8), pos), MovementType.Move));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(-1, 1), 8), pos), MovementType.Move));
+                    checkerMovements.Add(CheckerMovement.Mk(FixedMovement.Mk(Linear.Mk(new Vector2Int(-1, -1), 8), pos), MovementType.Move));
+                    break;
+            }
+            return checkerMovements;
+        }
+
         private GameObject ObjectSpawner(
             GameObject gameObject,
             Vector2Int spawnPos,
@@ -68,6 +214,20 @@ namespace controller {
                 spawnPos.y + boardPos.z - cellSize.lossyScale.x * 4 + cellSize.lossyScale.x / 2
             );
             return Instantiate(gameObject, spawnWorldPos, Quaternion.identity, parentTransform);
+        }
+
+        private void HighlightCells(List<Vector2Int> possibleMoves) {
+            var parentTransform = storageHighlightCells.transform;
+            var boardPos = gameObject.transform.position;
+            foreach (var pos in possibleMoves) {
+                var spawnWorldPos = new Vector3(
+                    pos.x + boardPos.x - cellSize.lossyScale.x * 4 + cellSize.lossyScale.x / 2,
+                    boardPos.y + cellSize.lossyScale.x / 2,
+                    pos.y + boardPos.z - cellSize.lossyScale.x * 4 + cellSize.lossyScale.x / 2
+                );
+
+                Instantiate(highlightCell, spawnWorldPos, Quaternion.identity, parentTransform);
+            }
         }
 
         private void FillingBoard() {
