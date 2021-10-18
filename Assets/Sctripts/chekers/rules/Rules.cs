@@ -9,6 +9,7 @@ namespace rules {
         None,
         BoardIsNull
     }
+
     public struct Checker {
         public Color color;
         public Type type;

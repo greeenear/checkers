@@ -26,9 +26,6 @@ namespace movement {
             if (board == null) {
                 return (null, MovementErrors.BoardIsNull);
             }
-            if (board[pos.x, pos.y].IsNone()) {
-                return (null, MovementErrors.CheckerIsNone);
-            }
             List<CheckerMovement> checkerMovements = new List<CheckerMovement>();
             switch (checker.type) {
                 case rules.Type.Checker:
@@ -38,14 +35,14 @@ namespace movement {
                     }
                     var (movements, err) = GetMovementsByType(pos, 1, board, (i) => i == dir);
                     if (err != MovementErrors.None) {
-                        return (null, MovementErrors.CantGetMovements);
+                        return (checkerMovements, MovementErrors.CantGetMovements);
                     }
                     checkerMovements.AddRange(movements);
                     break;
                 case rules.Type.King:
                     (movements, err) = GetMovementsByType(pos, 8,board, (i) => true);
                     if (err != MovementErrors.None) {
-                        return (null, MovementErrors.CantGetMovements);
+                        return (checkerMovements, MovementErrors.CantGetMovements);
                     }
                     checkerMovements.AddRange(movements);
                     break;

@@ -37,7 +37,7 @@ namespace board {
                 return (0, BoardErrors.BoardIsNull);
             }
             int length = 0;
-            var boardSize = new Vector2Int (board.GetLength(1), board.GetLength(0));
+            var boardSize = new Vector2Int (board.GetLength(1) - 1, board.GetLength(0) - 1);
             for (int i = 1; i <= linear.length; i++) {
                 var cell = pos + linear.dir * i;
                 if (!IsOnBoard(boardSize, cell)) {

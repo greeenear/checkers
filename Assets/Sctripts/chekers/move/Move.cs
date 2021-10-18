@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using rules;
 using option;
 using movement;
+using board;
 
 namespace move {
     public enum MoveErrors {
@@ -62,28 +63,35 @@ namespace move {
                 var movement = checkerMovement.movement;
                 var startPos = checkerMovement.movement.pos;
                 var length = checkerMovement.movement.linear.length;
+                Vector2Int? sentenced = null;
 
                 var checkerOpt = board[movement.pos.x , movement.pos.y];
                 if (checkerOpt.IsNone()) {
                     continue;
                 }
-                if (checkerMovement.type == MovementType.Attack && length != 0) {
-                    startPos = movement.pos + movement.linear.dir * length;
-                    var a = GetCellsAfterAttack(board, startPos, checkerOpt.Peel(), checkerMovement);
-                    moves = a.Item1;
-                    // var attack = Movement.GetCheckersMovement(board, startPos, checkerOpt.Peel());
-                    // foreach (var dir in attack.Item1) {
-                    //     if (dir.movement.linear.dir == movement.linear.dir && dir.type == MovementType.Move) {
-                    //         length = dir.movement.linear.length;
-                    //         moves = GetMoveCells(movement.linear.dir, startPos, length);
-                    //     }
-                    // }
-                }
                 if (!isNeedAttack) {
                     moves = GetMoveCells(movement.linear.dir, startPos, length);
                 }
+                if (checkerMovement.type == MovementType.Attack && length != 0) {
+                    startPos = movement.pos + movement.linear.dir * length;
+                    var (cellsAfterAttack, err2) = GetCellsAfterAttack(
+                        board,
+                        startPos,
+                        checkerOpt.Peel(),
+                        checkerMovement
+                    );
+                    sentenced = startPos;
+                    if (err2 != MoveErrors.None) {
+                        return (null, MoveErrors.CantGetCellsAfterAttack);
+                    }
+                    moves = cellsAfterAttack;
+                }
                 foreach(var move in moves) {
-                    moveInfos.Add(MoveInfo.Mk(MoveDate.Mk(movement.pos, move)));
+                    var moveInfo = MoveInfo.Mk(MoveDate.Mk(movement.pos, move));
+                    if (sentenced.HasValue) {
+                        moveInfo.sentenced = sentenced;
+                    }
+                    moveInfos.Add(moveInfo);
                 }
             }
 
@@ -97,13 +105,14 @@ namespace move {
             if (board == null) {
                 return (false, MoveErrors.BoardIsNull);
             }
+
             foreach (var checkerMove in checkerMovements) {
                 var movement = checkerMove.movement.linear;
                 var pos = checkerMove.movement.pos;
 
                 if (checkerMove.type == MovementType.Attack && movement.length != 0) {
                     var startPos = pos + movement.dir * movement.length;
-                    var checkerOpt = board[pos.x, pos.x];
+                    var checkerOpt = board[pos.x, pos.y];
                     if (checkerOpt.IsNone()) {
                         return (false, MoveErrors.None);
                     }
@@ -128,17 +137,18 @@ namespace move {
             CheckerMovement attackMovement
         ) {
             List<Vector2Int> moves = new List<Vector2Int>();
-
-            var (nextMovements, err) = Movement.GetCheckersMovement(board, attackPos, checker);
-            if (err != MovementErrors.None) {
-                return (null, MoveErrors.CantGetCheckersMovement);
-            }
-            foreach (var movement in nextMovements) {
-                if (movement.movement.linear.dir == attackMovement.movement.linear.dir) {
-                    if (movement.type == MovementType.Move) {
-                        var length = movement.movement.linear.length;
-                        Debug.Log(length + " " + movement.movement.linear.dir);
+            var boardSize = new Vector2Int(board.GetLength(1) - 1, board.GetLength(0) - 1);
+            var nextCell = attackPos + attackMovement.movement.linear.dir;
+            if (Board.IsOnBoard(boardSize, nextCell) && board[nextCell.x, nextCell.y].IsNone()) {
+                var (nextMovements, err) = Movement.GetCheckersMovement(board, attackPos, checker);
+                if (err != MovementErrors.None) {
+                    return (null, MoveErrors.CantGetCheckersMovement);
+                }
+                foreach (var movement in nextMovements) {
+                    if (movement.movement.linear.dir == attackMovement.movement.linear.dir) {
+                        var length = 1;
                         moves = GetMoveCells(movement.movement.linear.dir, attackPos, length);
+                        break;
                     }
                 }
             }

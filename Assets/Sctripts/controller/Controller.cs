@@ -61,7 +61,7 @@ namespace controller {
                         Debug.LogError("CantGetCheckersMovement");
                         return;
                     }
-                    var (moves, getMovesErr) = Move.GetMoveInfos(board, checkerMovement);
+                    var (moves, getMovesErr) = move.Move.GetMoveInfos(board, checkerMovement);
                     if (getMovesErr != MoveErrors.None) {
                         Debug.LogError("CantGetMoves");
                         return;
@@ -71,21 +71,30 @@ namespace controller {
                     action = Action.Move;
                     break;
                 case Action.Move:
-                    var moveInfo = GetMoveInfo(moveInfos, selectedPos);
+                    var moveInfo = СompareMoveInfo(moveInfos, selectedPos);
                     if (!moveInfo.HasValue) {
                         action = Action.None;
                         DestroyChildrens(storageHighlightCells.transform);
                         moveInfos.Clear();
                         break;
                     }
-                    move.Move.CheckerMove(board, moveInfo.Value);
-                    RelocateChecker(moveInfo.Value);
+                    Move(moveInfo.Value);
                     DestroyChildrens(storageHighlightCells.transform);
                     moveInfos.Clear();
                     action = Action.None;
                     whoseMove = (rules.Color)((int)(whoseMove + 1) % (int)rules.Color.Count);
                     break;
             }
+        }
+
+        private void Move(MoveInfo moveInfo) {
+            if (moveInfo.sentenced.HasValue) {
+                var sentencedPos = moveInfo.sentenced.Value;
+                Destroy(boardObj[sentencedPos.x, sentencedPos.y]);
+                board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
+            }
+            move.Move.CheckerMove(board, moveInfo);
+            RelocateChecker(moveInfo);
         }
 
         private void RelocateChecker(MoveInfo move) {
@@ -140,7 +149,7 @@ namespace controller {
             return Instantiate(gameObject, spawnWorldPos, Quaternion.identity, parentTransform);
         }
 
-        private MoveInfo? GetMoveInfo(List<MoveInfo> moveInfos, Vector2Int selectPos) {
+        private MoveInfo? СompareMoveInfo(List<MoveInfo> moveInfos, Vector2Int selectPos) {
             foreach (var info in moveInfos) {
                 if (info.moveDate.to == selectPos) {
                     return info;
