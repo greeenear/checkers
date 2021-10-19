@@ -35,7 +35,7 @@ namespace controller {
         public GameObject highlightCell;
 
         private void Start() {
-            FillingBoard();
+            Checkers.FillingBoard(board);
             CheckerSpawner(board);
         }
 
@@ -196,34 +196,6 @@ namespace controller {
             }
 
             return ControllerErrors.None;
-        }
-
-        private void FillingBoard() {
-            board[0, 0] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[0, 2] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[0, 4] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[0, 6] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[1, 1] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[1, 3] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[1, 5] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[1, 7] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[2, 0] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[2, 2] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[2, 4] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-            board[2, 6] = Option<Checker>.Some(new Checker { color = rules.Color.Black });
-
-            board[5, 7] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[5, 5] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[5, 3] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[5, 1] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[6, 6] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[6, 4] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[6, 2] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[6, 0] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[7, 7] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[7, 5] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[7, 3] = Option<Checker>.Some(new Checker { color = rules.Color.White });
-            board[7, 1] = Option<Checker>.Some(new Checker { color = rules.Color.White });
         }
     }
 }
