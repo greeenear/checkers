@@ -14,6 +14,7 @@ namespace move {
         CantGetCheckersMovement,
         CantGetCellsAfterAttack
     }
+
     public struct MoveDate {
         public Vector2Int from;
         public Vector2Int to;
@@ -162,6 +163,7 @@ namespace move {
                 var cell = pos + dir * i;
                 moveCells.Add(cell);
             }
+
             return moveCells;
         }
 

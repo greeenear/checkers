@@ -12,7 +12,7 @@ namespace movement {
         None,
         BoardIsNull,
         CheckerIsNone,
-        CantGetLength, 
+        CantGetLength,
         CantGetMovements
     }
 

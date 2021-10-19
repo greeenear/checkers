@@ -9,6 +9,13 @@ using rules;
 using move;
 
 namespace controller {
+    enum ControllerErrors {
+        None,
+        BoardIsNull,
+        GameObjectIsNull,
+        ListIsNull,
+        CantRelocateChecker
+    }
     enum Action {
         None,
         Select,
@@ -26,6 +33,7 @@ namespace controller {
         private Action action;
         public GameObject storageHighlightCells;
         public GameObject highlightCell;
+
         private void Start() {
             FillingBoard();
             CheckerSpawner(board);
@@ -67,7 +75,11 @@ namespace controller {
                         return;
                     }
                     moveInfos = moves;
-                    HighlightCells(moveInfos);
+                    var highlightCellsErr = HighlightCells(moveInfos);
+                    if (highlightCellsErr != ControllerErrors.None) {
+                        Debug.LogError("CantHighlightCells");
+                        return;
+                    }
                     action = Action.Move;
                     break;
                 case Action.Move:
@@ -87,17 +99,25 @@ namespace controller {
             }
         }
 
-        private void Move(MoveInfo moveInfo) {
+        private ControllerErrors Move(MoveInfo moveInfo) {
             if (moveInfo.sentenced.HasValue) {
                 var sentencedPos = moveInfo.sentenced.Value;
                 Destroy(boardObj[sentencedPos.x, sentencedPos.y]);
                 board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
             }
             move.Move.CheckerMove(board, moveInfo);
-            RelocateChecker(moveInfo);
+            var err = RelocateChecker(moveInfo, boardObj);
+            if (err != ControllerErrors.None) {
+                return ControllerErrors.CantRelocateChecker;
+            }
+
+            return ControllerErrors.None;
         }
 
-        private void RelocateChecker(MoveInfo move) {
+        private ControllerErrors RelocateChecker(MoveInfo move, GameObject[,] boardObj) {
+            if (boardObj == null) {
+                return ControllerErrors.BoardIsNull;
+            }
             var from = move.moveDate.from;
             var to = move.moveDate.to;
             var boardPos = gameObject.transform.position;
@@ -107,9 +127,14 @@ namespace controller {
                 to.y + boardPos.z - cellSize.lossyScale.x * 4 + cellSize.lossyScale.x / 2
             );
             boardObj[to.x, to.y] = boardObj[from.x, from.y];
+
+            return ControllerErrors.None;
         }
 
-        private void CheckerSpawner(Option<Checker>[,] board) {
+        private ControllerErrors CheckerSpawner(Option<Checker>[,] board) {
+            if (board == null) {
+                return ControllerErrors.BoardIsNull;
+            }
             for (int i = 0; i < 8; i++) {
                 for (int j = 0; j < 8; j++) {
                     if (board[i, j].IsSome()) {
@@ -125,6 +150,8 @@ namespace controller {
                     }
                 }
             }
+
+            return ControllerErrors.None;
         }
 
 
@@ -158,12 +185,17 @@ namespace controller {
             return null;
         }
 
-        private void HighlightCells(List<MoveInfo> possibleMoves) {
+        private ControllerErrors HighlightCells(List<MoveInfo> possibleMoves) {
+            if (possibleMoves == null) {
+                return ControllerErrors.ListIsNull;
+            }
             var parentTransform = storageHighlightCells.transform;
             var boardPos = gameObject.transform.position;
             foreach (var pos in possibleMoves) {
                 ObjectSpawner(highlightCell, pos.moveDate.to, parentTransform);
             }
+
+            return ControllerErrors.None;
         }
 
         private void FillingBoard() {
