@@ -3,10 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using option;
-using checkers;
-using movement;
-using rules;
-using move;
 
 namespace controller {
     enum ControllerErrors {
@@ -104,6 +100,9 @@ namespace controller {
                 var sentencedPos = moveInfo.sentenced.Value;
                 Destroy(boardObj[sentencedPos.x, sentencedPos.y]);
                 board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
+            }
+            if (moveInfo.secondMove == true) {
+                whoseMove = (rules.Color)((int)(whoseMove + 1) % (int)rules.Color.Count);
             }
             move.Move.CheckerMove(board, moveInfo);
             var err = RelocateChecker(moveInfo, boardObj);
