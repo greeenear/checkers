@@ -161,30 +161,174 @@ namespace controller {
             return ControllerErrors.None;
         }
 
-        private ControllerErrors GetCheckerMovements(Option<Checker>[,] board, Vector2Int pos) {
+        private (List<CheckerMovement>, ControllerErrors) GetCheckerMovements(
+            Option<Checker>[,] board,
+            Vector2Int pos
+        ) {
             var checkerOpt = board[pos.x, pos.y];
+            var move = MovemenType.Move;
+            var attack = MovemenType.Attack;
+            List<CheckerMovement> movements = new List<CheckerMovement>();
             if (checkerOpt.IsNone()) {
-                return ControllerErrors.None;
+                return (movements, ControllerErrors.None);
             }
             var checker = checkerOpt.Peel();
-
             switch (checker.type) {
                 case Type.Checker:
+                    if (checkerOpt.Peel().color == Color.Black) {
+                        movements.AddRange(GetMovements(pos, 1, move, (i, j) => i > 0));
+                        movements.AddRange(GetMovements(pos, 1, attack, (i, j) => true));
+                    }
+                    if (checkerOpt.Peel().color == Color.White) {
+                        movements.AddRange(GetMovements(pos, 1, move, (i, j) => i < 0));
+                        movements.AddRange(GetMovements(pos, 1, attack, (i, j) => true));
+                    }
                     break;
                 case Type.King:
+                    if (checkerOpt.Peel().color == Color.Black) {
+                        movements.AddRange(GetMovements(pos, 8, move, (i, j) => true));
+                        movements.AddRange(GetMovements(pos, 8, attack, (i, j) => true));
+                    }
+                    if (checkerOpt.Peel().color == Color.White) {
+                        movements.AddRange(GetMovements(pos, 8, move, (i, j) => true));
+                        movements.AddRange(GetMovements(pos, 8, attack, (i, j) => true));
+                    }
                     break;
             }
 
-            return ControllerErrors.None;
+            return (movements, ControllerErrors.None);
         }
-        private void GetCheckerMovementByType(Func<int, int, bool> comparator) {
-            for (int i = -1; i < 1; i++) {
-                for (int j = -1; j < 2; j++) {
-                    if (comparator(i,j)) {
-                        
+
+        private List<CheckerMovement> GetMovements(
+            Vector2Int start,
+            int length,
+            MovemenType type,
+            Func<int, int, bool> comparator
+        ) {
+            List<CheckerMovement> movements = new List<CheckerMovement>();
+            for (int i = -1; i <= 1; i++) {
+                for (int j = -1; j <= 1; j++) {
+                    if (i != 0 && j != 0 && comparator(i, j)) {
+                        var dir = new Vector2Int(i, j);
+                        movements.Add(CheckerMovement.Mk(Linear.Mk(dir, start, length), type));
                     }
                 }
             }
+
+            return movements;
+        }
+
+        private (List<Move>, ControllerErrors) GetMoves(Option<Checker>[,] board, Vector2Int pos) {
+            var (checkerMovements, movementsErr) = GetCheckerMovements(board, pos);
+            if (board == null) {
+                return(null, ControllerErrors.BoardIsNull);
+            }
+            var checkerOpt = board[pos.x, pos.y];
+            List<Move> moves = new List<Move>();
+            if (checkerOpt.IsNone()) {
+                return (moves, ControllerErrors.None);
+            }
+            var checker = checkerOpt.Peel();
+            if (movementsErr != ControllerErrors.None) {
+                return (null, ControllerErrors.CantGetCheckerMovements);
+            }
+
+            var fixCheckerMovements = new List<CheckerMovement>();
+            foreach (var movement in checkerMovements) {
+                var fixMovement = movement;
+                var (length, getLengthErr) = GetLength(board, movement.linear);
+                if (getLengthErr != ControllerErrors.None) {
+                    return (moves, ControllerErrors.CantGetLength);
+                }
+                fixMovement.linear.length = length;
+                var err = ControllerErrors.None;
+                var maxLength = movement.linear.length;
+                (fixMovement, err) = GetFixMovement(board, fixMovement, checker.color, maxLength);
+                if (err != ControllerErrors.None) {
+                    return (moves, ControllerErrors.CantGetFixMovement);
+                }
+                fixCheckerMovements.Add(fixMovement);
+            }
+
+            foreach (var fixMovement in fixCheckerMovements) {
+                foreach (var cell in GetMoveCells(fixMovement.linear)) {
+                    moves.Add(controller.Move.Mk(pos, cell));
+                }
+            }
+
+            return (moves, ControllerErrors.None);
+        }
+
+        public static List<Vector2Int> GetMoveCells(Linear linear) {
+            var moveCells = new List<Vector2Int>();
+            for (int i = 1; i <= linear.length; i++) {
+                var cell = linear.start + linear.dir * i;
+                moveCells.Add(cell);
+            }
+            return moveCells;
+        }
+
+        private (CheckerMovement, ControllerErrors) GetFixMovement(
+            Option<Checker>[,] board,
+            CheckerMovement movement,
+            Color color,
+            int maxLength
+        ) {
+            var lastCell = movement.linear.start + movement.linear.dir * movement.linear.length;
+            if (movement.type == MovemenType.Move) {
+                if (board[lastCell.x, lastCell.y].IsSome()) {
+                    movement.linear.length--;
+                }
+            }
+            if (movement.type == MovemenType.Attack) {
+                if (board[lastCell.x, lastCell.y].IsSome()) {
+                    movement.linear.length = 0;
+                    if (board[lastCell.x, lastCell.y].Peel().color != color) {
+                        movement.linear.start = lastCell;
+                        var newLinear = movement.linear;
+                        newLinear.length = maxLength;
+                        var (length, getLengthErr) = GetLength(board, newLinear);
+                        lastCell = lastCell + movement.linear.dir * length;
+                        if (board[lastCell.x, lastCell.y].IsSome()) {
+                            length--;
+                        }
+                        movement.linear.length = length;
+                    }
+                } else {
+                    movement.linear.length = 0;
+                }
+            }
+
+            return (movement, ControllerErrors.None);
+        }
+
+        private (int, ControllerErrors) GetLength(Option<Checker>[,] board, Linear linear) {
+            int length = 0;
+            var boardSize = new Vector2Int(board.GetLength(1) - 1, board.GetLength(0) - 1);
+
+            if (board == null) {
+                return (0, ControllerErrors.BoardIsNull);
+            }
+            for (int i = 1; i <= linear.length; i++) {
+                var cell = linear.start + linear.dir * i;
+
+                if (!IsOnBoard(boardSize, cell)) {
+                    break;
+                }
+                length++;
+                if (board[cell.x, cell.y].IsSome()) {
+                    break;
+                }
+            }
+
+            return (length, ControllerErrors.None);
+        }
+
+        public static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {
+            if (pos.x < 0 || pos.x > boardSize.x || pos.y < 0 || pos.y > boardSize.y) {
+                return false;
+            }
+            return true;
         }
 
         private void DestroyChildrens(Transform parent) {
