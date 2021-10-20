@@ -10,7 +10,18 @@ namespace controller {
         BoardIsNull,
         GameObjectIsNull,
         ListIsNull,
-        CantRelocateChecker
+        CantRelocateChecker,
+        CantGetCheckerMovements,
+        CantGetLength,
+        CantGetFixMovement,
+        CantCheckNeedAttack
+    }
+
+    public struct GameRules {
+        public Func<int, int, bool> CheckerMove;
+        public Func<int, int, bool> CheckerAttack;
+        public Func<int, int, bool> KingMove;
+        public Func<int, int, bool> KingAttack;
     }
 
     public enum Type {
@@ -20,7 +31,8 @@ namespace controller {
 
     public enum Color {
         White,
-        Black
+        Black,
+        Count
     }
 
     enum Action {
@@ -32,6 +44,19 @@ namespace controller {
     public struct Move {
         public Vector2Int from;
         public Vector2Int to;
+
+        public static Move Mk(Vector2Int from, Vector2Int to) {
+            return new Move{ from = from, to = to };
+        }
+    }
+
+    public struct CheckerMovement {
+        public Linear linear;
+        public MovemenType type;
+
+        public static CheckerMovement Mk(Linear linear, MovemenType type) {
+            return new CheckerMovement { linear = linear, type = type };
+        }
     }
 
     public struct Checker {
@@ -43,6 +68,10 @@ namespace controller {
         public Vector2Int dir;
         public Vector2Int start;
         public int length;
+
+        public static Linear Mk(Vector2Int dir, Vector2Int start, int length) {
+            return new Linear { dir = dir, start = start, length = length };
+        }
     }
 
     public enum MovemenType {
@@ -54,6 +83,8 @@ namespace controller {
         private Resources res;
         private Option<Checker>[,] board = new Option<Checker>[8, 8];
         private GameObject[,] boardObj = new GameObject[8, 8];
+        private List<Move> moves = new List<Move>();
+        private Color whoseMove;
         private Action action;
 
         private void Start() {
@@ -76,7 +107,7 @@ namespace controller {
             var selectedPosFloat = hit.point - (transform.position - offset);
             var selectedPos = new Vector2Int((int)selectedPosFloat.x, (int)selectedPosFloat.z);
             var pieceOpt = board[selectedPos.x, selectedPos.y];
-            if (action == Action.None && pieceOpt.IsSome()) {
+            if (pieceOpt.IsSome() && pieceOpt.Peel().color == whoseMove) {
                 action = Action.Select;
             }
 
@@ -104,18 +135,26 @@ namespace controller {
                     Move(move.Value);
                     DestroyChildrens(res.storageHighlightCells.transform);
                     moves.Clear();
+                    whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
                     action = Action.None;
                     break;
             }
         }
 
         private ControllerErrors Move(Move move) {
+            board[move.to.x, move.to.y] = board[move.from.x, move.from.y];
+            board[move.from.x, move.from.y] = Option<Checker>.None();
+            var path = new Vector2Int(move.to.x - move.from.x, move.to.y - move.from.y).magnitude;
+            if (path > 2) {
+                var attackedPosX = Mathf.Abs(move.from.x + move.to.x) / 2;
+                var attackedPosY = Mathf.Abs(move.from.y + move.to.y) / 2;
+                board[attackedPosX, attackedPosY] = Option<Checker>.None();
+                Destroy(boardObj[attackedPosX, attackedPosY]);
+            }
             var err = RelocateChecker(move, boardObj);
             if (err != ControllerErrors.None) {
                 return ControllerErrors.CantRelocateChecker;
             }
-            board[move.to.x, move.to.y] = board[move.from.x, move.from.y];
-            board[move.from.x, move.from.y] = Option<Checker>.None();
 
             return ControllerErrors.None;
         }
@@ -124,16 +163,15 @@ namespace controller {
             if (boardObj == null) {
                 return ControllerErrors.BoardIsNull;
             }
-            var from = move.from;
-            var to = move.to;
             var boardPos = gameObject.transform.position;
-            var offset = res.boardSize.x / 2 + res.cellSize.lossyScale.x / 2;
-            boardObj[from.x, from.y].transform.position = new Vector3(
-                to.x + boardPos.x - res.cellSize.lossyScale.x * offset,
-                boardPos.y + res.cellSize.lossyScale.x / 2,
-                to.y + boardPos.z - res.cellSize.lossyScale.x * offset
+            var cellLossyScale = res.cellSize.lossyScale.x;
+            var halfBoardSize = res.boardSize.x / 2;
+            boardObj[move.from.x, move.from.y].transform.position = new Vector3(
+                move.to.x + boardPos.x - cellLossyScale * halfBoardSize + cellLossyScale / 2,
+                boardPos.y + cellLossyScale/ 2,
+                move.to.y + boardPos.z - cellLossyScale * halfBoardSize + cellLossyScale / 2
             );
-            boardObj[to.x, to.y] = boardObj[from.x, from.y];
+            boardObj[move.to.x, move.to.y] = boardObj[move.from.x, move.from.y];
 
             return ControllerErrors.None;
         }
@@ -275,7 +313,15 @@ namespace controller {
             int maxLength
         ) {
             var lastCell = movement.linear.start + movement.linear.dir * movement.linear.length;
+            var (isNeedAttack, err) = CheckNeedAttack(board, movement.linear.start, color);
+            if (err != ControllerErrors.None) {
+                return (movement, ControllerErrors.CantCheckNeedAttack);
+            }
             if (movement.type == MovemenType.Move) {
+                if (isNeedAttack) {
+                    movement.linear.length = 0;
+                    return (movement, ControllerErrors.None);
+                }
                 if (board[lastCell.x, lastCell.y].IsSome()) {
                     movement.linear.length--;
                 }
@@ -383,6 +429,16 @@ namespace controller {
 
             return ControllerErrors.None;
         }
+
+        private Move? СompareMoveInfo(List<Move> moveInfos, Vector2Int selectPos) {
+            foreach (var move in moves) {
+                if (move.to == selectPos) {
+                    return move;
+                }
+            }
+            return null;
+        }
+
         private GameObject ObjectSpawner(
             GameObject gameObject,
             Vector2Int spawnPos,
