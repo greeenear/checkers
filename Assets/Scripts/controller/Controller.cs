@@ -324,6 +324,41 @@ namespace controller {
             return (length, ControllerErrors.None);
         }
 
+        private (bool, ControllerErrors) CheckNeedAttack(
+            Option<Checker>[,] board,
+            Vector2Int pos,
+            Color color
+        ) {
+            var (checkerMovements, movementsErr) = GetCheckerMovements(board, pos);
+            var boardSize = new Vector2Int(board.GetLength(1) - 1, board.GetLength(0) - 1);
+            if (board == null) {
+                return(false, ControllerErrors.BoardIsNull);
+            }
+
+            foreach (var movement in checkerMovements) {
+                var (length, getLengthErr) = GetLength(board, movement.linear);
+                if (getLengthErr != ControllerErrors.None) {
+                    return (false, ControllerErrors.CantGetLength);
+                }
+
+                var cell = movement.linear.start + movement.linear.dir * length;
+                if (movement.type == MovemenType.Attack) {
+                    if(!board[cell.x, cell.y].IsSome()) {
+                        continue;
+                    }
+
+                    if (board[cell.x, cell.y].Peel().color != color) {
+                        cell = cell + movement.linear.dir;
+                        if (IsOnBoard(boardSize, cell) && board[cell.x, cell.y].IsNone()) {
+                            return (true, ControllerErrors.None);
+                        }
+                    }
+                }
+            }
+
+            return (false, ControllerErrors.None);
+        }
+
         public static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {
             if (pos.x < 0 || pos.x > boardSize.x || pos.y < 0 || pos.y > boardSize.y) {
                 return false;
