@@ -83,9 +83,27 @@ namespace controller {
             switch (action) {
                 case Action.Select:
                     DestroyChildrens(res.storageHighlightCells.transform);
+                    moves.Clear();
+                    var (newMoves, getMovesErr) = GetMoves(board, selectedPos);
+                    if (getMovesErr !=  ControllerErrors.None) {
+                        Debug.LogError("CantGetMoves");
+                        return;
+                    }
+                    moves = newMoves;
                     action = Action.Move;
+                    HighlightCells(moves);
                     break;
                 case Action.Move:
+                    var move = СompareMoveInfo(moves, selectedPos);
+                    if (!move.HasValue) {
+                        action = Action.None;
+                        DestroyChildrens(res.storageHighlightCells.transform);
+                        moves.Clear();
+                        break;
+                    }
+                    Move(move.Value);
+                    DestroyChildrens(res.storageHighlightCells.transform);
+                    moves.Clear();
                     action = Action.None;
                     break;
             }
