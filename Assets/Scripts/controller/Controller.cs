@@ -50,14 +50,6 @@ namespace controller {
         }
     }
 
-    public struct CheckerMovement {
-        public Linear linear;
-        public MovemenType type;
-
-        public static CheckerMovement Mk(Linear linear, MovemenType type) {
-            return new CheckerMovement { linear = linear, type = type };
-        }
-    }
 
     public struct Checker {
         public Type type;
