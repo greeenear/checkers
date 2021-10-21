@@ -14,14 +14,8 @@ namespace controller {
         CantGetCheckerMovements,
         CantGetLength,
         CantGetFixMovement,
-        CantCheckNeedAttack
-    }
-
-    public struct GameRules {
-        public Func<int, int, bool> CheckerMove;
-        public Func<int, int, bool> CheckerAttack;
-        public Func<int, int, bool> KingMove;
-        public Func<int, int, bool> KingAttack;
+        CantCheckNeedAttack,
+        NoSuchColor
     }
 
     public enum Type {
