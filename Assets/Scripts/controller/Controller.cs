@@ -116,77 +116,143 @@ namespace controller {
                     }
                     moves = newMoves;
                     action = Action.Move;
-                    HighlightCells(moves);
+                    var highlightErr = HighlightCells(moves);
+                    if (highlightErr != ControllerErrors.None) {
+                        Debug.LogError($"CantHighlightCells {highlightErr.ToString()}");
+                    }
                     break;
                 case Action.Move:
-                    var move = СompareMoveInfo(moves, selectedPos);
+                    var move = GetPossibleMove(moves, selectedPos);
                     if (!move.HasValue) {
                         action = Action.None;
-                        DestroyChildren(res.storageHighlightCells.transform);
                         moves.Clear();
                         break;
                     }
-                    MoveChecker(move.Value);
-                    DestroyChildren(res.storageHighlightCells.transform);
+
+                    var (moveRes, moveErr) = MoveChecker(board, move.Value);
+                    if (moveErr != ControllerErrors.None) {
+                        Debug.LogError($"CantMove {moveErr.ToString()}");
+                        return;
+                    }
+
+                    attackPositions.Clear();
+                    if (moveRes.attackAgain == true) {
+                        attackPositions.Add(move.Value.to);
+                        action = Action.None;
+                        return;
+                    }
+
                     moves.Clear();
                     whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
+                    var (newAttackPositions, attackErr) = GetAttackPositions(board, whoseMove);
+                    if (attackErr != ControllerErrors.None) {
+                        Debug.LogError($"CantGetAttackPositions {attackErr.ToString()}");
+                    }
+
+                    attackPositions = newAttackPositions;
                     action = Action.None;
                     break;
             }
         }
 
-        private ControllerErrors MoveChecker(Move move) {
+        private (MoveResult, ControllerErrors) MoveChecker(Option<Checker>[,] board, Move move) {
+            var moveRes = new MoveResult();
+            if (board == null) {
+                Debug.LogError("BoardIsNull");
+                return (moveRes, ControllerErrors.BoardIsNull);
+            }
+
+            Vector2Int? sentenced = null;
+            var pieceOpt = board[move.from.x, move.from.y];
+            if (pieceOpt.IsNone()) {
+                return (moveRes, ControllerErrors.None);
+            }
+            var color = pieceOpt.Peel().color;
+
+            var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
+
+            var vecDif = move.to - move.from;
+            var dir = new Vector2Int(vecDif.x/Mathf.Abs(vecDif.x), vecDif.y/Mathf.Abs(vecDif.y));
+            for (int i = 1; i <= Mathf.Abs(vecDif.x); i++) {
+                var cell = move.from + dir * i;
+                if (board[cell.x, cell.y].IsSome()) {
+                    sentenced = cell;
+                    break;
+                }
+            }
             board[move.to.x, move.to.y] = board[move.from.x, move.from.y];
             board[move.from.x, move.from.y] = Option<Checker>.None();
-            var path = new Vector2Int(move.to.x - move.from.x, move.to.y - move.from.y).magnitude;
-            if (path > 2) {
-                var attackedPosX = Mathf.Abs(move.from.x + move.to.x) / 2;
-                var attackedPosY = Mathf.Abs(move.from.y + move.to.y) / 2;
-                board[attackedPosX, attackedPosY] = Option<Checker>.None();
-                Destroy(boardObj[attackedPosX, attackedPosY]);
-            }
-            var err = RelocateChecker(move, boardObj);
-            if (err != ControllerErrors.None) {
-                Debug.LogError($"CantRelocateChecker {err.ToString()}");
-                return ControllerErrors.CantRelocateChecker;
+
+            var relocateCheckerErr = RelocateChecker(move, boardObj, sentenced);
+            if (relocateCheckerErr != ControllerErrors.None) {
+                Debug.LogError($"CantRelocateChecker {relocateCheckerErr.ToString()}");
+                return (moveRes, ControllerErrors.CantRelocateChecker);
             }
 
-            return ControllerErrors.None;
+            if (CheckPromotion(move, color, boardSize)) {
+                CheckerPromotion(move.to, color);
+            }
+
+            if (sentenced.HasValue) {
+                board[sentenced.Value.x, sentenced.Value.y] = Option<Checker>.None();
+                var (isNeedAttack, needAttackErr) = CheckNeedAttack(board, move.to, color);
+                if (needAttackErr != ControllerErrors.None) {
+                    Debug.LogError($"CantCheckNeedAttack {needAttackErr.ToString()}");
+                    return (moveRes, ControllerErrors.CantCheckNeedAttack);
+                }
+
+                if (isNeedAttack) {
+                    moveRes.attackAgain = true;
+                }
+            }
+
+            return (moveRes, ControllerErrors.None);
         }
 
-        private ControllerErrors RelocateChecker(Move move, GameObject[,] boardObj) {
+        private (List<Vector2Int>, ControllerErrors) GetAttackPositions(
+            Option<Checker>[,] board,
+            Color color
+        ) {
+            if (board == null) {
+                Debug.LogError("BoardIsNull");
+                return (null, ControllerErrors.BoardIsNull);
+            }
+
+            var checkerList = new List<Vector2Int>();
+            for (int i = 0; i < board.GetLength(1); i++) {
+                for (int j = 0; j < board.GetLength(0); j++) {
+                    if (board[i, j].IsSome() && board[i, j].Peel().color == color) {
+                        var pos = new Vector2Int(i, j);
+                        var (isNeedAttack, err) = CheckNeedAttack(board, pos, color);
+                        if (err != ControllerErrors.None) {
+                            return (null, ControllerErrors.CantCheckNeedAttack);
+                        }
+
+                        if (isNeedAttack) {
+                            checkerList.Add(pos);
+                        }
+                    }
+                }
+            }
+
+            return (checkerList, ControllerErrors.None);
+        }
+
+        private ControllerErrors RelocateChecker(
+            Move move,
+            GameObject[,] boardObj,
+            Vector2Int? sentenced
+        ) {
             if (boardObj == null) {
+                Debug.LogError("BoardIsNull");
                 return ControllerErrors.BoardIsNull;
+            }
+            if (sentenced.HasValue) {
+                Destroy(boardObj[sentenced.Value.x, sentenced.Value.y]);
             }
             var pos = ConvertToPointWorld(move.to);
             boardObj[move.from.x, move.from.y].transform.position = pos;
             boardObj[move.to.x, move.to.y] = boardObj[move.from.x, move.from.y];
-
-            return ControllerErrors.None;
-        }
-
-        private ControllerErrors SpawnCheckers(Option<Checker>[,] board) {
-            if (board == null) {
-                return ControllerErrors.BoardIsNull;
-            }
-            for (int i = 0; i < 8; i++) {
-                for (int j = 0; j < 8; j++) {
-                    if (board[i, j].IsSome()) {
-                        var checker = board[i, j].Peel();
-                        GameObject prefab;
-                        if (checker.color == Color.White) {
-                            prefab = res.whiteChecker;
-                        } else if (checker.color == Color.Black) {
-                            prefab = res.blackChecker;
-                        } else {
-                            Debug.LogError("NoSuchColor");
-                            return ControllerErrors.NoSuchColor;
-                        }
-                        var pos = new Vector2Int(i, j);
-                        boardObj[i, j] = SpawnObject(prefab, pos, res.boardPos.transform);
-                    }
-                }
-            }
 
             return ControllerErrors.None;
         }
