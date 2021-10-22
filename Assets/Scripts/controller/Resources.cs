@@ -10,6 +10,8 @@ namespace controller {
         public GameObject highlightCell;
         public GameObject whiteChecker;
         public GameObject blackChecker;
+        public GameObject whiteKing;
+        public GameObject blackKing;
         public Transform boardPos;
     }
 }
