@@ -403,11 +403,43 @@ namespace controller {
             return (movement, ControllerErrors.None);
         }
 
+        private bool CheckPromotion(Move move, Color color, Vector2Int boardSize) {
+            if (move.to.x == 0 && color == Color.White) {
+                return true;
+            }
+            if (move.to.x == boardSize.x - 1 && color == Color.Black) {
+                return true;
+            }
+
+            return false;
+        }
+
+        private ControllerErrors CheckerPromotion(Vector2Int pos, Color color) {
+            board[pos.x, pos.y] = Option<Checker>.None();
+            var king = new Checker {type = Type.King, color = color };
+            board[pos.x, pos.y] = Option<Checker>.Some(king);
+            Destroy(boardObj[pos.x, pos.y]);
+
+            GameObject prefab;
+            if (color == Color.White) {
+                prefab = res.whiteKing;
+            } else if (color == Color.Black) {
+                prefab = res.blackKing;
+            } else {
+                Debug.LogError("NoSuchColor");
+                return ControllerErrors.NoSuchColor;
+            }
+            boardObj[pos.x, pos.y] = SpawnObject(prefab, pos, res.boardPos.transform);
+
+            return ControllerErrors.None;
+        }
+
         private (int, ControllerErrors) GetLength(Option<Checker>[,] board, Linear linear) {
             int length = 0;
             var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
 
             if (board == null) {
+                Debug.LogError("BoardIsNull");
                 return (0, ControllerErrors.BoardIsNull);
             }
             for (int i = 1; i <= linear.length; i++) {
