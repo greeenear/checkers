@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -400,7 +400,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.4
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_LocalScale.z
@@ -761,8 +761,8 @@ MonoBehaviour:
   boardSize: {x: 8, y: 8}
   storageHighlightCells: {fileID: 1623217556}
   highlightCell: {fileID: 2348330142078378444, guid: be7b1bda592d7eb4e813375fb462651b, type: 3}
-  whiteChecker: {fileID: 3734317919805586836, guid: f9f56594e7ec8f34f9a20aefd5928259, type: 3}
-  blackChecker: {fileID: 1663534572489754241, guid: 03777c7393dca2b41a1334fa230d517f, type: 3}
+  whiteChecker: {fileID: 1377750560355865683, guid: 526cc4e6732b8a54690623b7cb6f82a9, type: 3}
+  blackChecker: {fileID: 4330666978583885466, guid: b7e4d9b4519e15a49a36af443d91f0df, type: 3}
   whiteKing: {fileID: 2234011257611268344, guid: 35a6b731ce8e3ff479de645b0d1c9154, type: 3}
   blackKing: {fileID: 7952385627658190473, guid: 658c7957bfe6ca048bc295310fa42b27, type: 3}
   boardPos: {fileID: 1888861979}
