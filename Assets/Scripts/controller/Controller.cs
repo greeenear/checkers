@@ -444,18 +444,19 @@ namespace controller {
             board[pos.x, pos.y] = Option<Checker>.None();
             var king = new Checker {type = Type.King, color = color };
             board[pos.x, pos.y] = Option<Checker>.Some(king);
-            Destroy(boardObj[pos.x, pos.y]);
-
-            GameObject prefab;
-            if (color == Color.White) {
-                prefab = res.whiteKing;
-            } else if (color == Color.Black) {
-                prefab = res.blackKing;
-            } else {
-                Debug.LogError("NoSuchColor");
-                return ControllerErrors.NoSuchColor;
-            }
-            boardObj[pos.x, pos.y] = SpawnObject(prefab, pos, res.boardPos.transform);
+            //Destroy(boardObj[pos.x, pos.y]);
+            var target = Quaternion.Euler(180, 0, 0);
+            boardObj[pos.x, pos.y].transform.rotation = target;
+            // GameObject prefab;
+            // if (color == Color.White) {
+            //     prefab = res.whiteKing;
+            // } else if (color == Color.Black) {
+            //     prefab = res.blackKing;
+            // } else {
+            //     Debug.LogError("NoSuchColor");
+            //     return ControllerErrors.NoSuchColor;
+            // }
+            // boardObj[pos.x, pos.y] = SpawnObject(prefab, pos, res.boardPos.transform);
 
             return ControllerErrors.None;
         }
@@ -569,7 +570,7 @@ namespace controller {
 
         private Vector3 ConvertToPointWorld(Vector2Int boardPoint) {
             var offset = res.cellSize.localScale / 2.00f;
-            var floatVec = new Vector3(boardPoint.x, 0f, boardPoint.y);
+            var floatVec = new Vector3(boardPoint.x, 0.4f, boardPoint.y);
             var cellLoc = this.cellPos.localPosition;
             var cellSize = res.cellSize.localScale;
             var point = cellSize.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + offset;
@@ -582,8 +583,8 @@ namespace controller {
                 Debug.LogError("BoardIsNull");
                 return ControllerErrors.BoardIsNull;
             }
-            for (int i = 0; i < 8; i++) {
-                for (int j = 0; j < 8; j++) {
+            for (int i = 0; i < board.GetLength(0); i++) {
+                for (int j = 0; j < board.GetLength(1); j++) {
                     if (board[i, j].IsSome()) {
                         var checker = board[i, j].Peel();
                         GameObject prefab;
