@@ -11,10 +11,12 @@ namespace controller {
         GameObjectIsNull,
         ListIsNull,
         CantRelocateChecker,
+        CantGetMoves,
         CantGetCheckerMovements,
         CantGetLength,
         CantGetFixMovement,
         CantGetFixMovements,
+        CantCheckGameStatus,
         CantCheckNeedAttack,
         NoSuchColor
     }
@@ -186,9 +188,6 @@ namespace controller {
             if (pieceOpt.IsNone()) {
                 return (moveRes, ControllerErrors.None);
             }
-            var color = pieceOpt.Peel().color;
-
-            var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
 
             var vecDif = move.to - move.from;
             var dir = new Vector2Int(vecDif.x/Mathf.Abs(vecDif.x), vecDif.y/Mathf.Abs(vecDif.y));
@@ -199,6 +198,7 @@ namespace controller {
                     break;
                 }
             }
+
             board[move.to.x, move.to.y] = board[move.from.x, move.from.y];
             board[move.from.x, move.from.y] = Option<Checker>.None();
 
@@ -208,6 +208,8 @@ namespace controller {
                 return (moveRes, ControllerErrors.CantRelocateChecker);
             }
 
+            var color = pieceOpt.Peel().color;
+            var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
             if (CheckPromotion(move, color, boardSize)) {
                 CheckerPromotion(move.to, color);
             }
@@ -223,6 +225,15 @@ namespace controller {
                 if (isNeedAttack) {
                     moveRes.attackAgain = true;
                 }
+            }
+
+            var (isGameOver, isGameOverErr) = IsGameOver(board, color);
+            if (isGameOverErr != ControllerErrors.None) {
+                Debug.LogError($"CantCheckGameStatus {isGameOverErr.ToString()}");
+                return (moveRes, ControllerErrors.CantCheckGameStatus);
+            }
+            if (isGameOver) {
+                Debug.Log($"GameOver");
             }
 
             return (moveRes, ControllerErrors.None);
@@ -473,6 +484,30 @@ namespace controller {
             return ControllerErrors.None;
         }
 
+        private (bool, ControllerErrors) IsGameOver(Option<Checker>[,] board, Color color) {
+            var possibleMoves = new List<Move>();
+            for (int i = 0; i < board.GetLength(1); i++) {
+                for (int j = 0; j < board.GetLength(0); j++) {
+                    if (board[i, j].IsNone()) {
+                        continue;
+                    }
+                    if (board[i, j].Peel().color != color) {
+                        continue;
+                    }
+                    var (moves, err) = GetMoves(board, new Vector2Int(i, j));
+                    if (err != ControllerErrors.None) {
+                        return (false, ControllerErrors.CantGetMoves);
+                    }
+                    possibleMoves.AddRange(moves);
+                }
+            }
+            if (possibleMoves.Count == 0) {
+                return (true, ControllerErrors.None);
+            } else {
+                return (false, ControllerErrors.None);
+            }
+        }
+
         private (int, ControllerErrors) GetLength(Option<Checker>[,] board, Linear linear) {
             int length = 0;
             var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
@@ -581,7 +616,7 @@ namespace controller {
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
-            var offset = res.cellSize.localScale / 2.00f;
+            var offset = res.cellSize.localScale / 2f;
             var floatVec = new Vector3(boardPoint.x, 0.4f, boardPoint.y);
             var cellLoc = this.cellPos.localPosition;
             var cellSize = res.cellSize.localScale;
