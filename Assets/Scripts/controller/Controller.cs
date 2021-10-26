@@ -348,20 +348,6 @@ namespace controller {
             return (length, ControllerErrors.None);
         }
 
-        private ControllerErrors MoveChecker(
-            Option<Checker>[,] board,
-            Vector2Int from,
-            Vector2Int to
-        ) {
-            if (board == null) {
-                return ControllerErrors.BoardIsNull;
-            }
-            board[to.x, to.y] = board[from.x, from.y];
-            board[from.x, from.y] = Option<Checker>.None();
-            RelocateChecker(boardObj, from, to);
-            return ControllerErrors.None;
-        }
-
         private (List<Vector2Int>, ControllerErrors) GetAttackPositions(
             Option<Checker>[,] board,
             Color color
@@ -506,7 +492,7 @@ namespace controller {
                 Debug.LogError("ListIsNull");
                 return ControllerErrors.ListIsNull;
             }
-            var boardPos = res.boardPos.transform.position;
+            var boardPos = res.boardTransform.transform.position;
             foreach (var pos in possibleMoves) {
                 SpawnObject(res.highlightCell, pos, res.storageHighlightCells.transform);
             }
@@ -525,9 +511,9 @@ namespace controller {
         }
 
         private Vector2Int ConvertToBoardPoint(Vector3 selectedPoint) {
-            var inversePoint = res.boardPos.InverseTransformPoint(selectedPoint);
-            var cellLoc = cellPos.localPosition;
-            var cellSize = res.cellSize.localScale;
+            var inversePoint = res.boardTransform.InverseTransformPoint(selectedPoint);
+            var cellLoc = res.cellTransform.localPosition;
+            var cellSize = res.cellTransform.localScale;
             var floatVec = (inversePoint + new Vector3(-cellLoc.x, 0, cellLoc.z)) / cellSize.x;
             var point = new Vector2Int(Mathf.Abs((int)(floatVec.z)), Mathf.Abs((int)floatVec.x));
 
@@ -535,10 +521,10 @@ namespace controller {
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
-            var offset = res.cellSize.localScale / 2f;
+            var offset = res.cellTransform.localScale / 2f;
             var floatVec = new Vector3(boardPoint.x, 0.4f, boardPoint.y);
-            var cellLoc = this.cellPos.localPosition;
-            var cellSize = res.cellSize.localScale;
+            var cellLoc = res.cellTransform.localPosition;
+            var cellSize = res.cellTransform.localScale;
             var point = cellSize.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + offset;
 
             return point;
@@ -563,7 +549,7 @@ namespace controller {
                             return ControllerErrors.NoSuchColor;
                         }
                         var pos = new Vector2Int(i, j);
-                        boardObj[i, j] = SpawnObject(prefab, pos, res.boardPos.transform);
+                        boardObj[i, j] = SpawnObject(prefab, pos, res.boardTransform.transform);
                     }
                 }
             }
