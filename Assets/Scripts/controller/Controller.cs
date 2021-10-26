@@ -72,6 +72,36 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
+            if (res.blackChecker == null) {
+                Debug.LogError("NoCheckers");
+                this.enabled = false;
+                return;
+            }
+            if (res.whiteChecker == null) {
+                Debug.LogError("NoCheckers");
+                this.enabled = false;
+                return;
+            }
+            if (res.cellTransform == null) {
+                Debug.LogError("NoCellSize");
+                this.enabled = false;
+                return;
+            }
+            if (res.storageHighlightCells == null) {
+                Debug.LogError("NoStorageHighlightCells");
+                this.enabled = false;
+                return;
+            }
+            if (res.highlightCell == null) {
+                Debug.LogError("NoHighlightCells");
+                this.enabled = false;
+                return;
+            }
+            if (res.boardTransform == null) {
+                Debug.LogError("NoBoardPos");
+                this.enabled = false;
+                return;
+            }
         }
 
         private void Start() {
