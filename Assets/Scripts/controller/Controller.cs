@@ -48,10 +48,14 @@ namespace controller {
         Attack
     }
 
+    public struct MoveRes {
+        public Vector2Int? sentensed;
+        public bool secondMove;
+    }
+
     public class Controller : MonoBehaviour {
         private Resources res;
 
-        public Transform cellPos;
         private Option<Checker>[,] board = new Option<Checker>[8, 8];
         private GameObject[,] boardObj = new GameObject[8, 8];
         private List<Vector2Int> moves = new List<Vector2Int>();
