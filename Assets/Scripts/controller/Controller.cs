@@ -585,6 +585,17 @@ namespace controller {
             return ControllerErrors.None;
         }
 
+        private void DestroyHighlightCells(Transform parent) {
+            var sentencedHighlight = new List<Transform>();
+            foreach (Transform child in parent) {
+                sentencedHighlight.Add(child);
+            }
+            foreach (Transform child in sentencedHighlight) {
+                child.parent = null;
+                Destroy(child.gameObject);
+            }
+        }
+
         private GameObject SpawnObject(
             GameObject prefab,
             Vector2Int spawnPos,
