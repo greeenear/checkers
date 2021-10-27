@@ -107,121 +107,109 @@ namespace controller {
         private void Start() {
             FillBoard(board);
             SpawnCheckers(board);
+            directions.Add(new Vector2Int(1, 1));
+            directions.Add(new Vector2Int(1, -1));
+            directions.Add(new Vector2Int(-1, 1));
+            directions.Add(new Vector2Int(-1, -1));
         }
 
         private void Update() {
             if (!Input.GetMouseButtonDown(0)) {
                 return;
             }
-            RaycastHit hit;
+
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (!Physics.Raycast(ray, out hit, 100f)) {
+            if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) {
                 return;
             }
 
-            var selectedPos = ConvertToBoardPoint(hit.point);
-            var checkerOpt = board[selectedPos.x, selectedPos.y];
-            foreach (Transform child in res.storageHighlightCells.transform) {
-                //child.parent = null;
-                Destroy(child.gameObject);
-            }
+            var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
 
-            if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
-                if (attackPositions.Count != 0) {
-                    var isAttackPos = false;
-                    foreach (var pos in attackPositions) {
-                        if (pos == selectedPos) {
-                            isAttackPos = true;
-                            break;
+            if (checkerInfos == null) {
+                checkerInfos = new Dictionary<Vector2Int, CheckerInfo>();
+                var maxLength = 1;
+                var xDir = 1;
+                for (int i = 0; i < board.GetLength(0); i++) {
+                    for (int j = 0; j < board.GetLength(1); j++) {
+                        var cellOpt = board[i, j];
+                        if (cellOpt.IsNone()) {
+                            continue;
                         }
-                    }
 
-                    if (!isAttackPos) {
-                        return;
+                        if (cellOpt.IsSome() && cellOpt.Peel().color != whoseMove) {
+                            continue;
+                        }
+
+                        var cell = cellOpt.Peel();
+                        if (cell.type == Type.King) {
+                            var max = Mathf.Max(boardSize.x, boardSize.y);
+                            maxLength = max;
+                        } else if (cell.type == Type.Checker && cell.color == Color.White) {
+                            xDir = -1;
+                        }
+
+                        var pos = new Vector2Int(i, j);
+                        var checkerInfo = new CheckerInfo();
+                        var moves = new List<Vector2Int>();
+                        foreach (var dir in directions) {
+                            var (length, err) = GetLengthToObject(board, pos, dir, maxLength);
+                            if (err != ControllerErrors.None) {
+                                Debug.LogError($"CantGetLengthToObject {err.ToString()}");
+                                return;
+                            }
+
+                            var lastCell = pos + dir * length;
+                            var lastCellOpt = board[lastCell.x, lastCell.y];
+                            if (lastCellOpt.IsNone()) {
+                                if (cell.type == Type.Checker && dir.x != xDir) {
+                                    continue;
+                                }
+                                moves.AddRange(GetCells(pos, dir, length));
+                            }
+                            if ((lastCellOpt.IsSome() && lastCellOpt.Peel().color != cell.color)) {
+                                (length, err) = GetLength(board, dir, lastCell, maxLength);
+                                if (err != ControllerErrors.None) {
+                                    Debug.LogError($"CantGetLength {err.ToString()}");
+                                    return;
+                                }
+                                moves.AddRange(GetCells(lastCell, dir, length));
+                                checkerInfo.isNeedAttack = true;
+                                isNeedAttack = true;
+                            }
+                        }
+
+                        checkerInfo.moves = moves;
+                        checkerInfos.Add(pos, checkerInfo);
                     }
                 }
+            }
 
+            DestroyHighlightCells(res.storageHighlightCells.transform);
+
+            var selectedPos = ConvertToBoardPoint(hit.point);
+            var checkerOpt = board[selectedPos.x, selectedPos.y];
+
+            if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
                 action = Action.Select;
                 selectedChecker = selectedPos;
             }
             var checker = checkerOpt.Peel();
 
-            var maxLength = 1;
-            var xDir = 1;
-            if (checker.type == Type.King) {
-                var max = Mathf.Max(board.GetLength(1), board.GetLength(0));
-                maxLength = max;
-            } else if (checker.type == Type.Checker && checker.color == Color.White) {
-                xDir = -1;
-            }
-
-            var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
-            var moveDirections = new List<Vector2Int>();
-            var attackDirections = new List<Vector2Int>();
             switch (action) {
                 case Action.Select:
-                    moves.Clear();
-                    var possibleMoves = new List<Vector2Int>();
-                    GetPossibleMoves(board, selectedPos, null, possibleMoves);
-                    HighlightCells(possibleMoves);
-
-                    for (int i = -1; i <= 1; i++) {
-                        for (int j = -1; j <= 1; j++) {
-                            if (i == 0 || j == 0) {
-                                continue;
-                            }
-                            var dir = new Vector2Int(i, j);
-                            attackDirections.Add(dir);
-                            if (checker.type == Type.Checker) {
-                                if (i == xDir) {
-                                    moveDirections.Add(dir);
-                                }
-                            } else if (checker.type == Type.King) {
-                                moveDirections.Add(dir);
-                            }
-                        }
+                    var currentInfo = checkerInfos[selectedPos];
+                    if (isNeedAttack && !currentInfo.isNeedAttack) {
+                        action = Action.None;
+                        return;
                     }
-                    foreach (var dir in attackDirections) {
-                        var (length, err) = GetLengthToObject(board, selectedPos, dir, maxLength);
-                        if (err != ControllerErrors.None) {
-                            Debug.LogError($"CantGetLengthToObject {err.ToString()}");
-                            return;
-                        }
-
-                        var lastCell = selectedPos + dir * length;
-                        var lastCellOpt = board[lastCell.x, lastCell.y];
-                        if (!(lastCellOpt.IsSome() && lastCellOpt.Peel().color != checker.color)) {
-                            continue;
-                        }
-
-                        (length, err) = GetLength(board, dir, lastCell, maxLength);
-                        if (err != ControllerErrors.None) {
-                            Debug.LogError($"CantGetLength {err.ToString()}");
-                            return;
-                        }
-
-                        moves.AddRange(GetCells(lastCell, dir, length));
-                    }
-                    if (moves.Count == 0) {
-                        foreach (var dir in moveDirections) {
-                            var (length, err) = GetLength(board, dir, selectedPos, maxLength);
-                            if (err != ControllerErrors.None) {
-                                Debug.LogError($"CantGetLength {err.ToString()}");
-                                return;
-                            }
-
-                            moves.AddRange(GetCells(selectedPos, dir, length));
-                        }
-                    }
-
-                    HighlightCells(moves);
+                    HighlightCells(currentInfo.moves);
                     action = Action.Move;
                     break;
                 case Action.Move:
-                    if (!IsPossibleMove(moves, selectedPos)) {
+                    currentInfo = checkerInfos[selectedChecker];
+                    if (!IsPossibleMove(currentInfo.moves, selectedPos)) {
                         return;
                     }
-                    attackPositions.Clear();
 
                     var (res, moveCheckerErr) = MoveChecker(board, selectedChecker, selectedPos);
                     if (moveCheckerErr != ControllerErrors.None) {
