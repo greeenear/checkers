@@ -757,13 +757,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a22df30152c9d344c92c4da8428249cc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cellSize: {fileID: 1035263047}
+  cellTransform: {fileID: 1035263047}
   boardSize: {x: 8, y: 8}
   storageHighlightCells: {fileID: 1623217556}
   highlightCell: {fileID: 2348330142078378444, guid: be7b1bda592d7eb4e813375fb462651b, type: 3}
   whiteChecker: {fileID: 1377750560355865683, guid: 526cc4e6732b8a54690623b7cb6f82a9, type: 3}
   blackChecker: {fileID: 4330666978583885466, guid: b7e4d9b4519e15a49a36af443d91f0df, type: 3}
-  boardPos: {fileID: 1888861979}
+  boardTransform: {fileID: 1888861979}
 --- !u!114 &1439324532
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -776,7 +776,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4f2db1b1d7d983b499ef4803aef3d0d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cellPos: {fileID: 1035263047}
 --- !u!4 &1439324533
 Transform:
   m_ObjectHideFlags: 0

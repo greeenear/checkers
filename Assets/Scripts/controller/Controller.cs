@@ -161,6 +161,10 @@ namespace controller {
             switch (action) {
                 case Action.Select:
                     moves.Clear();
+                    var possibleMoves = new List<Vector2Int>();
+                    GetPossibleMoves(board, selectedPos, null, possibleMoves);
+                    HighlightCells(possibleMoves);
+
                     for (int i = -1; i <= 1; i++) {
                         for (int j = -1; j <= 1; j++) {
                             if (i == 0 || j == 0) {
@@ -232,6 +236,7 @@ namespace controller {
                         attackPositions.Add(selectedPos);
                         return;
                     }
+                    IsGameOver(board, whoseMove);
                     whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
                     var (positions, getAttackPosErr) = GetAttackPositions(board, whoseMove);
                     if (getAttackPosErr != ControllerErrors.None) {
@@ -417,6 +422,35 @@ namespace controller {
             return (moveRes, ControllerErrors.None);
         }
 
+        public void GetPossibleMoves(
+            Option<Checker>[,] board,
+            Vector2Int pos,
+            Vector2Int? badDir,
+            List<Vector2Int> possibleMoves
+        ) {
+            for (int i = -1; i <= 1; i++) {
+                for (int j = -1; j <= 1; j++) {
+                    if (i == 0 || j == 0) {
+                        continue;
+                    }
+                    var dir = new Vector2Int(i, j);
+                    if (badDir.HasValue && badDir == dir) {
+                        continue;
+                    }
+                    var cell = pos + dir;
+                    var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
+                    if (IsOnBoard(boardSize, cell) && board[cell.x, cell.y].IsSome() 
+                    && board[cell.x, cell.y].Peel().color != board[pos.x, pos.y].Peel().color) {
+                        cell = cell + dir;
+                        if (IsOnBoard(boardSize, cell) && board[cell.x, cell.y].IsNone()) {
+                            possibleMoves.Add(cell);
+                            GetPossibleMoves(board, cell, dir * -1, possibleMoves);
+                        }
+                    }
+                }
+            }
+        }
+
         private ControllerErrors RelocateChecker(
             GameObject[,] boardObj,
             Vector2Int from,
@@ -467,8 +501,14 @@ namespace controller {
                     if (board[i, j].IsNone()) {
                         continue;
                     }
-                    if (board[i, j].Peel().color != color) {
+
+                    var checker = board[i, j].Peel();
+                    if (checker.color != color) {
                         continue;
+                    }
+                    var maxLength = 1;
+                    if (checker.type == Type.King) {
+                        maxLength = Mathf.Max(board.GetLength(1), board.GetLength(0));
                     }
                 }
             }
