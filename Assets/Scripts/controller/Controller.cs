@@ -43,9 +43,9 @@ namespace controller {
         public Color color;
     }
 
-    public enum MovemenType {
-        Move,
-        Attack
+    public struct CheckerInfo {
+        public bool isNeedAttack;
+        public List<Vector2Int> moves;
     }
 
     public struct MoveRes {
@@ -58,9 +58,10 @@ namespace controller {
 
         private Option<Checker>[,] board = new Option<Checker>[8, 8];
         private GameObject[,] boardObj = new GameObject[8, 8];
-        private List<Vector2Int> moves = new List<Vector2Int>();
+        private Dictionary<Vector2Int, CheckerInfo> checkerInfos;
+        private bool isNeedAttack;
         private Vector2Int selectedChecker;
-        private List<Vector2Int> attackPositions = new List<Vector2Int>();
+        private List<Vector2Int> directions = new List<Vector2Int>();
 
         private Color whoseMove;
         private Action action;
@@ -221,9 +222,12 @@ namespace controller {
                         CheckerPromotion(selectedPos, whoseMove);
                     }
                     if (res.secondMove) {
-                        attackPositions.Add(selectedPos);
+                        selectedChecker = selectedPos;
+                        action = Action.Move;
+                        checkerInfos = null;
                         return;
                     }
+
                     IsGameOver(board, whoseMove);
                     whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
                     var (positions, getAttackPosErr) = GetAttackPositions(board, whoseMove);
@@ -232,7 +236,8 @@ namespace controller {
                         return;
                     }
 
-                    attackPositions = positions;
+                    checkerInfos = null;
+                    isNeedAttack = false;
                     action = Action.None;
                     break;
             }
@@ -464,6 +469,7 @@ namespace controller {
             if (to.x == 0 && color == Color.White) {
                 return true;
             }
+
             if (to.x == boardSize.x - 1 && color == Color.Black) {
                 return true;
             }
@@ -529,7 +535,7 @@ namespace controller {
         }
 
         private bool IsPossibleMove(List<Vector2Int> possibleMoves, Vector2Int selectPos) {
-            foreach (var move in moves) {
+            foreach (var move in possibleMoves) {
                 if (move == selectPos) {
                     return true;
                 }
@@ -625,7 +631,6 @@ namespace controller {
                     }
                 }
             }
-
             return ControllerErrors.None;
         }
     }
