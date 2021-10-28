@@ -89,6 +89,25 @@
         "com.unity.modules.imgui": "1.0.0"
       }
     },
+    "xyz.coderiftel.jonson": {
+      "version": "https://github.com/codeRiftel/jonson.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "xyz.coderiftel.option": "1.0.0"
+      },
+      "hash": "7b9e55bf629ef3956bce405a89237252206ab09b"
+    },
+    "xyz.coderiftel.jonson-reflect": {
+      "version": "https://github.com/codeRiftel/jonson-reflect.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "xyz.coderiftel.option": "1.0.0",
+        "xyz.coderiftel.jonson": "1.0.0"
+      },
+      "hash": "24b38a5735eaa9f4e52fe7fd4850fa4f80348509"
+    },
     "xyz.coderiftel.option": {
       "version": "https://github.com/codeRiftel/option.git",
       "depth": 0,

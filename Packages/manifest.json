@@ -8,6 +8,8 @@
     "com.unity.textmeshpro": "3.0.6",
     "com.unity.timeline": "1.4.8",
     "com.unity.ugui": "1.0.0",
+    "xyz.coderiftel.jonson": "https://github.com/codeRiftel/jonson.git",
+    "xyz.coderiftel.jonson-reflect": "https://github.com/codeRiftel/jonson-reflect.git",
     "xyz.coderiftel.option": "https://github.com/codeRiftel/option.git",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",

@@ -11,5 +11,12 @@ namespace controller {
         public GameObject whiteChecker;
         public GameObject blackChecker;
         public Transform boardTransform;
+        public GameObject gameMenu;
+        public readonly List<Vector2Int> directions = new List<Vector2Int> {
+            new Vector2Int(1, 1),
+            new Vector2Int(-1, 1),
+            new Vector2Int(1, -1),
+            new Vector2Int(-1, -1)
+        };
     }
 }
