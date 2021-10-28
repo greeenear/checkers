@@ -624,6 +624,42 @@ namespace controller {
             return Instantiate(prefab, spawnWorldPos, Quaternion.identity, parent);
         }
 
+        public void OpenMenu() {
+            if (res.gameMenu.activeSelf == true) {
+                res.gameMenu.SetActive(false);
+                this.enabled = true;
+            } else {
+                res.gameMenu.SetActive(true);
+                this.enabled = false;
+            }
+        }
+
+        public void Save() {
+            jsonObject = JsonObject.Mk(new List<CheckerInfo>());
+            for (int i = 0; i < board.GetLength(0); i++) {
+                for (int j = 0; j < board.GetLength(1); j++) {
+                    var board = this.board[i,j];
+                    if (board.IsSome()) {
+                        jsonObject.checkerInfos.Add(CheckerInfo.Mk(board.Peel(), i, j));
+                    }
+                }
+            }
+            SaveLoad.WriteJson(SaveLoad.GetJsonType<JsonObject>(jsonObject), "NewGame.json");
+        }
+
+        public void Load(string path) {
+            whoseMove = Color.White;
+            board = new Option<Checker>[8,8];
+            DestroyHighlightCells(res.storageHighlightCells.transform);
+            var gameInfo = SaveLoad.ReadJson(path, jsonObject);
+            foreach (var checkerInfo in gameInfo.checkerInfos) {
+                board[checkerInfo.x, checkerInfo.y] = Option<Checker>.Some(checkerInfo.checker);
+            }
+            SpawnCheckers(board);
+            res.gameMenu.SetActive(false);
+            this.enabled = true;
+        }
+
         public ControllerErrors FillBoard(Option<Checker>[,] board) {
             if (board == null) {
                 Debug.LogError($"BoardIsNull");
