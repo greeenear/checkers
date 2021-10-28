@@ -307,16 +307,22 @@ namespace controller {
                 var cell = from + dir * i;
                 if (board[cell.x, cell.y].IsSome()) {
                     moveRes.sentensed = cell;
-                    board[cell.x, cell.y] = Option<Checker>.None();
+                    sentenced.Add(cell);
 
-                    var (isNeedAttack, isNeedAttackErr) = CheckNeedAttack(board, to);
-                    if (isNeedAttackErr != ControllerErrors.None) {
-                        Debug.LogError($"CantCheckNeedAttack {isNeedAttackErr.ToString()}");
-                        return(moveRes, ControllerErrors.CantCheckNeedAttack);
-                    }
-
-                    if (isNeedAttack) {
-                        moveRes.secondMove = true;
+                    foreach (var moveDir in res.directions) {
+                        cell = to + moveDir;
+                        if (sentenced.Contains(cell)) {
+                            continue;
+                        }
+                        if (IsOnBoard(boardSize, cell) && board[cell.x, cell.y].IsSome()) {
+                            var checker = board[cell.x, cell.y].Peel();
+                            if (checker.color != board[to.x, to.y].Peel().color) {
+                                cell = cell + moveDir;
+                                if (IsOnBoard(boardSize, cell) && board[cell.x, cell.y].IsNone()) {
+                                    moveRes.secondMove = true;
+                                }
+                            }
+                        }
                     }
                     break;
                 }
@@ -334,9 +340,6 @@ namespace controller {
             if (boardObj == null) {
                 Debug.LogError("BoardIsNull");
                 return ControllerErrors.BoardIsNull;
-            }
-            if (sentensed.HasValue) {
-                Destroy(boardObj[sentensed.Value.x, sentensed.Value.y]);
             }
 
             var pos = ConvertToWorldPoint(to);
@@ -452,6 +455,7 @@ namespace controller {
             }
             for (int i = 0; i < board.GetLength(0); i++) {
                 for (int j = 0; j < board.GetLength(1); j++) {
+                    Destroy(boardObj[i, j]);
                     if (board[i, j].IsSome()) {
                         var checker = board[i, j].Peel();
                         GameObject prefab;
@@ -548,6 +552,7 @@ namespace controller {
                     }
                 }
             }
+
             return ControllerErrors.None;
         }
     }
