@@ -103,6 +103,11 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
+            if (res.boardSize == null) {
+                Debug.LogError("NoBoardSize");
+                this.enabled = false;
+                return;
+            }
         }
 
         private void Start() {
@@ -158,6 +163,9 @@ namespace controller {
                                 Debug.LogError($"CantGetLengthToObject {err.ToString()}");
                                 return;
                             }
+                            if (length == 0) {
+                                continue;
+                            }
 
                             var lastCell = pos + dir * length;
                             var lastCellOpt = board[lastCell.x, lastCell.y];
@@ -173,9 +181,11 @@ namespace controller {
                                     Debug.LogError($"CantGetLength {err.ToString()}");
                                     return;
                                 }
-                                moves.AddRange(GetCells(lastCell, dir, length));
-                                checkerInfo.isNeedAttack = true;
-                                isNeedAttack = true;
+                                if (length != 0) {
+                                    checkerInfo.isNeedAttack = true;
+                                    isNeedAttack = true;
+                                    moves.AddRange(GetCells(lastCell, dir, length));
+                                }
                             }
                         }
 
@@ -297,6 +307,9 @@ namespace controller {
             if (err != ControllerErrors.None) {
                 Debug.LogError($"CantGetLengthToObject {err.ToString()}");
                 return (0, ControllerErrors.CantGetLength);
+            }
+            if (length == 0) {
+                return (length, ControllerErrors.None);
             }
 
             var lastCell = pos + dir * length;
