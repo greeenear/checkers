@@ -49,11 +49,6 @@ namespace controller {
         public List<Vector2Int> moves;
     }
 
-    public struct MoveRes {
-        public Vector2Int? sentensed;
-        public bool secondMove;
-    }
-
     public class Controller : MonoBehaviour {
         private Resources res;
 
@@ -217,16 +212,16 @@ namespace controller {
             }
 
             DestroyHighlightCells(res.storageHighlightCells.transform);
-            var selectedPos = ConvertToBoardPoint(hit.point);
-            var checkerOpt = board[selectedPos.x, selectedPos.y];
+            var targetPos = ConvertToBoardPoint(hit.point);
+            var checkerOpt = board[targetPos.x, targetPos.y];
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
                 action = Action.Select;
-                selectedChecker = selectedPos;
+                selectedChecker = targetPos;
             }
             var checker = checkerOpt.Peel();
 
             if (action == Action.Select) {
-                var currentInfo = checkerMoves[selectedPos];
+                var currentInfo = checkerMoves[targetPos];
                 if (isNeedAttack && !currentInfo.isNeedAttack) {
                     action = Action.None;
                     return;
@@ -235,35 +230,64 @@ namespace controller {
                 action = Action.Move;
             } else if(action == Action.Move) {
                 var currentInfo = checkerMoves[selectedChecker];
-                if (!IsPossibleMove(currentInfo.moves, selectedPos)) {
+                if (!IsPossibleMove(currentInfo.moves, targetPos)) {
                     return;
                 }
 
-                var (moveRes, moveCheckerErr) = MoveChecker(board, selectedChecker, selectedPos);
-                if (moveCheckerErr != ControllerErrors.None) {
-                    Debug.LogError($"CantMoveChecker {moveCheckerErr.ToString()}");
-                    return;
+                var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
+
+                var secondMove = false;
+                Vector2Int? sentenced = null;
+                var dif = targetPos - selectedChecker;
+                var dir = new Vector2Int(dif.x / Mathf.Abs(dif.x), dif.y / Mathf.Abs(dif.y));
+                board[targetPos.x, targetPos.y] = board[selectedChecker.x, selectedChecker.y];
+                board[selectedChecker.x, selectedChecker.y] = Option<Checker>.None();
+                for (int i = 1; i < Mathf.Abs(dif.x); i++) {
+                    var cell = selectedChecker + dir * i;
+                    if (board[cell.x, cell.y].IsSome()) {
+                        sentenced = cell;
+                        this.sentenced.Add(cell);
+
+                        foreach (var moveDir in res.directions) {
+                            cell = targetPos + moveDir;
+                            if (this.sentenced.Contains(cell)) {
+                                continue;
+                            }
+                            if (IsOnBoard(boardSize, cell) && board[cell.x, cell.y].IsSome()) {
+                                var enemyСhecker = board[cell.x, cell.y].Peel();
+                                var currentChecker = board[targetPos.x, targetPos.y];
+                                if (enemyСhecker.color != currentChecker.Peel().color) {
+                                    cell = cell + moveDir;
+                                    var isOnboard = IsOnBoard(boardSize, cell) ;
+                                    if (isOnboard && board[cell.x, cell.y].IsNone()) {
+                                        secondMove = true;
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    }
                 }
 
-                RelocateChecker(boardObj, selectedChecker, selectedPos, moveRes.sentensed);
-                if (CheckPromotion(selectedPos, whoseMove, res.boardSize)) {
-                    CheckerPromotion(selectedPos, whoseMove);
+                RelocateChecker(boardObj, selectedChecker, targetPos, sentenced);
+                if (CheckPromotion(targetPos, whoseMove, res.boardSize)) {
+                    CheckerPromotion(targetPos, whoseMove);
                 }
 
-                if (moveRes.sentensed.HasValue) {
-                    sentenced.Add(moveRes.sentensed.Value);
+                if (sentenced.HasValue) {
+                    this.sentenced.Add(sentenced.Value);
                 }
-                if (moveRes.secondMove) {
-                    selectedChecker = selectedPos;
+                if (secondMove) {
+                    selectedChecker = targetPos;
                     action = Action.Move;
                     checkerMoves = null;
                     return;
                 }
-                foreach (var pos in sentenced) {
+                foreach (var pos in this.sentenced) {
                     board[pos.x, pos.y] = Option<Checker>.None();
                     Destroy(boardObj[pos.x, pos.y]);
                 }
-                sentenced.Clear();
+                this.sentenced.Clear();
                 action = Action.ChangeMove;
             }
 
@@ -284,51 +308,6 @@ namespace controller {
             }
 
             return moveCells;
-        }
-
-        private (MoveRes, ControllerErrors) MoveChecker(
-            Option<Checker>[,] board,
-            Vector2Int from,
-            Vector2Int to
-        ) {
-            var moveRes = new MoveRes();
-            if (board == null) {
-                Debug.LogError("BoardIsNull");
-                return (moveRes, ControllerErrors.BoardIsNull);
-            }
-
-            var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
-
-            var vecDif = to - from;
-            var dir = new Vector2Int(vecDif.x/Mathf.Abs(vecDif.x), vecDif.y/Mathf.Abs(vecDif.y));
-            board[to.x, to.y] = board[from.x, from.y];
-            board[from.x, from.y] = Option<Checker>.None();
-            for (int i = 1; i < Mathf.Abs(vecDif.x); i++) {
-                var cell = from + dir * i;
-                if (board[cell.x, cell.y].IsSome()) {
-                    moveRes.sentensed = cell;
-                    sentenced.Add(cell);
-
-                    foreach (var moveDir in res.directions) {
-                        cell = to + moveDir;
-                        if (sentenced.Contains(cell)) {
-                            continue;
-                        }
-                        if (IsOnBoard(boardSize, cell) && board[cell.x, cell.y].IsSome()) {
-                            var checker = board[cell.x, cell.y].Peel();
-                            if (checker.color != board[to.x, to.y].Peel().color) {
-                                cell = cell + moveDir;
-                                if (IsOnBoard(boardSize, cell) && board[cell.x, cell.y].IsNone()) {
-                                    moveRes.secondMove = true;
-                                }
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-
-            return (moveRes, ControllerErrors.None);
         }
 
         private ControllerErrors RelocateChecker(
@@ -521,6 +500,7 @@ namespace controller {
 
         public void Load(string path) {
             whoseMove = Color.White;
+            checkerMoves = null;
             board = new Option<Checker>[8,8];
             DestroyHighlightCells(res.storageHighlightCells.transform);
             var gameInfo = SaveLoad.ReadJson(path, jsonObject);
