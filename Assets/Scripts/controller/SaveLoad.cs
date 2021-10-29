@@ -1,9 +1,10 @@
-using System.Collections.ObjectModel;
+using System;
 using option;
 using jonson;
 using jonson.reflect;
 using System.IO;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace controller {
     public struct CheckerInfo {
@@ -15,12 +16,13 @@ namespace controller {
             return new CheckerInfo {checker = checker, x = xPos, y = yPos};
         }
     }
-    public struct JsonObject {
+
+    public struct GameState {
         public List<CheckerInfo> checkerInfos;
         public Color whoseMove;
 
-        public static JsonObject Mk(List<CheckerInfo> info) {
-            return new JsonObject { checkerInfos = info };
+        public static GameState Mk(List<CheckerInfo> info) {
+            return new GameState { checkerInfos = info };
         }
     }
 
@@ -31,12 +33,23 @@ namespace controller {
 
         public static void WriteJson(JSONType jsonType, string path) {
             string output = Jonson.Generate(jsonType);
-            File.WriteAllText(path, output);
+            try {
+                File.WriteAllText(path, output);
+            }
+            catch (Exception err) {
+                Debug.LogError(err.ToString());
+            }
         }
 
         public static T ReadJson<T>(string path, T type) {
-            string input = File.ReadAllText(path);
-            Result<JSONType, JSONError> gameStatsRes = Jonson.Parse(input, 1024);
+            string input = "";
+            try {
+                input = File.ReadAllText(path);
+            }
+            catch (Exception err) {
+                Debug.LogError(err.ToString());
+            }
+            var gameStatsRes = Jonson.Parse(input, 1024);
             var loadGameStats =  Reflect.FromJSON(type, gameStatsRes.AsOk());
 
             return loadGameStats;

@@ -32,7 +32,7 @@ namespace controller {
         Count
     }
 
-    public enum Action {
+    public enum PlayerAction {
         None,
         Select,
         Move,
@@ -44,23 +44,34 @@ namespace controller {
         public Color color;
     }
 
-    public struct CheckerMoves {
+    public struct FullBoard {
+        public Option<Checker>[,] board;
+        public GameObject[,] boardObj;
+    }
+
+    public struct GameInfo {
         public bool isNeedAttack;
-        public List<Vector2Int> moves;
+        public Dictionary<Vector2Int, List<MoveInfo>> checkerMoves;
+    }
+
+    public struct MoveInfo {
+        public Vector2Int cell;
+        public bool isAttack;
+        public static MoveInfo Mk(Vector2Int cell, bool isAttack) {
+            return new MoveInfo { cell = cell, isAttack = isAttack };
+        }
     }
 
     public class Controller : MonoBehaviour {
         private Resources res;
+        private FullBoard fullBoard;
+        private GameInfo gameInfo;
 
-        private bool isNeedAttack;
-        private Option<Checker>[,] board = new Option<Checker>[8, 8];
-        private GameObject[,] boardObj = new GameObject[8, 8];
-        private Dictionary<Vector2Int, CheckerMoves> checkerMoves;
-        private List<Vector2Int> sentenced = new List<Vector2Int>();
+        private HashSet<Vector2Int> sentenced = new HashSet<Vector2Int>();
         private Vector2Int selectedChecker;
-        private JsonObject jsonObject;
+        private GameState gameState;
         private Color whoseMove;
-        private Action action;
+        private PlayerAction playerAction;
 
         private void Awake() {
             res = gameObject.GetComponentInParent<Resources>();
@@ -117,87 +128,72 @@ namespace controller {
         }
 
         private void Start() {
-            FillBoard(board);
-            SpawnCheckers(board);
+            fullBoard.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
+            fullBoard.boardObj = new GameObject[res.boardSize.x, res.boardSize.y];
+            FillBoard(fullBoard.board);
+            SpawnCheckers(fullBoard.board);
         }
 
         private void Update() {
-            if (checkerMoves == null) {
-                checkerMoves = new Dictionary<Vector2Int, CheckerMoves>();
-                var maxLength = 1;
-                var xDir = 1;
-                for (int i = 0; i < board.GetLength(0); i++) {
-                    for (int j = 0; j < board.GetLength(1); j++) {
-                        var nextCell = new Vector2Int();
-                        var cellOpt = board[i, j];
+            if (gameInfo.checkerMoves == null) {
+                gameInfo.checkerMoves = new Dictionary<Vector2Int, List<MoveInfo>>();
+                for (int i = 0; i < fullBoard.board.GetLength(0); i++) {
+                    for (int j = 0; j < fullBoard.board.GetLength(1); j++) {
+                        var xDir = 1;
+                        var cellOpt = fullBoard.board[i, j];
                         if (cellOpt.IsNone() || cellOpt.Peel().color != whoseMove) {
                             continue;
                         }
 
-                        var cell = cellOpt.Peel();
-                        if (cell.type == Type.King) {
-                            var max = Mathf.Max(res.boardSize.x, res.boardSize.y);
-                            maxLength = max;
-                        } else if (cell.type == Type.Checker && cell.color == Color.White) {
+                        var curChecker = cellOpt.Peel();
+                        if (curChecker.type == Type.Checker && curChecker.color == Color.White) {
                             xDir = -1;
                         }
 
                         var pos = new Vector2Int(i, j);
-                        var checkerMoves = new CheckerMoves();
-                        var attackCells = new List<Vector2Int>();
-                        var moveCells = new List<Vector2Int>();
+                        var checkerMoves = new List<MoveInfo>();
                         foreach (var dir in res.directions) {
-                            var length = 0;
-                            for (int k = 1; k <= maxLength; k++) {
-                                nextCell = pos + dir * k;
-                                if (!IsOnBoard(res.boardSize, nextCell)) {
+                            var nextCell = pos + dir;
+                            while (IsOnBoard(res.boardSize, nextCell)) {
+                                if (curChecker.type == Type.Checker && dir.x != xDir) {
                                     break;
                                 }
-                                length++;
-                                if (board[nextCell.x, nextCell.y].IsSome()) {
+                                if (fullBoard.board[nextCell.x, nextCell.y].IsSome()) {
                                     break;
                                 }
+                                checkerMoves.Add(MoveInfo.Mk(nextCell, false));
+                                if (curChecker.type == Type.Checker) {
+                                    break;
+                                }
+                                nextCell += dir;
                             }
-                            if (length == 0) {
+
+                            if (!IsOnBoard(res.boardSize, nextCell)) {
+                                nextCell -= dir;
+                            }
+
+                            var nextCellOpt = fullBoard.board[nextCell.x, nextCell.y];
+                            if (nextCellOpt.IsNone()) {
                                 continue;
                             }
 
-                            var lastCell = pos + dir * length;
-                            var lastCellOpt = board[lastCell.x, lastCell.y];
-                            if (lastCellOpt.IsNone()) {
-                                if (cell.type == Type.Checker && dir.x != xDir) {
-                                    continue;
-                                }
-                                moveCells.AddRange(GetCells(pos, dir, length));
-                            }
-
-                            if ((lastCellOpt.IsSome() && lastCellOpt.Peel().color != cell.color)) {
-                                length = 0;
-                                for (int k = 1; k <= maxLength; k++) {
-                                    nextCell = lastCell + dir * k;
-                                    if (!IsOnBoard(res.boardSize, nextCell)) {
+                            if (nextCellOpt.Peel().color != curChecker.color) {
+                                nextCell += dir;
+                                while (IsOnBoard(res.boardSize, nextCell)) {
+                                    if (fullBoard.board[nextCell.x, nextCell.y].IsSome()) {
                                         break;
                                     }
-                                    if (board[nextCell.x, nextCell.y].IsSome()) {
+                                    checkerMoves.Add(MoveInfo.Mk(nextCell, true));
+                                    gameInfo.isNeedAttack = true;
+                                    nextCell += dir;
+                                    if (curChecker.type == Type.Checker) {
                                         break;
                                     }
-                                    length++;
-                                }
-
-                                if (length != 0 && !sentenced.Contains(lastCell)) {
-                                    checkerMoves.isNeedAttack = true;
-                                    isNeedAttack = true;
-                                    attackCells.AddRange(GetCells(lastCell, dir, length));
                                 }
                             }
                         }
 
-                        if (attackCells.Count != 0) {
-                            checkerMoves.moves = attackCells;
-                        } else {
-                            checkerMoves.moves = moveCells;
-                        }
-                        this.checkerMoves.Add(pos, checkerMoves);
+                        gameInfo.checkerMoves.Add(pos, checkerMoves);
                     }
                 }
             }
@@ -213,24 +209,21 @@ namespace controller {
 
             DestroyHighlightCells(res.storageHighlightCells.transform);
             var targetPos = ConvertToBoardPoint(hit.point);
-            var checkerOpt = board[targetPos.x, targetPos.y];
+            var checkerOpt = fullBoard.board[targetPos.x, targetPos.y];
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
-                action = Action.Select;
+                playerAction = PlayerAction.Select;
                 selectedChecker = targetPos;
             }
             var checker = checkerOpt.Peel();
 
-            if (action == Action.Select) {
-                var currentInfo = checkerMoves[targetPos];
-                if (isNeedAttack && !currentInfo.isNeedAttack) {
-                    action = Action.None;
-                    return;
-                }
-                HighlightCells(currentInfo.moves);
-                action = Action.Move;
-            } else if(action == Action.Move) {
-                var currentInfo = checkerMoves[selectedChecker];
-                if (!IsPossibleMove(currentInfo.moves, targetPos)) {
+            var board = fullBoard.board;
+            if (playerAction == PlayerAction.Select) {
+                var currentInfo = gameInfo.checkerMoves[targetPos];
+                HighlightCells(currentInfo, gameInfo.isNeedAttack);
+                playerAction = PlayerAction.Move;
+            } else if(playerAction == PlayerAction.Move) {
+                var currentInfo = gameInfo.checkerMoves[selectedChecker];
+                if (!IsPossibleMove(currentInfo, targetPos, gameInfo.isNeedAttack)) {
                     return;
                 }
 
@@ -269,7 +262,7 @@ namespace controller {
                     }
                 }
 
-                RelocateChecker(boardObj, selectedChecker, targetPos, sentenced);
+                RelocateChecker(fullBoard.boardObj, selectedChecker, targetPos, sentenced);
                 if (CheckPromotion(targetPos, whoseMove, res.boardSize)) {
                     CheckerPromotion(targetPos, whoseMove);
                 }
@@ -279,35 +272,25 @@ namespace controller {
                 }
                 if (secondMove) {
                     selectedChecker = targetPos;
-                    action = Action.Move;
-                    checkerMoves = null;
+                    playerAction = PlayerAction.Move;
+                    gameInfo.checkerMoves = null;
                     return;
                 }
                 foreach (var pos in this.sentenced) {
-                    board[pos.x, pos.y] = Option<Checker>.None();
-                    Destroy(boardObj[pos.x, pos.y]);
+                    fullBoard.board[pos.x, pos.y] = Option<Checker>.None();
+                    Destroy(fullBoard.boardObj[pos.x, pos.y]);
                 }
                 this.sentenced.Clear();
-                action = Action.ChangeMove;
+                playerAction = PlayerAction.ChangeMove;
             }
 
-            if (action == Action.ChangeMove) {
-                IsGameOver(board, whoseMove);
+            if (playerAction == PlayerAction.ChangeMove) {
+                IsGameOver(fullBoard.board, whoseMove);
                 whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
-                checkerMoves = null;
-                isNeedAttack = false;
-                action = Action.None;
+                gameInfo.checkerMoves = null;
+                gameInfo.isNeedAttack = false;
+                playerAction = PlayerAction.None;
             }
-        }
-
-        public List<Vector2Int> GetCells(Vector2Int pos, Vector2Int dir, int length) {
-            var moveCells = new List<Vector2Int>();
-            for (int i = 1; i <= length; i++) {
-                var cell = pos + dir * i;
-                moveCells.Add(cell);
-            }
-
-            return moveCells;
         }
 
         private ControllerErrors RelocateChecker(
@@ -341,12 +324,12 @@ namespace controller {
         }
 
         private ControllerErrors CheckerPromotion(Vector2Int pos, Color color) {
-            board[pos.x, pos.y] = Option<Checker>.None();
+            fullBoard.board[pos.x, pos.y] = Option<Checker>.None();
             var king = new Checker {type = Type.King, color = color };
-            board[pos.x, pos.y] = Option<Checker>.Some(king);
+            fullBoard.board[pos.x, pos.y] = Option<Checker>.Some(king);
 
             var target = Quaternion.Euler(180, 0, 0);
-            boardObj[pos.x, pos.y].transform.rotation = target;
+            fullBoard.boardObj[pos.x, pos.y].transform.rotation = target;
 
             return ControllerErrors.None;
         }
@@ -384,23 +367,27 @@ namespace controller {
             return true;
         }
 
-        private ControllerErrors HighlightCells(List<Vector2Int> possibleMoves) {
+        private ControllerErrors HighlightCells(List<MoveInfo> possibleMoves, bool isNeedAttack) {
             if (possibleMoves == null) {
                 Debug.LogError("ListIsNull");
                 return ControllerErrors.ListIsNull;
             }
             var boardPos = res.boardTransform.transform.position;
             foreach (var pos in possibleMoves) {
-                SpawnObject(res.highlightCell, pos, res.storageHighlightCells.transform);
+                if (isNeedAttack && pos.isAttack || !isNeedAttack && !pos.isAttack) {
+                    SpawnObject(res.highlightCell, pos.cell, res.storageHighlightCells.transform);
+                }
             }
 
             return ControllerErrors.None;
         }
 
-        private bool IsPossibleMove(List<Vector2Int> possibleMoves, Vector2Int selectPos) {
-            foreach (var move in possibleMoves) {
-                if (move == selectPos) {
-                    return true;
+        private bool IsPossibleMove(List<MoveInfo> moves, Vector2Int pos, bool isNeedAttack) {
+            foreach (var move in moves) {
+                if (move.cell == pos) {
+                    if (isNeedAttack && move.isAttack || !isNeedAttack && !move.isAttack) {
+                        return true;
+                    }
                 }
             }
 
@@ -434,7 +421,7 @@ namespace controller {
             }
             for (int i = 0; i < board.GetLength(0); i++) {
                 for (int j = 0; j < board.GetLength(1); j++) {
-                    Destroy(boardObj[i, j]);
+                    Destroy(fullBoard.boardObj[i, j]);
                     if (board[i, j].IsSome()) {
                         var checker = board[i, j].Peel();
                         GameObject prefab;
@@ -447,7 +434,8 @@ namespace controller {
                             return ControllerErrors.NoSuchColor;
                         }
                         var pos = new Vector2Int(i, j);
-                        boardObj[i, j] = SpawnObject(prefab, pos, res.boardTransform.transform);
+                        var boardTransform = res.boardTransform.transform;
+                        fullBoard.boardObj[i, j] = SpawnObject(prefab, pos, boardTransform);
                     }
                 }
             }
@@ -486,28 +474,31 @@ namespace controller {
         }
 
         public void Save() {
-            jsonObject = JsonObject.Mk(new List<CheckerInfo>());
-            for (int i = 0; i < board.GetLength(0); i++) {
-                for (int j = 0; j < board.GetLength(1); j++) {
-                    var board = this.board[i,j];
+            gameState = GameState.Mk(new List<CheckerInfo>());
+            for (int i = 0; i < fullBoard.board.GetLength(0); i++) {
+                for (int j = 0; j < fullBoard.board.GetLength(1); j++) {
+                    var board = fullBoard.board[i,j];
                     if (board.IsSome()) {
-                        jsonObject.checkerInfos.Add(CheckerInfo.Mk(board.Peel(), i, j));
+                        gameState.checkerInfos.Add(CheckerInfo.Mk(board.Peel(), i, j));
                     }
                 }
             }
-            SaveLoad.WriteJson(SaveLoad.GetJsonType<JsonObject>(jsonObject), "NewGame.json");
+            SaveLoad.WriteJson(SaveLoad.GetJsonType<GameState>(gameState), "");
         }
 
         public void Load(string path) {
             whoseMove = Color.White;
-            checkerMoves = null;
-            board = new Option<Checker>[8,8];
+            fullBoard.board = new Option<Checker>[8,8];
             DestroyHighlightCells(res.storageHighlightCells.transform);
-            var gameInfo = SaveLoad.ReadJson(path, jsonObject);
+            var gameInfo = SaveLoad.ReadJson(path, gameState);
             foreach (var checkerInfo in gameInfo.checkerInfos) {
-                board[checkerInfo.x, checkerInfo.y] = Option<Checker>.Some(checkerInfo.checker);
+                var checker = Option<Checker>.Some(checkerInfo.checker);
+                fullBoard.board[checkerInfo.x, checkerInfo.y] = checker;
             }
-            SpawnCheckers(board);
+            SpawnCheckers(fullBoard.board);
+            this.gameInfo.checkerMoves = null;
+            this.gameInfo.isNeedAttack = false;
+            sentenced.Clear();
             res.gameMenu.SetActive(false);
             this.enabled = true;
         }
