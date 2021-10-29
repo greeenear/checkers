@@ -139,12 +139,12 @@ namespace controller {
                 gameInfo.checkerMoves = new Dictionary<Vector2Int, List<MoveInfo>>();
                 for (int i = 0; i < fullBoard.board.GetLength(0); i++) {
                     for (int j = 0; j < fullBoard.board.GetLength(1); j++) {
-                        var xDir = 1;
                         var cellOpt = fullBoard.board[i, j];
                         if (cellOpt.IsNone() || cellOpt.Peel().color != whoseMove) {
                             continue;
                         }
 
+                        var xDir = 1;
                         var curChecker = cellOpt.Peel();
                         if (curChecker.type == Type.Checker && curChecker.color == Color.White) {
                             xDir = -1;
@@ -155,40 +155,35 @@ namespace controller {
                         foreach (var dir in res.directions) {
                             var nextCell = pos + dir;
                             while (IsOnBoard(res.boardSize, nextCell)) {
-                                if (curChecker.type == Type.Checker && dir.x != xDir) {
+                                var nextCellOpt = fullBoard.board[nextCell.x, nextCell.y];
+                                if (nextCellOpt.IsSome()) {
+                                    if (sentenced.Contains(nextCell)) {
+                                        break;
+                                    }
+                                    if (nextCellOpt.Peel().color != curChecker.color) {
+                                        nextCell += dir;
+                                        while (IsOnBoard(res.boardSize, nextCell)) {
+                                            if (fullBoard.board[nextCell.x, nextCell.y].IsSome()) {
+                                                break;
+                                            }
+                                            checkerMoves.Add(MoveInfo.Mk(nextCell, true));
+                                            gameInfo.isNeedAttack = true;
+                                            nextCell += dir;
+                                            if (curChecker.type == Type.Checker) {
+                                                break;
+                                            }
+                                        }
+                                    }
                                     break;
                                 }
-                                if (fullBoard.board[nextCell.x, nextCell.y].IsSome()) {
-                                    break;
+
+                                if (curChecker.type != Type.Checker || dir.x == xDir) {
+                                    checkerMoves.Add(MoveInfo.Mk(nextCell, false));
                                 }
-                                checkerMoves.Add(MoveInfo.Mk(nextCell, false));
+
+                                nextCell += dir;
                                 if (curChecker.type == Type.Checker) {
                                     break;
-                                }
-                                nextCell += dir;
-                            }
-
-                            if (!IsOnBoard(res.boardSize, nextCell)) {
-                                nextCell -= dir;
-                            }
-
-                            var nextCellOpt = fullBoard.board[nextCell.x, nextCell.y];
-                            if (nextCellOpt.IsNone()) {
-                                continue;
-                            }
-
-                            if (nextCellOpt.Peel().color != curChecker.color) {
-                                nextCell += dir;
-                                while (IsOnBoard(res.boardSize, nextCell)) {
-                                    if (fullBoard.board[nextCell.x, nextCell.y].IsSome()) {
-                                        break;
-                                    }
-                                    checkerMoves.Add(MoveInfo.Mk(nextCell, true));
-                                    gameInfo.isNeedAttack = true;
-                                    nextCell += dir;
-                                    if (curChecker.type == Type.Checker) {
-                                        break;
-                                    }
                                 }
                             }
                         }
