@@ -416,33 +416,33 @@ namespace controller {
         }
 
         public void Save() {
-            gameState = GameState.Mk(new List<CheckerInfo>());
+            saveInfo = GameState.Mk(new List<CheckerInfo>(), whoseMove);
             for (int i = 0; i < fullBoard.board.GetLength(0); i++) {
                 for (int j = 0; j < fullBoard.board.GetLength(1); j++) {
                     var board = fullBoard.board[i,j];
                     if (board.IsSome()) {
-                        gameState.checkerInfos.Add(CheckerInfo.Mk(board.Peel(), i, j));
+                        saveInfo.checkerInfos.Add(CheckerInfo.Mk(board.Peel(), i, j));
                     }
                 }
             }
-            SaveLoad.WriteJson(SaveLoad.GetJsonType<GameState>(gameState), "");
+            SaveLoad.WriteJson(SaveLoad.GetJsonType<GameState>(saveInfo), "");
         }
 
         public void Load(string path) {
-            whoseMove = Color.White;
+            var loadInfo = SaveLoad.ReadJson(path, saveInfo);
+            whoseMove = loadInfo.whoseMove;
             fullBoard.board = new Option<Checker>[8,8];
             DestroyHighlightCells(res.storageHighlightCells.transform);
-            var gameInfo = SaveLoad.ReadJson(path, gameState);
-            foreach (var checkerInfo in gameInfo.checkerInfos) {
+            foreach (var checkerInfo in loadInfo.checkerInfos) {
                 var checker = Option<Checker>.Some(checkerInfo.checker);
                 fullBoard.board[checkerInfo.x, checkerInfo.y] = checker;
             }
             SpawnCheckers(fullBoard.board);
-            this.gameInfo.checkerMoves = null;
-            this.gameInfo.isNeedAttack = false;
-            sentenced.Clear();
+            gameInfo.checkerMoves = null;
+            gameInfo.isNeedAttack = false;
+            gameInfo.sentenced.Clear();
             res.gameMenu.SetActive(false);
-            this.enabled = true;
+            enabled = true;
         }
 
         public ControllerErrors FillBoard(Option<Checker>[,] board) {
