@@ -21,8 +21,8 @@ namespace controller {
         public List<CheckerInfo> checkerInfos;
         public Color whoseMove;
 
-        public static GameState Mk(List<CheckerInfo> info) {
-            return new GameState { checkerInfos = info };
+        public static GameState Mk(List<CheckerInfo> info, Color color) {
+            return new GameState { checkerInfos = info, whoseMove = color};
         }
     }
 

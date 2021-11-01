@@ -52,6 +52,7 @@ namespace controller {
     public struct GameInfo {
         public bool isNeedAttack;
         public Dictionary<Vector2Int, List<MoveInfo>> checkerMoves;
+        public HashSet<Vector2Int> sentenced;
     }
 
     public struct MoveInfo {
@@ -65,13 +66,13 @@ namespace controller {
     public class Controller : MonoBehaviour {
         private Resources res;
         private FullBoard fullBoard;
-        private GameInfo gameInfo;
 
-        private HashSet<Vector2Int> sentenced = new HashSet<Vector2Int>();
+        private GameInfo gameInfo;
         private Vector2Int selectedChecker;
-        private GameState gameState;
         private Color whoseMove;
         private PlayerAction playerAction;
+
+        private GameState saveInfo;
 
         private void Awake() {
             res = gameObject.GetComponentInParent<Resources>();
@@ -130,6 +131,7 @@ namespace controller {
         private void Start() {
             fullBoard.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             fullBoard.boardObj = new GameObject[res.boardSize.x, res.boardSize.y];
+            gameInfo.sentenced = new HashSet<Vector2Int>();
             FillBoard(fullBoard.board);
             SpawnCheckers(fullBoard.board);
         }
@@ -157,15 +159,17 @@ namespace controller {
                             while (IsOnBoard(res.boardSize, nextCell)) {
                                 var nextCellOpt = fullBoard.board[nextCell.x, nextCell.y];
                                 if (nextCellOpt.IsSome()) {
-                                    if (sentenced.Contains(nextCell)) {
+                                    if (gameInfo.sentenced.Contains(nextCell)) {
                                         break;
                                     }
+
                                     if (nextCellOpt.Peel().color != curChecker.color) {
                                         nextCell += dir;
                                         while (IsOnBoard(res.boardSize, nextCell)) {
                                             if (fullBoard.board[nextCell.x, nextCell.y].IsSome()) {
                                                 break;
                                             }
+
                                             checkerMoves.Add(MoveInfo.Mk(nextCell, true));
                                             gameInfo.isNeedAttack = true;
                                             nextCell += dir;
@@ -174,9 +178,9 @@ namespace controller {
                                             }
                                         }
                                     }
+
                                     break;
                                 }
-
                                 if (curChecker.type != Type.Checker || dir.x == xDir) {
                                     checkerMoves.Add(MoveInfo.Mk(nextCell, false));
                                 }
@@ -187,7 +191,6 @@ namespace controller {
                                 }
                             }
                         }
-
                         gameInfo.checkerMoves.Add(pos, checkerMoves);
                     }
                 }
@@ -309,13 +312,13 @@ namespace controller {
             return true;
         }
 
-        private ControllerErrors HighlightCells(List<MoveInfo> possibleMoves, bool isNeedAttack) {
-            if (possibleMoves == null) {
+        private ControllerErrors HighlightCells(List<MoveInfo> moves, bool isNeedAttack) {
+            if (moves == null) {
                 Debug.LogError("ListIsNull");
                 return ControllerErrors.ListIsNull;
             }
             var boardPos = res.boardTransform.transform.position;
-            foreach (var pos in possibleMoves) {
+            foreach (var pos in moves) {
                 if (isNeedAttack && pos.isAttack || !isNeedAttack && !pos.isAttack) {
                     SpawnObject(res.highlightCell, pos.cell, res.storageHighlightCells.transform);
                 }
@@ -450,6 +453,7 @@ namespace controller {
                 Debug.LogError($"BoardIsNull");
                 return ControllerErrors.BoardIsNull;
             }
+
             var color = Color.Black;
             for (int i = 0; i < board.GetLength(1); i++) {
                 for (int j = 0; j < board.GetLength(0); j = j + 2) {
@@ -459,7 +463,7 @@ namespace controller {
                     }
 
                     if (i % 2 == 0) {
-                        board[i, j + 1] = Option<Checker>.Some(new Checker { color = color});
+                        board[i, j + 1] = Option<Checker>.Some(new Checker { color = color });
                     } else {
                         board[i, j] = Option<Checker>.Some(new Checker { color = color });
                     }

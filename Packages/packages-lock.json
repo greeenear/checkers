@@ -89,6 +89,13 @@
         "com.unity.modules.imgui": "1.0.0"
       }
     },
+    "xyz.coderiftel.csv": {
+      "version": "https://github.com/codeRiftel/csv.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "a394a425fd84e9d7a47171662040e1f04d4dfcdd"
+    },
     "xyz.coderiftel.jonson": {
       "version": "https://github.com/codeRiftel/jonson.git",
       "depth": 0,
