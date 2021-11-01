@@ -203,154 +203,101 @@ namespace controller {
             }
 
             DestroyHighlightCells(res.storageHighlightCells.transform);
-            var targetPos = ConvertToBoardPoint(hit.point);
-            var checkerOpt = fullBoard.board[targetPos.x, targetPos.y];
+            var selectedPos = ConvertToBoardPoint(hit.point);
+            var checkerOpt = fullBoard.board[selectedPos.x, selectedPos.y];
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
                 playerAction = PlayerAction.Select;
-                selectedChecker = targetPos;
+                selectedChecker = selectedPos;
             }
             var checker = checkerOpt.Peel();
 
             var board = fullBoard.board;
             if (playerAction == PlayerAction.Select) {
-                var currentInfo = gameInfo.checkerMoves[targetPos];
+                if (!gameInfo.checkerMoves.ContainsKey(selectedPos)) {
+                    Debug.LogError("NoKey");
+                    playerAction = PlayerAction.None;
+                    return;
+                }
+
+                var currentInfo = gameInfo.checkerMoves[selectedPos];
                 HighlightCells(currentInfo, gameInfo.isNeedAttack);
                 playerAction = PlayerAction.Move;
             } else if(playerAction == PlayerAction.Move) {
                 var currentInfo = gameInfo.checkerMoves[selectedChecker];
-                if (!IsPossibleMove(currentInfo, targetPos, gameInfo.isNeedAttack)) {
+                if (!IsPossibleMove(currentInfo, selectedPos, gameInfo.isNeedAttack)) {
                     return;
                 }
 
-                var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(0));
-
-                var secondMove = false;
-                Vector2Int? sentenced = null;
-                var dif = targetPos - selectedChecker;
-                var dir = new Vector2Int(dif.x / Mathf.Abs(dif.x), dif.y / Mathf.Abs(dif.y));
-                board[targetPos.x, targetPos.y] = board[selectedChecker.x, selectedChecker.y];
+                board[selectedPos.x, selectedPos.y] = board[selectedChecker.x, selectedChecker.y];
                 board[selectedChecker.x, selectedChecker.y] = Option<Checker>.None();
-                for (int i = 1; i < Mathf.Abs(dif.x); i++) {
-                    var cell = selectedChecker + dir * i;
-                    if (board[cell.x, cell.y].IsSome()) {
-                        sentenced = cell;
-                        this.sentenced.Add(cell);
+                gameInfo.checkerMoves.Clear();
+
+                var secondMoveInfos = new List<MoveInfo>();
+                var dif = selectedPos - selectedChecker;
+                var dir = new Vector2Int(dif.x / Mathf.Abs(dif.x), dif.y / Mathf.Abs(dif.y));
+                var next = selectedChecker + dir;
+
+                while (next != selectedPos) {
+                    if (board[next.x, next.y].IsSome()) {
+                        gameInfo.sentenced.Add(next);
 
                         foreach (var moveDir in res.directions) {
-                            cell = targetPos + moveDir;
-                            if (this.sentenced.Contains(cell)) {
+                            next = selectedPos + moveDir;
+                            if (gameInfo.sentenced.Contains(next)) {
                                 continue;
                             }
-                            if (IsOnBoard(boardSize, cell) && board[cell.x, cell.y].IsSome()) {
-                                var enemyСhecker = board[cell.x, cell.y].Peel();
-                                var currentChecker = board[targetPos.x, targetPos.y];
-                                if (enemyСhecker.color != currentChecker.Peel().color) {
-                                    cell = cell + moveDir;
-                                    var isOnboard = IsOnBoard(boardSize, cell) ;
-                                    if (isOnboard && board[cell.x, cell.y].IsNone()) {
-                                        secondMove = true;
+
+                            if (IsOnBoard(res.boardSize, next) && board[next.x, next.y].IsSome()) {
+                                var enemyСhecker = board[next.x, next.y].Peel();
+                                if (enemyСhecker.color != whoseMove) {
+                                    next = next + moveDir;
+                                    var isOnboard = IsOnBoard(res.boardSize, next);
+                                    if (isOnboard && board[next.x, next.y].IsNone()) {
+                                        secondMoveInfos.Add(MoveInfo.Mk(next, true));
                                     }
                                 }
                             }
                         }
                         break;
                     }
+                    next += dir;
                 }
 
-                RelocateChecker(fullBoard.boardObj, selectedChecker, targetPos, sentenced);
-                if (CheckPromotion(targetPos, whoseMove, res.boardSize)) {
-                    CheckerPromotion(targetPos, whoseMove);
+                var pos = ConvertToWorldPoint(selectedPos);
+                fullBoard.boardObj[selectedChecker.x, selectedChecker.y].transform.position = pos;
+                var newLoc = fullBoard.boardObj[selectedChecker.x, selectedChecker.y];
+                fullBoard.boardObj[selectedPos.x, selectedPos.y] = newLoc;
+
+                if (selectedPos.x == 0 && whoseMove == Color.White
+                || selectedPos.x == res.boardSize.x - 1 && whoseMove == Color.Black) {
+                    fullBoard.board[selectedPos.x, selectedPos.y] = Option<Checker>.None();
+                    var king = new Checker {type = Type.King, color = whoseMove };
+                    fullBoard.board[selectedPos.x, selectedPos.y] = Option<Checker>.Some(king);
+
+                    var target = Quaternion.Euler(180, 0, 0);
+                    fullBoard.boardObj[selectedPos.x, selectedPos.y].transform.rotation = target;
                 }
 
-                if (sentenced.HasValue) {
-                    this.sentenced.Add(sentenced.Value);
-                }
-                if (secondMove) {
-                    selectedChecker = targetPos;
+                if (secondMoveInfos.Count != 0) {
+                    gameInfo.checkerMoves.Add(selectedPos, secondMoveInfos);
+                    HighlightCells(secondMoveInfos, true);
+                    selectedChecker = selectedPos;
                     playerAction = PlayerAction.Move;
-                    gameInfo.checkerMoves = null;
                     return;
                 }
-                foreach (var pos in this.sentenced) {
-                    fullBoard.board[pos.x, pos.y] = Option<Checker>.None();
-                    Destroy(fullBoard.boardObj[pos.x, pos.y]);
+                foreach (var sentencedPos in gameInfo.sentenced) {
+                    fullBoard.board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
+                    Destroy(fullBoard.boardObj[sentencedPos.x, sentencedPos.y]);
                 }
-                this.sentenced.Clear();
                 playerAction = PlayerAction.ChangeMove;
             }
 
             if (playerAction == PlayerAction.ChangeMove) {
-                IsGameOver(fullBoard.board, whoseMove);
                 whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
+                gameInfo.sentenced.Clear();
                 gameInfo.checkerMoves = null;
                 gameInfo.isNeedAttack = false;
                 playerAction = PlayerAction.None;
-            }
-        }
-
-        private ControllerErrors RelocateChecker(
-            GameObject[,] boardObj,
-            Vector2Int from,
-            Vector2Int to,
-            Vector2Int? sentensed
-        ) {
-            if (boardObj == null) {
-                Debug.LogError("BoardIsNull");
-                return ControllerErrors.BoardIsNull;
-            }
-
-            var pos = ConvertToWorldPoint(to);
-            boardObj[from.x, from.y].transform.position = pos;
-            boardObj[to.x, to.y] = boardObj[from.x, from.y];
-
-            return ControllerErrors.None;
-        }
-
-        private bool CheckPromotion(Vector2Int to, Color color, Vector2Int boardSize) {
-            if (to.x == 0 && color == Color.White) {
-                return true;
-            }
-
-            if (to.x == boardSize.x - 1 && color == Color.Black) {
-                return true;
-            }
-
-            return false;
-        }
-
-        private ControllerErrors CheckerPromotion(Vector2Int pos, Color color) {
-            fullBoard.board[pos.x, pos.y] = Option<Checker>.None();
-            var king = new Checker {type = Type.King, color = color };
-            fullBoard.board[pos.x, pos.y] = Option<Checker>.Some(king);
-
-            var target = Quaternion.Euler(180, 0, 0);
-            fullBoard.boardObj[pos.x, pos.y].transform.rotation = target;
-
-            return ControllerErrors.None;
-        }
-
-        private (bool, ControllerErrors) IsGameOver(Option<Checker>[,] board, Color color) {
-            var possibleMoves = new List<Vector2Int>();
-            for (int i = 0; i < board.GetLength(1); i++) {
-                for (int j = 0; j < board.GetLength(0); j++) {
-                    if (board[i, j].IsNone()) {
-                        continue;
-                    }
-
-                    var checker = board[i, j].Peel();
-                    if (checker.color != color) {
-                        continue;
-                    }
-                    var maxLength = 1;
-                    if (checker.type == Type.King) {
-                        maxLength = Mathf.Max(board.GetLength(1), board.GetLength(0));
-                    }
-                }
-            }
-            if (possibleMoves.Count == 0) {
-                return (true, ControllerErrors.None);
-            } else {
-                return (false, ControllerErrors.None);
             }
         }
 
