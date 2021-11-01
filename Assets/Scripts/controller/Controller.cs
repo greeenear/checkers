@@ -10,14 +10,6 @@ namespace controller {
         BoardIsNull,
         GameObjectIsNull,
         ListIsNull,
-        CantRelocateChecker,
-        CantGetMoves,
-        CantGetCheckerMovements,
-        CantGetLength,
-        CantGetFixMovement,
-        CantGetFixMovements,
-        CantCheckGameStatus,
-        CantCheckNeedAttack,
         NoSuchColor
     }
 
@@ -51,16 +43,8 @@ namespace controller {
 
     public struct GameInfo {
         public bool isNeedAttack;
-        public Dictionary<Vector2Int, List<MoveInfo>> checkerMoves;
+        public Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkerMoves;
         public HashSet<Vector2Int> sentenced;
-    }
-
-    public struct MoveInfo {
-        public Vector2Int cell;
-        public bool isAttack;
-        public static MoveInfo Mk(Vector2Int cell, bool isAttack) {
-            return new MoveInfo { cell = cell, isAttack = isAttack };
-        }
     }
 
     public class Controller : MonoBehaviour {
@@ -138,7 +122,7 @@ namespace controller {
 
         private void Update() {
             if (gameInfo.checkerMoves == null) {
-                gameInfo.checkerMoves = new Dictionary<Vector2Int, List<MoveInfo>>();
+                gameInfo.checkerMoves = new Dictionary<Vector2Int, Dictionary<Vector2Int, bool>>();
                 for (int i = 0; i < fullBoard.board.GetLength(0); i++) {
                     for (int j = 0; j < fullBoard.board.GetLength(1); j++) {
                         var cellOpt = fullBoard.board[i, j];
@@ -153,7 +137,7 @@ namespace controller {
                         }
 
                         var pos = new Vector2Int(i, j);
-                        var checkerMoves = new List<MoveInfo>();
+                        var checkerMoves = new Dictionary<Vector2Int, bool>();
                         foreach (var dir in res.directions) {
                             var nextCell = pos + dir;
                             while (IsOnBoard(res.boardSize, nextCell)) {
@@ -170,7 +154,7 @@ namespace controller {
                                                 break;
                                             }
 
-                                            checkerMoves.Add(MoveInfo.Mk(nextCell, true));
+                                            checkerMoves.Add(nextCell, true);
                                             gameInfo.isNeedAttack = true;
                                             nextCell += dir;
                                             if (curChecker.type == Type.Checker) {
@@ -182,7 +166,7 @@ namespace controller {
                                     break;
                                 }
                                 if (curChecker.type != Type.Checker || dir.x == xDir) {
-                                    checkerMoves.Add(MoveInfo.Mk(nextCell, false));
+                                    checkerMoves.Add(nextCell, false);
                                 }
 
                                 nextCell += dir;
@@ -225,9 +209,12 @@ namespace controller {
                 var currentInfo = gameInfo.checkerMoves[selectedPos];
                 HighlightCells(currentInfo, gameInfo.isNeedAttack);
                 playerAction = PlayerAction.Move;
-            } else if(playerAction == PlayerAction.Move) {
+            } else if (playerAction == PlayerAction.Move) {
                 var currentInfo = gameInfo.checkerMoves[selectedChecker];
-                if (!IsPossibleMove(currentInfo, selectedPos, gameInfo.isNeedAttack)) {
+                if (!currentInfo.ContainsKey(selectedPos)) {
+                    return;
+                }
+                if (!currentInfo[selectedPos] && gameInfo.isNeedAttack) {
                     return;
                 }
 
@@ -235,7 +222,7 @@ namespace controller {
                 board[selectedChecker.x, selectedChecker.y] = Option<Checker>.None();
                 gameInfo.checkerMoves.Clear();
 
-                var secondMoveInfos = new List<MoveInfo>();
+                var secondMoveInfos = new Dictionary<Vector2Int, bool>();
                 var dif = selectedPos - selectedChecker;
                 var dir = new Vector2Int(dif.x / Mathf.Abs(dif.x), dif.y / Mathf.Abs(dif.y));
                 var next = selectedChecker + dir;
@@ -256,7 +243,7 @@ namespace controller {
                                     next = next + moveDir;
                                     var isOnboard = IsOnBoard(res.boardSize, next);
                                     if (isOnboard && board[next.x, next.y].IsNone()) {
-                                        secondMoveInfos.Add(MoveInfo.Mk(next, true));
+                                        secondMoveInfos.Add(next, true);
                                     }
                                 }
                             }
@@ -312,31 +299,19 @@ namespace controller {
             return true;
         }
 
-        private ControllerErrors HighlightCells(List<MoveInfo> moves, bool isNeedAttack) {
+        private ControllerErrors HighlightCells(Dictionary<Vector2Int, bool> moves, bool isNeedAttack) {
             if (moves == null) {
                 Debug.LogError("ListIsNull");
                 return ControllerErrors.ListIsNull;
             }
             var boardPos = res.boardTransform.transform.position;
             foreach (var pos in moves) {
-                if (isNeedAttack && pos.isAttack || !isNeedAttack && !pos.isAttack) {
-                    SpawnObject(res.highlightCell, pos.cell, res.storageHighlightCells.transform);
+                if (isNeedAttack && pos.Value || !isNeedAttack && !pos.Value) {
+                    SpawnObject(res.highlightCell, pos.Key, res.storageHighlightCells.transform);
                 }
             }
 
             return ControllerErrors.None;
-        }
-
-        private bool IsPossibleMove(List<MoveInfo> moves, Vector2Int pos, bool isNeedAttack) {
-            foreach (var move in moves) {
-                if (move.cell == pos) {
-                    if (isNeedAttack && move.isAttack || !isNeedAttack && !move.isAttack) {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
         }
 
         private Vector2Int ConvertToBoardPoint(Vector3 selectedPoint) {
