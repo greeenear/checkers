@@ -391,46 +391,32 @@ namespace controller {
             SaveLoad.WriteJson(SaveLoad.GetJsonType<GameState>(saveInfo), "");
         }
 
-        public void Load(string path) {
-            var loadInfo = SaveLoad.ReadJson(path, saveInfo);
-            whoseMove = loadInfo.whoseMove;
-            fullBoard.board = new Option<Checker>[8,8];
-            DestroyHighlightCells(res.storageHighlightCells.transform);
-            foreach (var checkerInfo in loadInfo.checkerInfos) {
-                var checker = Option<Checker>.Some(checkerInfo.checker);
-                fullBoard.board[checkerInfo.x, checkerInfo.y] = checker;
-            }
-            SpawnCheckers(fullBoard.board);
-            gameInfo.checkerMoves = null;
-            gameInfo.isNeedAttack = false;
-            gameInfo.sentenced.Clear();
-            res.gameMenu.SetActive(false);
-            enabled = true;
-        }
-
-        public ControllerErrors FillBoard(Option<Checker>[,] board) {
-            if (board == null) {
-                Debug.LogError($"BoardIsNull");
-                return ControllerErrors.BoardIsNull;
-            }
-
-            var color = Color.Black;
-            for (int i = 0; i < board.GetLength(1); i++) {
-                for (int j = 0; j < board.GetLength(0); j = j + 2) {
-                    if (i == 3 || i == 4) {
-                        color = Color.White;
-                        break;
-                    }
-
-                    if (i % 2 == 0) {
-                        board[i, j + 1] = Option<Checker>.Some(new Checker { color = color });
-                    } else {
-                        board[i, j] = Option<Checker>.Some(new Checker { color = color });
+        private bool IsNeedAttack(Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkers) {
+            foreach (var checker in checkers) {
+                foreach (var move in checker.Value) {
+                    if (move.Value) {
+                        return true;
                     }
                 }
             }
 
-            return ControllerErrors.None;
+            return false;
+        }
+
+        public void Load(string path) {
+            var loadInfo = SaveLoad.ReadJson(path, saveInfo);
+            whoseMove = loadInfo.whoseMove;
+            map.board = new Option<Checker>[8,8];
+            DestroyHighlightCells(res.storageHighlightCells.transform);
+            foreach (var checkerInfo in loadInfo.checkerInfos) {
+                var checker = Option<Checker>.Some(checkerInfo.checker);
+                map.board[checkerInfo.x, checkerInfo.y] = checker;
+            }
+            SpawnCheckers(map.board);
+            checkerMoves = null;
+            sentenced.Clear();
+            res.gameMenu.SetActive(false);
+            enabled = true;
         }
     }
 }
