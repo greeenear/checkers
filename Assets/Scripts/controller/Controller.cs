@@ -24,37 +24,26 @@ namespace controller {
         Count
     }
 
-    public enum PlayerAction {
-        None,
-        Select,
-        Move,
-        ChangeMove
-    }
-
     public struct Checker {
         public Type type;
         public Color color;
     }
 
-    public struct FullBoard {
+    public struct Map {
         public Option<Checker>[,] board;
-        public GameObject[,] boardObj;
-    }
-
-    public struct GameInfo {
-        public bool isNeedAttack;
-        public Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkerMoves;
-        public HashSet<Vector2Int> sentenced;
+        public GameObject[,] obj;
     }
 
     public class Controller : MonoBehaviour {
         private Resources res;
-        private FullBoard fullBoard;
+        private Map map;
+        private bool isGameOver;
 
-        private GameInfo gameInfo;
-        private Vector2Int selectedChecker;
+        public Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkerMoves;
+        public HashSet<Vector2Int> sentenced;
+
+        private Option<Vector2Int> selectedOpt;
         private Color whoseMove;
-        private PlayerAction playerAction;
 
         private GameState saveInfo;
 
@@ -113,23 +102,24 @@ namespace controller {
         }
 
         private void Start() {
-            fullBoard.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
-            fullBoard.boardObj = new GameObject[res.boardSize.x, res.boardSize.y];
-            gameInfo.sentenced = new HashSet<Vector2Int>();
-            FillBoard(fullBoard.board);
-            SpawnCheckers(fullBoard.board);
+            map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
+            map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
+            sentenced = new HashSet<Vector2Int>();
+            Load("NewGame.json");
+            SpawnCheckers(map.board);
         }
 
         private void Update() {
-            if (gameInfo.checkerMoves == null) {
-                gameInfo.checkerMoves = new Dictionary<Vector2Int, Dictionary<Vector2Int, bool>>();
-                for (int i = 0; i < fullBoard.board.GetLength(0); i++) {
-                    for (int j = 0; j < fullBoard.board.GetLength(1); j++) {
-                        var cellOpt = fullBoard.board[i, j];
+            if (checkerMoves == null) {
+                isGameOver = true;
+                checkerMoves = new Dictionary<Vector2Int, Dictionary<Vector2Int, bool>>();
+                for (int i = 0; i < map.board.GetLength(0); i++) {
+                    for (int j = 0; j < map.board.GetLength(1); j++) {
+                        var cellOpt = map.board[i, j];
                         if (cellOpt.IsNone() || cellOpt.Peel().color != whoseMove) {
                             continue;
                         }
-
+                        isGameOver = false;
                         var xDir = 1;
                         var curChecker = cellOpt.Peel();
                         if (curChecker.type == Type.Checker && curChecker.color == Color.White) {
@@ -175,8 +165,14 @@ namespace controller {
                                 }
                             }
                         }
-                        gameInfo.checkerMoves.Add(pos, checkerMoves);
+                        this.checkerMoves.Add(pos, checkerMoves);
                     }
+                }
+
+                if (isGameOver) {
+                    res.gameMenu.SetActive(true);
+                    this.enabled = false;
+                    return;
                 }
             }
 
