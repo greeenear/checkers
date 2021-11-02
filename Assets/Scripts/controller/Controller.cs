@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.IO;
 using option;
 
 namespace controller {
@@ -105,7 +106,8 @@ namespace controller {
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            Load("NewGame.json");
+            ParseCsv();
+            //Load("NewGame.json");
             SpawnCheckers(map.board);
         }
 
@@ -129,39 +131,33 @@ namespace controller {
                         var pos = new Vector2Int(i, j);
                         var checkerMoves = new Dictionary<Vector2Int, bool>();
                         foreach (var dir in res.directions) {
-                            var nextCell = pos + dir;
-                            while (IsOnBoard(res.boardSize, nextCell)) {
-                                var nextCellOpt = map.board[nextCell.x, nextCell.y];
-                                if (nextCellOpt.IsSome()) {
-                                    if (sentenced.Contains(nextCell)) {
+                            var attackFlag = false;
+                            var next = pos + dir;
+                            while (IsOnBoard(res.boardSize, next)) {
+                                var nextOpt = map.board[next.x, next.y];
+                                if (sentenced.Contains(next)) {
+                                    break;
+                                }
+                                if (nextOpt.IsSome()) {
+                                    if (attackFlag || nextOpt.Peel().color == curChecker.color) {
                                         break;
                                     }
 
-                                    if (nextCellOpt.Peel().color != curChecker.color) {
-                                        nextCell += dir;
-                                        while (IsOnBoard(res.boardSize, nextCell)) {
-                                            if (map.board[nextCell.x, nextCell.y].IsSome()) {
-                                                break;
-                                            }
-
-                                            checkerMoves.Add(nextCell, true);
-                                            nextCell += dir;
-                                            if (curChecker.type == Type.Checker) {
-                                                break;
-                                            }
-                                        }
+                                    next += dir;
+                                    var isOnBoard = IsOnBoard(res.boardSize, next) ;
+                                    if (!isOnBoard || map.board[next.x, next.y].IsSome()) {
+                                        break;
                                     }
-
-                                    break;
-                                }
-                                if (curChecker.type != Type.Checker || dir.x == xDir) {
-                                    checkerMoves.Add(nextCell, false);
+                                    attackFlag = true;
                                 }
 
-                                nextCell += dir;
+                                if (curChecker.type == Type.King || attackFlag || dir.x == xDir) {
+                                    checkerMoves.Add(next, attackFlag);
+                                }
                                 if (curChecker.type == Type.Checker) {
                                     break;
                                 }
+                                next += dir;
                             }
                         }
                         this.checkerMoves.Add(pos, checkerMoves);
@@ -220,29 +216,32 @@ namespace controller {
                 while (next != selectedPos) {
                     if (board[next.x, next.y].IsSome()) {
                         sentenced.Add(next);
-
                         foreach (var moveDir in res.directions) {
-                            next = selectedPos + moveDir;
-                            if (sentenced.Contains(next)) {
-                                continue;
-                            }
+                            var last = selectedPos + moveDir;
 
-                            if (IsOnBoard(res.boardSize, next) && board[next.x, next.y].IsSome()) {
-                                var enemyСhecker = board[next.x, next.y].Peel();
-                                if (enemyСhecker.color != whoseMove) {
-                                    next = next + moveDir;
-                                    var isOnboard = IsOnBoard(res.boardSize, next);
-                                    if (isOnboard && board[next.x, next.y].IsNone()) {
-                                        secondMoveInfos.Add(next, true);
+                            while (IsOnBoard(res.boardSize, last)) {
+                                if (board[last.x, last.y].IsSome()) {
+                                    var enemyСhecker = board[last.x, last.y].Peel();
+                                    if (enemyСhecker.color != whoseMove) {
+                                        if (sentenced.Contains(last)) {
+                                            break;
+                                        }
+
+                                        last += moveDir;
+                                        var isOnboard = IsOnBoard(res.boardSize, last);
+                                        if (isOnboard && board[last.x, last.y].IsNone()) {
+                                            secondMoveInfos.Add(last, true);
+                                        }
                                     }
                                 }
+
+                                last += moveDir;
                             }
                         }
-
-                        break;
                     }
                     next += dir;
                 }
+
 
                 var pos = ConvertToWorldPoint(selectedPos);
                 map.obj[selected.x, selected.y].transform.position = pos;
@@ -307,6 +306,24 @@ namespace controller {
             var point = new Vector2Int(Mathf.Abs((int)(floatVec.z)), Mathf.Abs((int)floatVec.x));
 
             return point;
+        }
+
+        private void ParseCsv() {
+            var input = File.ReadAllText("start.csv");
+            var dataInfo = CSV.Parse(input);
+            int i = 0;
+            foreach (var data in dataInfo.rows) {
+                int j = 0;
+                foreach (var piece in data) {
+                    if (int.Parse(piece) == 1) {
+                        map.board[i, j] = Option<Checker>.Some(new Checker { color = Color.White });
+                    } else if (int.Parse(piece) == 2) {
+                        map.board[i, j] = Option<Checker>.Some(new Checker { color = Color.Black });
+                    }
+                    j++;
+                }
+                i++;
+            }
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
