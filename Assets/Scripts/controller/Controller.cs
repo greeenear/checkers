@@ -106,7 +106,7 @@ namespace controller {
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            ParseCsv();
+            LoadCsv("start.csv");
             //Load("NewGame.json");
             SpawnCheckers(map.board);
         }
@@ -166,6 +166,7 @@ namespace controller {
 
                 if (isGameOver) {
                     res.gameMenu.SetActive(true);
+                    Debug.Log("game over");
                     this.enabled = false;
                     return;
                 }
@@ -308,21 +309,73 @@ namespace controller {
             return point;
         }
 
-        private void ParseCsv() {
-            var input = File.ReadAllText("start.csv");
-            var dataInfo = CSV.Parse(input);
-            int i = 0;
-            foreach (var data in dataInfo.rows) {
-                int j = 0;
-                foreach (var piece in data) {
-                    if (int.Parse(piece) == 1) {
-                        map.board[i, j] = Option<Checker>.Some(new Checker { color = Color.White });
-                    } else if (int.Parse(piece) == 2) {
-                        map.board[i, j] = Option<Checker>.Some(new Checker { color = Color.Black });
+        public void LoadCsv(string path) {
+            map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
+            var board = map.board;
+            string input = "";
+            try {
+                input = File.ReadAllText(path);
+            }
+            catch (Exception err) {
+                Debug.LogError("CantLoad");
+                Debug.LogError(err.ToString());
+            }
+
+            var parseRes = CSV.Parse(input);
+            if (parseRes.error != CSV.ErrorType.None) {
+                Debug.LogError(parseRes.error.ToString());
+            }
+
+            for (int i = 0; i < parseRes.rows.Count; i++) {
+                for (int j = 0; j < parseRes.rows[0].Count; j++) {
+                    if (parseRes.rows[i][j] == "WhoseMove") {
+                        whoseMove = (Color)int.Parse(parseRes.rows[i][j + 1]);
+                        break;
                     }
-                    j++;
+                    if (int.Parse(parseRes.rows[i][j]) == 1) {
+                        board[i, j] = Option<Checker>.Some(new Checker { color = Color.White });
+                    } else if (int.Parse(parseRes.rows[i][j]) == 2) {
+                        board[i, j] = Option<Checker>.Some(new Checker { color = Color.Black });
+                    }
                 }
-                i++;
+            }
+            DestroyHighlightCells(res.storageHighlightCells.transform);
+            SpawnCheckers(map.board);
+            checkerMoves = null;
+            sentenced.Clear();
+            res.gameMenu.SetActive(false);
+            enabled = true;
+        }
+
+        public void SaveCsv(string path) {
+            List<List<string>> rows = new List<List<string>>();
+            for (int i = 0; i < map.board.GetLength(1); i++) {
+                rows.Add(new List<string>());
+                for (int j = 0; j < map.board.GetLength(0); j++) {
+                    if(map.board[i, j].IsNone()) {
+                        rows[i].Add("0");
+                    }
+
+                    if (map.board[i, j].IsSome()) {
+                        var checker = map.board[i, j].Peel();
+                        if (checker.color == Color.Black) {
+                            rows[i].Add("2");
+                        } else if (checker.color == Color.White) {
+                            rows[i].Add("1");
+                        }
+                    }
+                }
+            }
+            rows.Add(new List<string>() {
+                "WhoseMove",
+                ((int)whoseMove).ToString()
+            });
+            string output = CSV.Generate(rows);
+            try {
+                File.WriteAllText(path, output);
+            }
+            catch (Exception err) {
+                Debug.LogError(err.ToString());
             }
         }
 
