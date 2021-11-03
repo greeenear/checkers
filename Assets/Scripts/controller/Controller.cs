@@ -128,7 +128,7 @@ namespace controller {
                         var pos = new Vector2Int(i, j);
                         var checkerMoves = new Dictionary<Vector2Int, bool>();
                         foreach (var dir in res.directions) {
-                            var attackFlag = false;
+                            var isAttack = false;
                             var next = pos + dir;
                             while (IsOnBoard(res.boardSize, next)) {
                                 var nextOpt = map.board[next.x, next.y];
@@ -137,20 +137,20 @@ namespace controller {
                                         break;
                                     }
 
-                                    if (attackFlag || nextOpt.Peel().color == curChecker.color) {
+                                    if (isAttack || nextOpt.Peel().color == curChecker.color) {
                                         break;
                                     }
 
                                     next += dir;
-                                    var isOnBoard = IsOnBoard(res.boardSize, next) ;
+                                    var isOnBoard = IsOnBoard(res.boardSize, next);
                                     if (!isOnBoard || map.board[next.x, next.y].IsSome()) {
                                         break;
                                     }
-                                    attackFlag = true;
+                                    isAttack = true;
                                 }
 
-                                if (curChecker.type == Type.King || attackFlag || dir.x == xDir) {
-                                    checkerMoves.Add(next, attackFlag);
+                                if (curChecker.type == Type.King || isAttack || dir.x == xDir) {
+                                    checkerMoves.Add(next, isAttack);
                                 }
                                 if (curChecker.type == Type.Checker) {
                                     break;
@@ -164,7 +164,6 @@ namespace controller {
 
                 if (isGameOver) {
                     res.gameMenu.SetActive(true);
-                    Debug.Log("game over");
                     this.enabled = false;
                     return;
                 }
@@ -199,6 +198,7 @@ namespace controller {
                 if (!currentInfo.ContainsKey(selectedPos)) {
                     return;
                 }
+
                 if (!currentInfo[selectedPos] && IsNeedAttack(checkerMoves)) {
                     return;
                 }
@@ -206,41 +206,6 @@ namespace controller {
                 board[selectedPos.x, selectedPos.y] = board[selected.x, selected.y];
                 board[selected.x, selected.y] = Option<Checker>.None();
                 checkerMoves.Clear();
-
-                var secondMoveInfos = new Dictionary<Vector2Int, bool>();
-                var dif = selectedPos - selected;
-                var dir = new Vector2Int(dif.x / Mathf.Abs(dif.x), dif.y / Mathf.Abs(dif.y));
-                var next = selected + dir;
-
-                while (next != selectedPos) {
-                    if (board[next.x, next.y].IsSome()) {
-                        sentenced.Add(next);
-                        foreach (var moveDir in res.directions) {
-                            var last = selectedPos + moveDir;
-
-                            while (IsOnBoard(res.boardSize, last)) {
-                                if (board[last.x, last.y].IsSome()) {
-                                    var enemyСhecker = board[last.x, last.y].Peel();
-                                    if (enemyСhecker.color != whoseMove) {
-                                        if (sentenced.Contains(last)) {
-                                            break;
-                                        }
-
-                                        last += moveDir;
-                                        var isOnboard = IsOnBoard(res.boardSize, last);
-                                        if (isOnboard && board[last.x, last.y].IsNone()) {
-                                            secondMoveInfos.Add(last, true);
-                                        }
-                                    }
-                                }
-
-                                last += moveDir;
-                            }
-                        }
-                    }
-                    next += dir;
-                }
-
 
                 var pos = ConvertToWorldPoint(selectedPos);
                 map.obj[selected.x, selected.y].transform.position = pos;
@@ -255,6 +220,48 @@ namespace controller {
 
                     var target = Quaternion.Euler(180, 0, 0);
                     map.obj[selectedPos.x, selectedPos.y].transform.rotation = target;
+                }
+
+                var secondMoveInfos = new Dictionary<Vector2Int, bool>();
+                var dif = selectedPos - selected;
+                var dir = new Vector2Int(dif.x / Mathf.Abs(dif.x), dif.y / Mathf.Abs(dif.y));
+                var next = selected + dir;
+                while (next != selectedPos) {
+                    if (board[next.x, next.y].IsSome()) {
+                        sentenced.Add(next);
+                    }
+                    next += dir;
+                }
+
+                if (sentenced.Count != 0) {
+                    foreach (var moveDir in res.directions) {
+                        var last = selectedPos + moveDir;
+                        var isAttack = false;
+                        while (IsOnBoard(res.boardSize, last)) {
+                            if (board[last.x, last.y].IsSome()) {
+                                var enemyСhecker = board[last.x, last.y].Peel();
+                                if (isAttack) {
+                                    break;
+                                }
+
+                                if (enemyСhecker.color != whoseMove) {
+                                    if (sentenced.Contains(last)) {
+                                        break;
+                                    }
+                                    last += moveDir;
+                                    isAttack = true;
+                                    continue;
+                                }
+                            }
+                            if (board[last.x, last.y].IsNone() && isAttack) {
+                                secondMoveInfos.Add(last, isAttack);
+                            }
+                            last += moveDir;
+                            if (board[selectedPos.x, selectedPos.y].Peel().type == Type.Checker) {
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 if (secondMoveInfos.Count != 0) {
@@ -299,9 +306,9 @@ namespace controller {
 
         private Vector2Int ConvertToBoardPoint(Vector3 selectedPoint) {
             var inversePoint = res.boardTransform.InverseTransformPoint(selectedPoint);
-            var cellLoc = res.cellTransform.localPosition;
-            var cellSize = res.cellTransform.localScale;
-            var floatVec = (inversePoint + new Vector3(-cellLoc.x, 0, cellLoc.z)) / cellSize.x;
+            var pos = res.cellTransform.localPosition;
+            var size = res.cellTransform.localScale;
+            var floatVec = (inversePoint + new Vector3(-pos.x - 0.1f, 0, pos.z + 0.1f)) / size.x;
             var point = new Vector2Int(Mathf.Abs((int)(floatVec.z)), Mathf.Abs((int)floatVec.x));
 
             return point;
