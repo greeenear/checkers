@@ -46,8 +46,6 @@ namespace controller {
         private Option<Vector2Int> selectedOpt;
         private Color whoseMove;
 
-        private GameState saveInfo;
-
         private void Awake() {
             res = gameObject.GetComponentInParent<Resources>();
             if (res == null) {
@@ -106,8 +104,7 @@ namespace controller {
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            LoadCsv("start.csv");
-            //Load("NewGame.json");
+            Load("NewGame.csv");
             SpawnCheckers(map.board);
         }
 
@@ -135,10 +132,11 @@ namespace controller {
                             var next = pos + dir;
                             while (IsOnBoard(res.boardSize, next)) {
                                 var nextOpt = map.board[next.x, next.y];
-                                if (sentenced.Contains(next)) {
-                                    break;
-                                }
                                 if (nextOpt.IsSome()) {
+                                    if (sentenced.Contains(next)) {
+                                        break;
+                                    }
+
                                     if (attackFlag || nextOpt.Peel().color == curChecker.color) {
                                         break;
                                     }
@@ -309,7 +307,7 @@ namespace controller {
             return point;
         }
 
-        public void LoadCsv(string path) {
+        public void Load(string path) {
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             var board = map.board;
             string input = "";
@@ -332,13 +330,20 @@ namespace controller {
                         whoseMove = (Color)int.Parse(parseRes.rows[i][j + 1]);
                         break;
                     }
-                    if (int.Parse(parseRes.rows[i][j]) == 1) {
-                        board[i, j] = Option<Checker>.Some(new Checker { color = Color.White });
+                    var checker = new Checker();
+                    if (int.Parse(parseRes.rows[i][j]) == 0) {
+                        continue;
+                    } else if (int.Parse(parseRes.rows[i][j]) == 1) {
+                        checker = new Checker { color = Color.White };
                     } else if (int.Parse(parseRes.rows[i][j]) == 2) {
-                        board[i, j] = Option<Checker>.Some(new Checker { color = Color.Black });
+                        checker = new Checker { color = Color.Black };
+                    } else if (int.Parse(parseRes.rows[i][j]) == 3) {
+                        checker = new Checker { color = Color.White, type = Type.King };
                     }
+                    board[i, j] = Option<Checker>.Some(checker);
                 }
             }
+
             DestroyHighlightCells(res.storageHighlightCells.transform);
             SpawnCheckers(map.board);
             checkerMoves = null;
@@ -347,7 +352,7 @@ namespace controller {
             enabled = true;
         }
 
-        public void SaveCsv(string path) {
+        public void Save(string path) {
             List<List<string>> rows = new List<List<string>>();
             for (int i = 0; i < map.board.GetLength(1); i++) {
                 rows.Add(new List<string>());
@@ -448,19 +453,6 @@ namespace controller {
             }
         }
 
-        public void Save() {
-            saveInfo = GameState.Mk(new List<CheckerInfo>(), whoseMove);
-            for (int i = 0; i < map.board.GetLength(0); i++) {
-                for (int j = 0; j < map.board.GetLength(1); j++) {
-                    var board = map.board[i,j];
-                    if (board.IsSome()) {
-                        saveInfo.checkerInfos.Add(CheckerInfo.Mk(board.Peel(), i, j));
-                    }
-                }
-            }
-            SaveLoad.WriteJson(SaveLoad.GetJsonType<GameState>(saveInfo), "");
-        }
-
         private bool IsNeedAttack(Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkers) {
             foreach (var checker in checkers) {
                 foreach (var move in checker.Value) {
@@ -471,22 +463,6 @@ namespace controller {
             }
 
             return false;
-        }
-
-        public void Load(string path) {
-            var loadInfo = SaveLoad.ReadJson(path, saveInfo);
-            whoseMove = loadInfo.whoseMove;
-            map.board = new Option<Checker>[8,8];
-            DestroyHighlightCells(res.storageHighlightCells.transform);
-            foreach (var checkerInfo in loadInfo.checkerInfos) {
-                var checker = Option<Checker>.Some(checkerInfo.checker);
-                map.board[checkerInfo.x, checkerInfo.y] = checker;
-            }
-            SpawnCheckers(map.board);
-            checkerMoves = null;
-            sentenced.Clear();
-            res.gameMenu.SetActive(false);
-            enabled = true;
         }
     }
 }
