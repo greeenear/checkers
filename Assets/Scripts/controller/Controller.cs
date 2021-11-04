@@ -379,9 +379,10 @@ namespace controller {
                 }
             }
             rows.Add(new List<string>() {
-                "WhoseMove",
-                ((int)whoseMove).ToString()
-            });
+                    "WhoseMove",
+                    ((int)whoseMove).ToString()
+                }
+            );
             string output = CSV.Generate(rows);
             try {
                 File.WriteAllText(path, output);
