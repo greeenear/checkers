@@ -38,12 +38,11 @@ namespace controller {
     public class Controller : MonoBehaviour {
         private Resources res;
         private Map map;
-        private bool isGameOver;
 
-        public Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkerMoves;
+        public Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
         public HashSet<Vector2Int> sentenced;
 
-        private Option<Vector2Int> selectedOpt;
+        private Option<Vector2Int> selected;
         private Color whoseMove;
 
         private void Awake() {
@@ -109,175 +108,147 @@ namespace controller {
         }
 
         private void Update() {
-            if (checkerMoves == null) {
-                isGameOver = true;
-                checkerMoves = new Dictionary<Vector2Int, Dictionary<Vector2Int, bool>>();
+            if (allCheckerMoves == null) {
+                allCheckerMoves = new Dictionary<Vector2Int, Dictionary<Vector2Int, bool>>();
+                var size = res.boardSize;
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
+                        var pos = new Vector2Int(i, j);
+                        if (selected.IsSome() && pos != selected.Peel()) continue;
+
                         var cellOpt = map.board[i, j];
-                        if (cellOpt.IsNone() || cellOpt.Peel().color != whoseMove) {
-                            continue;
-                        }
-                        isGameOver = false;
+                        if (cellOpt.IsNone() || cellOpt.Peel().color != whoseMove) continue;
+
+                        var curCh = cellOpt.Peel();
+
                         var xDir = 1;
-                        var curChecker = cellOpt.Peel();
-                        if (curChecker.type == Type.Checker && curChecker.color == Color.White) {
+                        if (curCh.color == Color.White) {
                             xDir = -1;
                         }
 
-                        var pos = new Vector2Int(i, j);
                         var checkerMoves = new Dictionary<Vector2Int, bool>();
                         foreach (var dir in res.directions) {
-                            var isAttack = false;
-                            var next = pos + dir;
-                            while (IsOnBoard(res.boardSize, next)) {
+                            var chFound = false;
+                            for (var next = pos + dir; IsOnBoard(size, next); next += dir) {
                                 var nextOpt = map.board[next.x, next.y];
                                 if (nextOpt.IsSome()) {
-                                    if (sentenced.Contains(next)) {
-                                        break;
+                                    var nextColor = nextOpt.Peel().color;
+                                    var isSentenced = sentenced.Contains(next);
+                                    if (isSentenced || chFound || nextColor == curCh.color) break;
+
+                                    chFound = true;
+                                } else {
+                                    var wrongMove = curCh.type == Type.Checker && dir.x != xDir;
+                                    if (!wrongMove || chFound) {
+                                        checkerMoves.Add(next, chFound);
                                     }
 
-                                    if (isAttack || nextOpt.Peel().color == curChecker.color) {
-                                        break;
-                                    }
-
-                                    next += dir;
-                                    var isOnBoard = IsOnBoard(res.boardSize, next);
-                                    if (!isOnBoard || map.board[next.x, next.y].IsSome()) {
-                                        break;
-                                    }
-                                    isAttack = true;
+                                    if (curCh.type == Type.Checker) break;
                                 }
-
-                                if (curChecker.type == Type.King || isAttack || dir.x == xDir) {
-                                    checkerMoves.Add(next, isAttack);
-                                }
-                                if (curChecker.type == Type.Checker) {
-                                    break;
-                                }
-                                next += dir;
                             }
                         }
-                        this.checkerMoves.Add(pos, checkerMoves);
+                        allCheckerMoves.Add(pos, checkerMoves);
                     }
                 }
 
-                if (isGameOver) {
+                if (allCheckerMoves.Count == 0) {
                     res.gameMenu.SetActive(true);
                     this.enabled = false;
                     return;
                 }
             }
 
-            if (!Input.GetMouseButtonDown(0)) {
-                return;
-            }
+            if (!Input.GetMouseButtonDown(0)) return;
 
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) {
-                return;
-            }
+            if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) return;
 
             DestroyHighlightCells(res.storageHighlightCells.transform);
-            var selectedPos = ConvertToBoardPoint(hit.point);
-            var checkerOpt = map.board[selectedPos.x, selectedPos.y];
-            var checker = checkerOpt.Peel();
+            var cliсkPos = ConvertToBoardPoint(hit.point);
+            var checkerOpt = map.board[cliсkPos.x, cliсkPos.y];
 
-            var board = map.board;
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
-                if (!checkerMoves.ContainsKey(selectedPos)) {
-                    return;
+                if (!allCheckerMoves.ContainsKey(cliсkPos)) return;
+                selected = Option<Vector2Int>.Some(cliсkPos);
+
+                var currentInfo = allCheckerMoves[cliсkPos];
+                HighlightCells(currentInfo, IsNeedAttack(allCheckerMoves));
+            } else if (selected.IsSome()) {
+                var curPos = selected.Peel();
+                var curCh = map.board[curPos.x, curPos.y].Peel();
+                var currentInfo = allCheckerMoves[curPos];
+                if (!currentInfo.ContainsKey(cliсkPos)) return;
+
+                if (!currentInfo[cliсkPos] && IsNeedAttack(allCheckerMoves)) return;
+
+                map.board[cliсkPos.x, cliсkPos.y] = map.board[curPos.x, curPos.y];
+                map.board[curPos.x, curPos.y] = Option<Checker>.None();
+                allCheckerMoves.Clear();
+
+                var worldPos = ConvertToWorldPoint(cliсkPos);
+                map.obj[curPos.x, curPos.y].transform.position = worldPos;
+                map.obj[cliсkPos.x, cliсkPos.y] = map.obj[curPos.x, curPos.y];
+
+                var endBoard = 0;
+                if (curCh.color == Color.Black) {
+                    endBoard = res.boardSize.x - 1;
                 }
-                selectedOpt = Option<Vector2Int>.Some(selectedPos);
-
-                var currentInfo = checkerMoves[selectedPos];
-                HighlightCells(currentInfo, IsNeedAttack(checkerMoves));
-            } else if (selectedOpt.IsSome()) {
-                var selected = selectedOpt.Peel();
-                var currentInfo = checkerMoves[selected];
-                if (!currentInfo.ContainsKey(selectedPos)) {
-                    return;
-                }
-
-                if (!currentInfo[selectedPos] && IsNeedAttack(checkerMoves)) {
-                    return;
-                }
-
-                board[selectedPos.x, selectedPos.y] = board[selected.x, selected.y];
-                board[selected.x, selected.y] = Option<Checker>.None();
-                checkerMoves.Clear();
-
-                var pos = ConvertToWorldPoint(selectedPos);
-                map.obj[selected.x, selected.y].transform.position = pos;
-                var newLoc = map.obj[selected.x, selected.y];
-                map.obj[selectedPos.x, selectedPos.y] = newLoc;
-
-                if (selectedPos.x == 0 && whoseMove == Color.White
-                || selectedPos.x == res.boardSize.x - 1 && whoseMove == Color.Black) {
-                    map.board[selectedPos.x, selectedPos.y] = Option<Checker>.None();
+                if (cliсkPos.x == endBoard) {
                     var king = new Checker {type = Type.King, color = whoseMove };
-                    map.board[selectedPos.x, selectedPos.y] = Option<Checker>.Some(king);
-
-                    var target = Quaternion.Euler(180, 0, 0);
-                    map.obj[selectedPos.x, selectedPos.y].transform.rotation = target;
+                    map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
+                    var reverse = Quaternion.Euler(180, 0, 0);
+                    map.obj[cliсkPos.x, cliсkPos.y].transform.rotation = reverse;
+                    curCh = king;
                 }
 
                 var secondMoveInfos = new Dictionary<Vector2Int, bool>();
-                var dif = selectedPos - selected;
-                var dir = new Vector2Int(dif.x / Mathf.Abs(dif.x), dif.y / Mathf.Abs(dif.y));
-                var next = selected + dir;
-                while (next != selectedPos) {
-                    if (board[next.x, next.y].IsSome()) {
+                var dir = cliсkPos - curPos;
+                var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
+                for (var next = curPos + nDir; next != cliсkPos; next += nDir) {
+                    if (map.board[next.x, next.y].IsSome()) {
                         sentenced.Add(next);
                     }
-                    next += dir;
                 }
 
                 if (sentenced.Count != 0) {
+                    var size = res.boardSize;
                     foreach (var moveDir in res.directions) {
-                        var last = selectedPos + moveDir;
-                        var isAttack = false;
-                        while (IsOnBoard(res.boardSize, last)) {
-                            if (board[last.x, last.y].IsSome()) {
-                                var enemyСhecker = board[last.x, last.y].Peel();
-                                if (isAttack) {
-                                    break;
-                                }
+                        var last = cliсkPos + moveDir;
+                        var chFound = false;
+                        for (last = cliсkPos + moveDir; IsOnBoard(size, last); last += moveDir) {
+                            var nextOpt = map.board[last.x, last.y];
+                            if (nextOpt.IsSome()) {
+                                var nextColor = nextOpt.Peel().color;
+                                var isSentenced = sentenced.Contains(last);
 
-                                if (enemyСhecker.color != whoseMove) {
-                                    if (sentenced.Contains(last)) {
-                                        break;
-                                    }
-                                    last += moveDir;
-                                    isAttack = true;
-                                    continue;
+                                if (isSentenced || chFound || nextColor == curCh.color) break;
+                                chFound = true;
+                            } else {
+                                if (chFound) {
+                                    secondMoveInfos.Add(last, chFound);
                                 }
-                            }
-                            if (board[last.x, last.y].IsNone() && isAttack) {
-                                secondMoveInfos.Add(last, isAttack);
-                            }
-                            last += moveDir;
-                            if (board[selectedPos.x, selectedPos.y].Peel().type == Type.Checker) {
-                                break;
+                                if (curCh.type == Type.Checker) break;
                             }
                         }
                     }
                 }
 
                 if (secondMoveInfos.Count != 0) {
-                    checkerMoves.Add(selectedPos, secondMoveInfos);
+                    allCheckerMoves.Add(cliсkPos, secondMoveInfos);
                     HighlightCells(secondMoveInfos, true);
-                    selectedOpt = Option<Vector2Int>.Some(selectedPos);
+                    selected = Option<Vector2Int>.Some(cliсkPos);
                     return;
                 }
+
                 foreach (var sentencedPos in sentenced) {
                     map.board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
                     Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
                 }
+
                 whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
-                selectedOpt = Option<Vector2Int>.None();
+                selected = Option<Vector2Int>.None();
                 sentenced.Clear();
-                checkerMoves = null;
+                allCheckerMoves = null;
             }
         }
 
