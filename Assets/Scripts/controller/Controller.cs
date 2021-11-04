@@ -256,7 +256,6 @@ namespace controller {
             if (pos.x < 0 || pos.x >= boardSize.x || pos.y < 0 || pos.y >= boardSize.y) {
                 return false;
             }
-
             return true;
         }
 
@@ -309,13 +308,13 @@ namespace controller {
                         break;
                     }
                     var checker = new Checker();
-                    if (int.Parse(parseRes.rows[i][j]) == 0) {
+                    if (parseRes.rows[i][j] == "0") {
                         continue;
-                    } else if (int.Parse(parseRes.rows[i][j]) == 1) {
+                    } else if (parseRes.rows[i][j] == "1") {
                         checker = new Checker { color = Color.White };
-                    } else if (int.Parse(parseRes.rows[i][j]) == 2) {
+                    } else if (parseRes.rows[i][j] == "2") {
                         checker = new Checker { color = Color.Black };
-                    } else if (int.Parse(parseRes.rows[i][j]) == 3) {
+                    } else if (parseRes.rows[i][j] == "3") {
                         checker = new Checker { color = Color.White, type = Type.King };
                     }
                     board[i, j] = Option<Checker>.Some(checker);
@@ -324,7 +323,7 @@ namespace controller {
 
             DestroyHighlightCells(res.storageHighlightCells.transform);
             SpawnCheckers(map.board);
-            checkerMoves = null;
+            allCheckerMoves = null;
             sentenced.Clear();
             res.gameMenu.SetActive(false);
             enabled = true;
