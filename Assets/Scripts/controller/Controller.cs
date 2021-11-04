@@ -104,7 +104,7 @@ namespace controller {
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            Load("NewGame.csv");
+            Load("StartGame.csv");
             SpawnCheckers(map.board);
         }
 
