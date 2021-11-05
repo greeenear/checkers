@@ -14,6 +14,12 @@ namespace controller {
         NoSuchColor
     }
 
+    public enum GameRules {
+        Russian,
+        English,
+        Pool
+    }
+
     public enum Type {
         Checker,
         King
@@ -38,6 +44,7 @@ namespace controller {
     public class Controller : MonoBehaviour {
         private Resources res;
         private Map map;
+        private GameRules gameRules;
 
         public Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
         public HashSet<Vector2Int> sentenced;
@@ -139,11 +146,25 @@ namespace controller {
                                     chFound = true;
                                 } else {
                                     var wrongMove = curCh.type == Type.Checker && dir.x != xDir;
-                                    if (!wrongMove || chFound) {
-                                        checkerMoves.Add(next, chFound);
+                                    switch (gameRules) {
+                                        case GameRules.Russian:
+                                            if (!wrongMove || chFound) {
+                                                checkerMoves.Add(next, chFound);
+                                            }
+                                            break;
+                                        case GameRules.English:
+                                            if (!wrongMove) {
+                                                checkerMoves.Add(next, chFound);
+                                            }
+                                            break;
+                                        case GameRules.Pool:
+                                            if (!wrongMove || chFound) {
+                                                checkerMoves.Add(next, chFound);
+                                            }
+                                            break;
                                     }
-
-                                    if (curCh.type == Type.Checker) break;
+                                    var isEnglishRules = gameRules == GameRules.English;
+                                    if (curCh.type == Type.Checker || isEnglishRules) break;
                                 }
                             }
                         }
@@ -151,11 +172,12 @@ namespace controller {
                     }
                 }
 
-                if (allCheckerMoves.Count == 0) {
-                    res.gameMenu.SetActive(true);
-                    this.enabled = false;
-                    return;
-                }
+            }
+
+            if (allCheckerMoves.Count == 0) {
+                res.gameMenu.SetActive(true);
+                this.enabled = false;
+                return;
             }
 
             if (!Input.GetMouseButtonDown(0)) return;
@@ -193,8 +215,9 @@ namespace controller {
                 if (curCh.color == Color.Black) {
                     endBoard = res.boardSize.x - 1;
                 }
-                if (cliсkPos.x == endBoard) {
-                    var king = new Checker {type = Type.King, color = whoseMove };
+                var onEndBoard = cliсkPos.x == endBoard;
+                if (onEndBoard) {
+                    var king = new Checker { type = Type.King, color = whoseMove };
                     map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
                     var reverse = Quaternion.Euler(180, 0, 0);
                     map.obj[cliсkPos.x, cliсkPos.y].transform.rotation = reverse;
@@ -210,7 +233,12 @@ namespace controller {
                     }
                 }
 
-                if (sentenced.Count != 0) {
+                var noSecondMove = gameRules == GameRules.Pool && onEndBoard;
+                if (sentenced.Count != 0 && !noSecondMove) {
+                    var xDir = 1;
+                    if (curCh.color == Color.White) {
+                        xDir = -1;
+                    }
                     var size = res.boardSize;
                     foreach (var moveDir in res.directions) {
                         var last = cliсkPos + moveDir;
@@ -224,10 +252,14 @@ namespace controller {
                                 if (isSentenced || chFound || nextColor == curCh.color) break;
                                 chFound = true;
                             } else {
-                                if (chFound) {
+                                var isEnglishRules = gameRules == GameRules.English;
+                                var wrongMove = curCh.type == Type.Checker && moveDir.x != xDir;
+                                if (!chFound) continue;
+
+                                if (!wrongMove || !isEnglishRules) {
                                     secondMoveInfos.Add(last, chFound);
                                 }
-                                if (curCh.type == Type.Checker) break;
+                                if (curCh.type == Type.Checker || isEnglishRules) break;
                             }
                         }
                     }
@@ -287,13 +319,14 @@ namespace controller {
         public void Load(string path) {
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             var board = map.board;
-            string input = "";
+            string input;
             try {
-                input = File.ReadAllText(path);
+                input = File.ReadAllText(gameRules.ToString() + path);
             }
             catch (Exception err) {
                 Debug.LogError("CantLoad");
                 Debug.LogError(err.ToString());
+                return;
             }
 
             var parseRes = CSV.Parse(input);
@@ -325,6 +358,7 @@ namespace controller {
             SpawnCheckers(map.board);
             allCheckerMoves = null;
             sentenced.Clear();
+            selected = Option<Vector2Int>.None();
             res.gameMenu.SetActive(false);
             enabled = true;
         }
@@ -360,6 +394,10 @@ namespace controller {
             catch (Exception err) {
                 Debug.LogError(err.ToString());
             }
+        }
+
+        public void SetGameRules(int type) {
+            gameRules = (GameRules)type;
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
