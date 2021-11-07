@@ -48,8 +48,9 @@ namespace controller {
 
         public Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
         public HashSet<Vector2Int> sentenced;
-
         private Option<Vector2Int> selected;
+        private bool checkSecondMove;
+
         private Color whoseMove;
 
         private void Awake() {
@@ -171,7 +172,30 @@ namespace controller {
                         allCheckerMoves.Add(pos, checkerMoves);
                     }
                 }
+            }
 
+            if (checkSecondMove) {
+                checkSecondMove = false;
+                if (selected.IsNone() || !allCheckerMoves.ContainsKey(selected.Peel())) {
+                    allCheckerMoves = null;
+                    return;
+                }
+                var chSelected = selected.Peel();
+
+                var nextMoves = allCheckerMoves[chSelected];
+                if (!IsNeedAttack(allCheckerMoves)) {
+                    foreach (var sentencedPos in sentenced) {
+                        map.board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
+                        Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
+                    }
+
+                    whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
+                    selected = Option<Vector2Int>.None();
+                    sentenced.Clear();
+                    allCheckerMoves = null;
+                    return;
+                }
+                HighlightCells(nextMoves, true);
             }
 
             if (allCheckerMoves.Count == 0) {
@@ -193,15 +217,14 @@ namespace controller {
                 if (!allCheckerMoves.ContainsKey(cliсkPos)) return;
                 selected = Option<Vector2Int>.Some(cliсkPos);
 
-                var currentInfo = allCheckerMoves[cliсkPos];
-                HighlightCells(currentInfo, IsNeedAttack(allCheckerMoves));
+                HighlightCells(allCheckerMoves[cliсkPos], IsNeedAttack(allCheckerMoves));
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
                 var curCh = map.board[curPos.x, curPos.y].Peel();
-                var currentInfo = allCheckerMoves[curPos];
-                if (!currentInfo.ContainsKey(cliсkPos)) return;
+                var curChMoves = allCheckerMoves[curPos];
+                if (!curChMoves.ContainsKey(cliсkPos)) return;
 
-                if (!currentInfo[cliсkPos] && IsNeedAttack(allCheckerMoves)) return;
+                if (!curChMoves[cliсkPos] && IsNeedAttack(allCheckerMoves)) return;
 
                 map.board[cliсkPos.x, cliсkPos.y] = map.board[curPos.x, curPos.y];
                 map.board[curPos.x, curPos.y] = Option<Checker>.None();
@@ -211,12 +234,13 @@ namespace controller {
                 map.obj[curPos.x, curPos.y].transform.position = worldPos;
                 map.obj[cliсkPos.x, cliсkPos.y] = map.obj[curPos.x, curPos.y];
 
-                var endBoard = 0;
+                var edgeBoard = 0;
                 if (curCh.color == Color.Black) {
-                    endBoard = res.boardSize.x - 1;
+                    edgeBoard = res.boardSize.x - 1;
                 }
-                var onEndBoard = cliсkPos.x == endBoard;
-                if (onEndBoard) {
+
+                var onEdgeBoard = cliсkPos.x == edgeBoard;
+                if (onEdgeBoard) {
                     var king = new Checker { type = Type.King, color = whoseMove };
                     map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
                     var reverse = Quaternion.Euler(180, 0, 0);
@@ -233,48 +257,12 @@ namespace controller {
                     }
                 }
 
-                var noSecondMove = gameRules == GameRules.Pool && onEndBoard;
+                var noSecondMove = gameRules == GameRules.Pool && onEdgeBoard;
                 if (sentenced.Count != 0 && !noSecondMove) {
-                    var xDir = 1;
-                    if (curCh.color == Color.White) {
-                        xDir = -1;
-                    }
-                    var size = res.boardSize;
-                    foreach (var moveDir in res.directions) {
-                        var last = cliсkPos + moveDir;
-                        var chFound = false;
-                        for (last = cliсkPos + moveDir; IsOnBoard(size, last); last += moveDir) {
-                            var nextOpt = map.board[last.x, last.y];
-                            if (nextOpt.IsSome()) {
-                                var nextColor = nextOpt.Peel().color;
-                                var isSentenced = sentenced.Contains(last);
-
-                                if (isSentenced || chFound || nextColor == curCh.color) break;
-                                chFound = true;
-                            } else {
-                                var isEnglishRules = gameRules == GameRules.English;
-                                var wrongMove = curCh.type == Type.Checker && moveDir.x != xDir;
-                                if (!chFound) continue;
-
-                                if (!wrongMove || !isEnglishRules) {
-                                    secondMoveInfos.Add(last, chFound);
-                                }
-                                if (curCh.type == Type.Checker || isEnglishRules) break;
-                            }
-                        }
-                    }
-                }
-
-                if (secondMoveInfos.Count != 0) {
-                    allCheckerMoves.Add(cliсkPos, secondMoveInfos);
-                    HighlightCells(secondMoveInfos, true);
+                    allCheckerMoves = null;
+                    checkSecondMove = true;
                     selected = Option<Vector2Int>.Some(cliсkPos);
                     return;
-                }
-
-                foreach (var sentencedPos in sentenced) {
-                    map.board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
-                    Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
                 }
 
                 whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
