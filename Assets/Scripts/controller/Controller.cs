@@ -14,10 +14,11 @@ namespace controller {
         NoSuchColor
     }
 
-    public enum GameRules {
+    public enum ChKind {
         Russian,
         English,
-        Pool
+        Pool,
+        International
     }
 
     public enum Type {
@@ -44,12 +45,11 @@ namespace controller {
     public class Controller : MonoBehaviour {
         private Resources res;
         private Map map;
-        private GameRules gameRules;
+        private ChKind chKind;
 
-        public Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
-        public HashSet<Vector2Int> sentenced;
+        private Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
+        private HashSet<Vector2Int> sentenced;
         private Option<Vector2Int> selected;
-        private bool checkSecondMove;
 
         private Color whoseMove;
 
@@ -60,6 +60,7 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
+            res.InitializeBoard(chKind.ToString());
             if (res.blackChecker == null) {
                 Debug.LogError("NoCheckers");
                 this.enabled = false;
@@ -112,7 +113,6 @@ namespace controller {
             map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
             Load("StartGame.csv");
-            SpawnCheckers(map.board);
         }
 
         private void Update() {
@@ -121,8 +121,6 @@ namespace controller {
                 var size = res.boardSize;
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
-                        var pos = new Vector2Int(i, j);
-                        if (selected.IsSome() && pos != selected.Peel()) continue;
 
                         var cellOpt = map.board[i, j];
                         if (cellOpt.IsNone() || cellOpt.Peel().color != whoseMove) continue;
@@ -134,6 +132,7 @@ namespace controller {
                             xDir = -1;
                         }
 
+                        var pos = new Vector2Int(i, j);
                         var checkerMoves = new Dictionary<Vector2Int, bool>();
                         foreach (var dir in res.directions) {
                             var chFound = false;
@@ -147,55 +146,27 @@ namespace controller {
                                     chFound = true;
                                 } else {
                                     var wrongMove = curCh.type == Type.Checker && dir.x != xDir;
-                                    switch (gameRules) {
-                                        case GameRules.Russian:
-                                            if (!wrongMove || chFound) {
-                                                checkerMoves.Add(next, chFound);
-                                            }
-                                            break;
-                                        case GameRules.English:
-                                            if (!wrongMove) {
-                                                checkerMoves.Add(next, chFound);
-                                            }
-                                            break;
-                                        case GameRules.Pool:
-                                            if (!wrongMove || chFound) {
-                                                checkerMoves.Add(next, chFound);
-                                            }
+                                    switch (chKind) {
+                                        case ChKind.Pool:
+                                        case ChKind.Russian:
+                                        case ChKind.International:
+                                            wrongMove = wrongMove && !chFound;
                                             break;
                                     }
-                                    var isEnglishRules = gameRules == GameRules.English;
-                                    if (curCh.type == Type.Checker || isEnglishRules) break;
+
+                                    if (!wrongMove) {
+                                        checkerMoves.Add(next, chFound);
+                                    }
+
+                                    if (curCh.type == Type.Checker || chKind == ChKind.English) {
+                                        break;
+                                    }
                                 }
                             }
                         }
                         allCheckerMoves.Add(pos, checkerMoves);
                     }
                 }
-            }
-
-            if (checkSecondMove) {
-                checkSecondMove = false;
-                if (selected.IsNone() || !allCheckerMoves.ContainsKey(selected.Peel())) {
-                    allCheckerMoves = null;
-                    return;
-                }
-                var chSelected = selected.Peel();
-
-                var nextMoves = allCheckerMoves[chSelected];
-                if (!IsNeedAttack(allCheckerMoves)) {
-                    foreach (var sentencedPos in sentenced) {
-                        map.board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
-                        Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
-                    }
-
-                    whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
-                    selected = Option<Vector2Int>.None();
-                    sentenced.Clear();
-                    allCheckerMoves = null;
-                    return;
-                }
-                HighlightCells(nextMoves, true);
             }
 
             if (allCheckerMoves.Count == 0) {
@@ -239,16 +210,7 @@ namespace controller {
                     edgeBoard = res.boardSize.x - 1;
                 }
 
-                var onEdgeBoard = cliсkPos.x == edgeBoard;
-                if (onEdgeBoard) {
-                    var king = new Checker { type = Type.King, color = whoseMove };
-                    map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
-                    var reverse = Quaternion.Euler(180, 0, 0);
-                    map.obj[cliсkPos.x, cliсkPos.y].transform.rotation = reverse;
-                    curCh = king;
-                }
 
-                var secondMoveInfos = new Dictionary<Vector2Int, bool>();
                 var dir = cliсkPos - curPos;
                 var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
                 for (var next = curPos + nDir; next != cliсkPos; next += nDir) {
@@ -257,12 +219,67 @@ namespace controller {
                     }
                 }
 
-                var noSecondMove = gameRules == GameRules.Pool && onEdgeBoard;
+                var onEdgeBoard = cliсkPos.x == edgeBoard;
+                if (onEdgeBoard && !(chKind == ChKind.International || sentenced.Count != 0)) {
+                    var king = new Checker { type = Type.King, color = whoseMove };
+                    map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
+                    var reverse = Quaternion.Euler(180, 0, 0);
+                    map.obj[cliсkPos.x, cliсkPos.y].transform.rotation = reverse;
+                    curCh = king;
+                }
+
+                var secondMoveInfos = new Dictionary<Vector2Int, bool>();
+                var noSecondMove = chKind == ChKind.Pool && onEdgeBoard;
                 if (sentenced.Count != 0 && !noSecondMove) {
-                    allCheckerMoves = null;
-                    checkSecondMove = true;
+                    var xDir = 1;
+                    if (curCh.color == Color.White) {
+                        xDir = -1;
+                    }
+                    var size = res.boardSize;
+                    foreach (var moveDir in res.directions) {
+                        var last = cliсkPos + moveDir;
+                        var chFound = false;
+                        for (last = cliсkPos + moveDir; IsOnBoard(size, last); last += moveDir) {
+                            var nextOpt = map.board[last.x, last.y];
+                            if (nextOpt.IsSome()) {
+                                var nextColor = nextOpt.Peel().color;
+                                var isSentenced = sentenced.Contains(last);
+
+                                if (isSentenced || chFound || nextColor == curCh.color) break;
+                                chFound = true;
+                            } else {
+                                var wrongMove = curCh.type == Type.Checker && dir.x != xDir;
+                                switch (chKind) {
+                                    case ChKind.Pool:
+                                    case ChKind.Russian:
+                                    case ChKind.International:
+                                        wrongMove = wrongMove && !chFound;
+                                        break;
+                                }
+
+                                if (!wrongMove && chFound) {
+                                    secondMoveInfos.Add(last, chFound);
+                                }
+
+                                if (curCh.type == Type.Checker || chKind == ChKind.English) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (secondMoveInfos.Count != 0) {
+                    allCheckerMoves.Add(cliсkPos, secondMoveInfos);
+                    HighlightCells(secondMoveInfos, true);
                     selected = Option<Vector2Int>.Some(cliсkPos);
                     return;
+                } else if (onEdgeBoard && chKind == ChKind.International) {
+                    var king = new Checker { type = Type.King, color = whoseMove };
+                    map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
+                    var reverse = Quaternion.Euler(180, 0, 0);
+                    map.obj[cliсkPos.x, cliсkPos.y].transform.rotation = reverse;
+                    curCh = king;
                 }
 
                 foreach (var sentencedPos in sentenced) {
@@ -314,7 +331,7 @@ namespace controller {
             var board = map.board;
             string input;
             try {
-                input = File.ReadAllText(gameRules.ToString() + path);
+                input = File.ReadAllText(chKind.ToString() + path);
             }
             catch (Exception err) {
                 Debug.LogError("CantLoad");
@@ -390,15 +407,15 @@ namespace controller {
         }
 
         public void SetGameRules(int type) {
-            gameRules = (GameRules)type;
+            chKind = (ChKind)type;
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
-            var offset = res.cellTransform.localScale / 2f;
-            var floatVec = new Vector3(boardPoint.x, 0.4f, boardPoint.y);
+            var size = res.cellTransform.localScale;
+
+            var floatVec = new Vector3(boardPoint.x, 0.1f, boardPoint.y);
             var cellLoc = res.cellTransform.localPosition;
-            var cellSize = res.cellTransform.localScale;
-            var point = cellSize.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + offset;
+            var point = size.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + size / 2f;
 
             return point;
         }
