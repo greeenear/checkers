@@ -265,6 +265,11 @@ namespace controller {
                     return;
                 }
 
+                foreach (var sentencedPos in sentenced) {
+                    map.board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
+                    Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
+                }
+
                 whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
                 selected = Option<Vector2Int>.None();
                 sentenced.Clear();
