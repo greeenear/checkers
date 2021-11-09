@@ -14,9 +14,13 @@ namespace controller {
         public Vector2Int boardSize = new Vector2Int(8, 8);
 
         public GameObject gameMenu;
+        public GameObject loadMenu;
+        public GameObject loadTemplate;
 
         public Transform boardTransform10x10;
         public Transform cellTransform10x10;
+        public Transform boardTransform8x8;
+        public Transform cellTransform8x8;
 
         public readonly List<Vector2Int> directions = new List<Vector2Int> {
             new Vector2Int(1, 1),
@@ -30,6 +34,10 @@ namespace controller {
                 boardTransform = boardTransform10x10;
                 cellTransform = cellTransform10x10;
                 boardSize = new Vector2Int(10,10);
+            } else {
+                boardTransform = boardTransform8x8;
+                cellTransform = cellTransform8x8;
+                boardSize = new Vector2Int(8,8);
             }
         }
     }

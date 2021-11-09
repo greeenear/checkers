@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
+using UnityEngine.UI;
 using option;
 
 namespace controller {
@@ -109,10 +110,24 @@ namespace controller {
         }
 
         private void Start() {
+            FillLoadMenu();
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            Load("StartGame.csv");
+            switch (chKind) {
+                case ChKind.Russian:
+                    Load("RussianStartGame.csv");
+                    break;
+                case ChKind.English:
+                    Load("EnglishStartGame.csv");
+                    break;
+                case ChKind.Pool:
+                    Load("PoolStartGame.csv");
+                    break;
+                case ChKind.International:
+                    Load("InternationalStartGame.csv");
+                    break;
+            }
         }
 
         private void Update() {
@@ -124,7 +139,6 @@ namespace controller {
 
                         var cellOpt = map.board[i, j];
                         if (cellOpt.IsNone() || cellOpt.Peel().color != whoseMove) continue;
-
                         var curCh = cellOpt.Peel();
 
                         var xDir = 1;
@@ -327,13 +341,10 @@ namespace controller {
         }
 
         public void Load(string path) {
-            map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
-            var board = map.board;
             string input;
             try {
-                input = File.ReadAllText(chKind.ToString() + path);
-            }
-            catch (Exception err) {
+                input = File.ReadAllText(path);
+            } catch (Exception err) {
                 Debug.LogError("CantLoad");
                 Debug.LogError(err.ToString());
                 return;
@@ -344,12 +355,28 @@ namespace controller {
                 Debug.LogError(parseRes.error.ToString());
             }
 
+            if (int.TryParse(parseRes.rows[parseRes.rows.Count - 1][3], out int result)) {
+                chKind = (ChKind)result;
+                res.InitializeBoard(chKind.ToString());
+                if (chKind.ToString() == "International") {
+                    res.boardTransform8x8.gameObject.SetActive(false);
+                    res.boardTransform10x10.gameObject.SetActive(true);
+                } else {
+                    res.boardTransform8x8.gameObject.SetActive(true);
+                    res.boardTransform10x10.gameObject.SetActive(false);
+                }
+            }
+
+            map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             for (int i = 0; i < parseRes.rows.Count; i++) {
                 for (int j = 0; j < parseRes.rows[0].Count; j++) {
                     if (parseRes.rows[i][j] == "WhoseMove") {
-                        whoseMove = (Color)int.Parse(parseRes.rows[i][j + 1]);
+                        if (int.TryParse(parseRes.rows[i][j + 1], out result)) {
+                            whoseMove = (Color)result;
+                        }
                         break;
                     }
+
                     var checker = new Checker();
                     if (parseRes.rows[i][j] == "0") {
                         continue;
@@ -360,11 +387,12 @@ namespace controller {
                     } else if (parseRes.rows[i][j] == "3") {
                         checker = new Checker { color = Color.White, type = Type.King };
                     }
-                    board[i, j] = Option<Checker>.Some(checker);
+                    map.board[i, j] = Option<Checker>.Some(checker);
                 }
             }
 
             DestroyHighlightCells(res.storageHighlightCells.transform);
+
             SpawnCheckers(map.board);
             allCheckerMoves = null;
             sentenced.Clear();
@@ -373,12 +401,12 @@ namespace controller {
             enabled = true;
         }
 
-        public void Save(string path) {
+        public void Save(string path, Transform panel) {
             List<List<string>> rows = new List<List<string>>();
             for (int i = 0; i < map.board.GetLength(1); i++) {
                 rows.Add(new List<string>());
                 for (int j = 0; j < map.board.GetLength(0); j++) {
-                    if(map.board[i, j].IsNone()) {
+                    if (map.board[i, j].IsNone()) {
                         rows[i].Add("0");
                     }
 
@@ -394,20 +422,78 @@ namespace controller {
             }
             rows.Add(new List<string>() {
                     "WhoseMove",
-                    ((int)whoseMove).ToString()
+                    ((int)whoseMove).ToString(),
+                    "ChKind",
+                    ((int)chKind).ToString()
                 }
             );
             string output = CSV.Generate(rows);
             try {
                 File.WriteAllText(path, output);
-            }
-            catch (Exception err) {
+            } catch (Exception err) {
                 Debug.LogError(err.ToString());
+                return;
             }
+
+            foreach (Transform child in panel) {
+                if (child.TryGetComponent(out Text text)) {
+                    text.text = whoseMove.ToString() + " move " + chKind.ToString() + " checkers";
+                }
+            }
+            res.gameMenu.SetActive(false);
         }
 
         public void SetGameRules(int type) {
             chKind = (ChKind)type;
+        }
+
+        private void FillLoadMenu() {
+            string[] allfiles;
+            try {
+                allfiles = Directory.GetFiles("Assets\\saves", "*.csv");
+            } catch (Exception err) {
+                Debug.LogError("NoDirectory");
+                Debug.LogError(err.ToString());
+                return;
+            }
+
+            foreach (string filename in allfiles) {
+                var curObj = Instantiate(
+                    res.loadTemplate,
+                    new Vector3(),
+                    Quaternion.identity,
+                    res.loadMenu.transform
+                );
+                foreach (Transform child in curObj.transform) {
+                    if (child.gameObject.TryGetComponent(out Button but)) {
+                        if (but.name == "Load") {
+                            but.onClick.AddListener(() => Load(filename));
+                        } else {
+                            but.onClick.AddListener(() => Save(filename, curObj.transform));
+                        }
+                    } else if (child.gameObject.TryGetComponent(out Text text)) {
+                        var input = File.ReadAllText(filename);
+
+                        var parseRes = CSV.Parse(input);
+                        string saveDescription = "";
+                        foreach (var row in parseRes.rows) {
+                            if (row[0] == "WhoseMove") {
+                                if (row[1] == "1") {
+                                    saveDescription += "black's move  ";
+                                } else if (row[1] == "0") {
+                                    saveDescription += "white's move  ";
+                                }
+                            }
+                            if (row[2] == "ChKind") {
+                                if (int.TryParse(row[3], out int res)) {
+                                    saveDescription += ((ChKind)res).ToString() + "  checkers";
+                                }
+                            }
+                        }
+                        text.text = saveDescription;
+                    }
+                }
+            }
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
