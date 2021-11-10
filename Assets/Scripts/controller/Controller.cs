@@ -456,7 +456,6 @@ namespace controller {
                 Debug.LogError(err.ToString());
                 return;
             }
-
             foreach (string filename in allfiles) {
                 var curObj = Instantiate(
                     res.loadTemplate,
@@ -486,7 +485,7 @@ namespace controller {
                             }
                             if (row[2] == "ChKind") {
                                 if (int.TryParse(row[3], out int res)) {
-                                    saveDescription += ((ChKind)res).ToString() + "  checkers";
+                                    saveDescription += ((ChKind)res).ToString() + " checkers";
                                 }
                             }
                         }
