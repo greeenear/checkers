@@ -220,7 +220,7 @@ namespace controller {
                 }
 
                 var onEdgeBoard = cliсkPos.x == edgeBoard;
-                if (onEdgeBoard && !(chKind == ChKind.International || sentenced.Count != 0)) {
+                if (onEdgeBoard && !(chKind == ChKind.International && sentenced.Count != 0)) {
                     var king = new Checker { type = Type.King, color = whoseMove };
                     map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
                     var reverse = Quaternion.Euler(180, 0, 0);
@@ -229,12 +229,14 @@ namespace controller {
                 }
 
                 var secondMoveInfos = new Dictionary<Vector2Int, bool>();
-                var noSecondMove = chKind == ChKind.Pool && onEdgeBoard;
-                if (sentenced.Count != 0 && !noSecondMove) {
+                var secondMove = chKind != ChKind.Pool || !onEdgeBoard;
+                var anySentenced = sentenced.Count != 0;
+                if (anySentenced && secondMove) {
                     var xDir = 1;
                     if (curCh.color == Color.White) {
                         xDir = -1;
                     }
+
                     var size = res.boardSize;
                     foreach (var moveDir in res.directions) {
                         var last = cliсkPos + moveDir;
@@ -273,24 +275,25 @@ namespace controller {
                     allCheckerMoves.Add(cliсkPos, secondMoveInfos);
                     HighlightCells(secondMoveInfos, true);
                     selected = Option<Vector2Int>.Some(cliсkPos);
-                    return;
-                } else if (onEdgeBoard && chKind == ChKind.International) {
-                    var king = new Checker { type = Type.King, color = whoseMove };
-                    map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
-                    var reverse = Quaternion.Euler(180, 0, 0);
-                    map.obj[cliсkPos.x, cliсkPos.y].transform.rotation = reverse;
-                    curCh = king;
-                }
+                }  else {
+                    if (onEdgeBoard && chKind == ChKind.International) {
+                        var king = new Checker { type = Type.King, color = whoseMove };
+                        map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
+                        var reverse = Quaternion.Euler(180, 0, 0);
+                        map.obj[cliсkPos.x, cliсkPos.y].transform.rotation = reverse;
+                        curCh = king;
+                    }
 
-                foreach (var sentencedPos in sentenced) {
-                    map.board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
-                    Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
-                }
+                    foreach (var sentencedPos in sentenced) {
+                        map.board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
+                        Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
+                    }
 
-                whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
-                selected = Option<Vector2Int>.None();
-                sentenced.Clear();
-                allCheckerMoves = null;
+                    whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
+                    selected = Option<Vector2Int>.None();
+                    sentenced.Clear();
+                    allCheckerMoves = null;
+                }
             }
         }
 
@@ -351,10 +354,12 @@ namespace controller {
                     res.boardTransform8x8.gameObject.SetActive(true);
                     res.boardTransform10x10.gameObject.SetActive(false);
                 }
-                map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
-                map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             }
 
+            foreach (var chObj in map.obj) {
+                Destroy(chObj);
+            }
+            map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             for (int i = 0; i < parseRes.rows.Count; i++) {
                 for (int j = 0; j < parseRes.rows[0].Count; j++) {
@@ -389,7 +394,7 @@ namespace controller {
             enabled = true;
         }
 
-        public void Save(string path, Transform panel) {
+        public void Save(string path) {
             List<List<string>> rows = new List<List<string>>();
             for (int i = 0; i < map.board.GetLength(1); i++) {
                 rows.Add(new List<string>());
@@ -408,13 +413,15 @@ namespace controller {
                     }
                 }
             }
-            rows.Add(new List<string>() {
+            rows.Add(
+                new List<string>() {
                     "WhoseMove",
                     ((int)whoseMove).ToString(),
                     "ChKind",
                     ((int)chKind).ToString()
                 }
             );
+
             string output = CSV.Generate(rows);
             try {
                 File.WriteAllText(path, output);
@@ -422,23 +429,16 @@ namespace controller {
                 Debug.LogError(err.ToString());
                 return;
             }
-
-            foreach (Transform child in panel) {
-                if (child.TryGetComponent(out Text text)) {
-                    text.text = whoseMove.ToString() + " move " + chKind.ToString() + " checkers";
-                }
-            }
             res.gameMenu.SetActive(false);
         }
 
-        public void SetGameRules(int type) {
-            chKind = (ChKind)type;
-        }
-
-        private void FillLoadPanel() {
+        private void FillLoadMenu() {
             string[] allfiles;
             try {
                 allfiles = Directory.GetFiles("Assets\\saves", "*.csv");
+                Path.Combine("Assets", "saves");
+                //Debug.Log(Application.persistentDataPath);
+                //allfiles = Directory.GetFiles(Application.persistentDataPath, "*.csv");
             } catch (Exception err) {
                 Debug.LogError("NoDirectory");
                 Debug.LogError(err.ToString());
@@ -446,6 +446,8 @@ namespace controller {
             }
 
             foreach (string filename in allfiles) {
+                Debug.Log(Application.persistentDataPath);
+                Debug.Log(Application.dataPath);
                 var curObj = Instantiate(
                     res.loadTemplate,
                     new Vector3(),
@@ -458,12 +460,16 @@ namespace controller {
                         if (but.name == "Load") {
                             but.onClick.AddListener(() => Load(filename));
                         } else {
-                            but.onClick.AddListener(() => Save(filename, curObj.transform));
+                            but.onClick.AddListener(() => Save(filename));
                         }
                     } else if (child.gameObject.TryGetComponent(out Text text)) {
                         var input = File.ReadAllText(filename);
+                        FileStream fstream = File.OpenRead(filename);
+                        byte[] array = new byte[fstream.Length];
+                        fstream.Read(array, 0, array.Length);
+                        string textFromFile = System.Text.Encoding.Default.GetString(array);
 
-                        var parseRes = CSV.Parse(input);
+                        var parseRes = CSV.Parse(textFromFile);
                         string saveDescription = "";
                         foreach (var row in parseRes.rows) {
                             if (row[0] == "WhoseMove") {
@@ -544,6 +550,11 @@ namespace controller {
         }
 
         public void OpenMenu() {
+            foreach (Transform child in res.loadMenu.transform) {
+                Destroy(child.gameObject);
+            }
+            FillLoadMenu();
+
             if (res.gameMenu.activeSelf == true) {
                 res.gameMenu.SetActive(false);
                 this.enabled = true;
