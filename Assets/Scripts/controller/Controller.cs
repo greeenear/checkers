@@ -110,7 +110,7 @@ namespace controller {
         }
 
         private void Start() {
-            FillLoadMenu();
+            FillLoadPanel();
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
@@ -365,6 +365,8 @@ namespace controller {
                     res.boardTransform8x8.gameObject.SetActive(true);
                     res.boardTransform10x10.gameObject.SetActive(false);
                 }
+                map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
+                map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             }
 
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
@@ -447,7 +449,7 @@ namespace controller {
             chKind = (ChKind)type;
         }
 
-        private void FillLoadMenu() {
+        private void FillLoadPanel() {
             string[] allfiles;
             try {
                 allfiles = Directory.GetFiles("Assets\\saves", "*.csv");
@@ -456,6 +458,7 @@ namespace controller {
                 Debug.LogError(err.ToString());
                 return;
             }
+
             foreach (string filename in allfiles) {
                 var curObj = Instantiate(
                     res.loadTemplate,
@@ -463,6 +466,7 @@ namespace controller {
                     Quaternion.identity,
                     res.loadMenu.transform
                 );
+
                 foreach (Transform child in curObj.transform) {
                     if (child.gameObject.TryGetComponent(out Button but)) {
                         if (but.name == "Load") {
@@ -485,7 +489,7 @@ namespace controller {
                             }
                             if (row[2] == "ChKind") {
                                 if (int.TryParse(row[3], out int res)) {
-                                    saveDescription += ((ChKind)res).ToString() + " checkers";
+                                    saveDescription += ((ChKind)res).ToString();
                                 }
                             }
                         }
@@ -497,7 +501,6 @@ namespace controller {
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
             var size = res.cellTransform.localScale;
-
             var floatVec = new Vector3(boardPoint.x, 0.1f, boardPoint.y);
             var cellLoc = res.cellTransform.localPosition;
             var point = size.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + size / 2f;
