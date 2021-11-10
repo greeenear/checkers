@@ -110,24 +110,9 @@ namespace controller {
         }
 
         private void Start() {
-            FillLoadPanel();
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            switch (chKind) {
-                case ChKind.Russian:
-                    Load("RussianStartGame.csv");
-                    break;
-                case ChKind.English:
-                    Load("EnglishStartGame.csv");
-                    break;
-                case ChKind.Pool:
-                    Load("PoolStartGame.csv");
-                    break;
-                case ChKind.International:
-                    Load("InternationalStartGame.csv");
-                    break;
-            }
         }
 
         private void Update() {
@@ -183,12 +168,6 @@ namespace controller {
                 }
             }
 
-            if (allCheckerMoves.Count == 0) {
-                res.gameMenu.SetActive(true);
-                this.enabled = false;
-                return;
-            }
-
             if (!Input.GetMouseButtonDown(0)) return;
 
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -205,11 +184,18 @@ namespace controller {
                 HighlightCells(allCheckerMoves[cliсkPos], IsNeedAttack(allCheckerMoves));
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
+                if (map.board[curPos.x, curPos.y].IsNone()) return;
                 var curCh = map.board[curPos.x, curPos.y].Peel();
-                var curChMoves = allCheckerMoves[curPos];
-                if (!curChMoves.ContainsKey(cliсkPos)) return;
+                var origCurCh = curCh;
 
-                if (!curChMoves[cliсkPos] && IsNeedAttack(allCheckerMoves)) return;
+                var curChMoves = allCheckerMoves[curPos];
+                if (!curChMoves.ContainsKey(cliсkPos)) {
+                    selected = Option<Vector2Int>.None();
+                    return;
+                }
+
+                var isClickAttack = curChMoves[cliсkPos];
+                if (!isClickAttack && IsNeedAttack(allCheckerMoves)) return;
 
                 map.board[cliсkPos.x, cliсkPos.y] = map.board[curPos.x, curPos.y];
                 map.board[curPos.x, curPos.y] = Option<Checker>.None();
