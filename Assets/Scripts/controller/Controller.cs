@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
@@ -175,6 +174,7 @@ namespace controller {
 
             DestroyHighlightCells(res.storageHighlightCells.transform);
             var cliсkPos = ConvertToBoardPoint(hit.point);
+
             var checkerOpt = map.board[cliсkPos.x, cliсkPos.y];
 
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
@@ -323,7 +323,7 @@ namespace controller {
             var inversePoint = res.boardTransform.InverseTransformPoint(selectedPoint);
             var pos = res.cellTransform.localPosition;
             var size = res.cellTransform.localScale;
-            var floatVec = (inversePoint + new Vector3(-pos.x - 0.1f, 0, pos.z + 0.1f)) / size.x;
+            var floatVec = (inversePoint + new Vector3(-pos.x, 0, pos.z)) / size.x;
             var point = new Vector2Int(Mathf.Abs((int)(floatVec.z)), Mathf.Abs((int)floatVec.x));
 
             return point;
@@ -424,6 +424,7 @@ namespace controller {
 
             string output = CSV.Generate(rows);
             try {
+                Path.Combine(Application.persistentDataPath, path);
                 File.WriteAllText(path, output);
             } catch (Exception err) {
                 Debug.LogError(err.ToString());
@@ -435,10 +436,7 @@ namespace controller {
         private void FillLoadMenu() {
             string[] allfiles;
             try {
-                allfiles = Directory.GetFiles("Assets\\saves", "*.csv");
-                Path.Combine("Assets", "saves");
-                //Debug.Log(Application.persistentDataPath);
-                //allfiles = Directory.GetFiles(Application.persistentDataPath, "*.csv");
+                allfiles = Directory.GetFiles(Application.persistentDataPath, "*.csv");
             } catch (Exception err) {
                 Debug.LogError("NoDirectory");
                 Debug.LogError(err.ToString());
@@ -446,8 +444,6 @@ namespace controller {
             }
 
             foreach (string filename in allfiles) {
-                Debug.Log(Application.persistentDataPath);
-                Debug.Log(Application.dataPath);
                 var curObj = Instantiate(
                     res.loadTemplate,
                     new Vector3(),
@@ -464,6 +460,7 @@ namespace controller {
                         }
                     } else if (child.gameObject.TryGetComponent(out Text text)) {
                         var input = File.ReadAllText(filename);
+                        
                         FileStream fstream = File.OpenRead(filename);
                         byte[] array = new byte[fstream.Length];
                         fstream.Read(array, 0, array.Length);
