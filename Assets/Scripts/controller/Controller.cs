@@ -112,6 +112,14 @@ namespace controller {
             map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
             map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
+            res.saveInputField.onValueChanged.AddListener(
+                (input) => inputFileName = Path.Combine(
+                    Application.persistentDataPath,
+                    input + ".csv"
+                )
+            );
+
+            res.saveBut.onClick.AddListener(() => Save(inputFileName));
         }
 
         private void Update() {
@@ -330,6 +338,9 @@ namespace controller {
         }
 
         public void Load(string path) {
+            if (res.mainMenu.activeSelf) {
+                path = Path.Combine(Application.streamingAssetsPath, path);
+            }
             string input;
             try {
                 input = File.ReadAllText(path);
