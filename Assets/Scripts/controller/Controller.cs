@@ -344,7 +344,10 @@ namespace controller {
             }
             string input;
             try {
-                input = File.ReadAllText(path);
+                var fstream = File.OpenRead(path);
+                var bytes = new byte[fstream.Length];
+                fstream.Read(bytes, 0, bytes.Length);
+                input = System.Text.Encoding.Default.GetString(bytes);
             } catch (Exception err) {
                 Debug.LogError("CantLoad");
                 Debug.LogError(err.ToString());
@@ -476,7 +479,10 @@ namespace controller {
                             but.onClick.AddListener(() => Save(filename));
                         }
                     } else if (child.gameObject.TryGetComponent(out Text text)) {
-                        string input = File.ReadAllText(filename);
+                        var fstream = File.OpenRead(filename);
+                        var bytes = new byte[fstream.Length];
+                        fstream.Read(bytes, 0, bytes.Length);
+                        string input = System.Text.Encoding.Default.GetString(bytes);
 
                         var parseRes = CSV.Parse(input);
                         string saveDescription = "";
