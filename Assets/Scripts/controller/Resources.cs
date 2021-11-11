@@ -1,6 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace controller {
     public class Resources : MonoBehaviour {
@@ -8,14 +8,16 @@ namespace controller {
         public GameObject highlightCell;
         public GameObject whiteChecker;
         public GameObject blackChecker;
-
         public Transform boardTransform;
         public Transform cellTransform;
         public Vector2Int boardSize = new Vector2Int(8, 8);
 
-        public GameObject gameMenu;
+        public GameObject mainMenu;
+        public GameObject saveTemplatesStorage;
         public GameObject loadMenu;
         public GameObject loadTemplate;
+        public InputField saveInputField;
+        public Button saveBut;
 
         public Transform boardTransform10x10;
         public Transform cellTransform10x10;

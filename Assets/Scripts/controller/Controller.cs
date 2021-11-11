@@ -52,6 +52,7 @@ namespace controller {
         private Option<Vector2Int> selected;
 
         private Color whoseMove;
+        private string inputFileName;
 
         private void Awake() {
             res = gameObject.GetComponentInParent<Resources>();
@@ -96,7 +97,7 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
-            if (res.gameMenu == null) {
+            if (res.loadMenu == null) {
                 Debug.LogError("NoGameMenu");
                 this.enabled = false;
                 return;
@@ -401,7 +402,7 @@ namespace controller {
             allCheckerMoves = null;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
-            res.gameMenu.SetActive(false);
+            res.loadMenu.SetActive(false);
             enabled = true;
         }
 
@@ -429,19 +430,24 @@ namespace controller {
                     "WhoseMove",
                     ((int)whoseMove).ToString(),
                     "ChKind",
-                    ((int)chKind).ToString()
+                    ((int)chKind).ToString(),
+                    "name",
+                    res.saveInputField.text.ToString()
+                    
                 }
             );
 
             string output = CSV.Generate(rows);
             try {
-                Path.Combine(Application.persistentDataPath, path);
                 File.WriteAllText(path, output);
+            } catch (ArgumentNullException) {
             } catch (Exception err) {
                 Debug.LogError(err.ToString());
                 return;
             }
-            res.gameMenu.SetActive(false);
+
+            res.loadMenu.SetActive(false);
+            this.enabled = true;
         }
 
         private void FillLoadMenu() {
@@ -459,7 +465,7 @@ namespace controller {
                     res.loadTemplate,
                     new Vector3(),
                     Quaternion.identity,
-                    res.loadMenu.transform
+                    res.saveTemplatesStorage.transform
                 );
 
                 foreach (Transform child in curObj.transform) {
@@ -470,27 +476,25 @@ namespace controller {
                             but.onClick.AddListener(() => Save(filename));
                         }
                     } else if (child.gameObject.TryGetComponent(out Text text)) {
-                        var input = File.ReadAllText(filename);
-                        
-                        FileStream fstream = File.OpenRead(filename);
-                        byte[] array = new byte[fstream.Length];
-                        fstream.Read(array, 0, array.Length);
-                        string textFromFile = System.Text.Encoding.Default.GetString(array);
+                        string input = File.ReadAllText(filename);
 
-                        var parseRes = CSV.Parse(textFromFile);
+                        var parseRes = CSV.Parse(input);
                         string saveDescription = "";
                         foreach (var row in parseRes.rows) {
                             if (row[0] == "WhoseMove") {
                                 if (row[1] == "1") {
-                                    saveDescription += "black's move  ";
+                                    saveDescription += "black's move ";
                                 } else if (row[1] == "0") {
-                                    saveDescription += "white's move  ";
+                                    saveDescription += "white's move ";
                                 }
                             }
                             if (row[2] == "ChKind") {
                                 if (int.TryParse(row[3], out int res)) {
                                     saveDescription += ((ChKind)res).ToString();
                                 }
+                            }
+                            if (row[4] == "name") {
+                                saveDescription += " " + row[5];
                             }
                         }
                         text.text = saveDescription;
@@ -558,16 +562,16 @@ namespace controller {
         }
 
         public void OpenMenu() {
-            foreach (Transform child in res.loadMenu.transform) {
+            foreach (Transform child in res.saveTemplatesStorage.transform) {
                 Destroy(child.gameObject);
             }
             FillLoadMenu();
 
-            if (res.gameMenu.activeSelf == true) {
-                res.gameMenu.SetActive(false);
+            if (res.loadMenu.activeSelf == true) {
+                res.loadMenu.SetActive(false);
                 this.enabled = true;
             } else {
-                res.gameMenu.SetActive(true);
+                res.loadMenu.SetActive(true);
                 this.enabled = false;
             }
         }
