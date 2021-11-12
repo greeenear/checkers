@@ -366,46 +366,43 @@ namespace controller {
                         }
                         break;
                     }
-
-                    var checker = new Checker();
-                    if (parseRes.rows[i][j] == "0") {
-                        continue;
-                    } else if (parseRes.rows[i][j] == "1") {
-                        checker = new Checker { color = Color.White };
-                    } else if (parseRes.rows[i][j] == "2") {
-                        checker = new Checker { color = Color.Black };
-                    } else if (parseRes.rows[i][j] == "3") {
-                        checker = new Checker { color = Color.White, type = Type.King };
+                    var color = Color.White;
+                    var type = Type.Checker;
+                    if (int.TryParse(parseRes.rows[i][j], out int res)) {
+                        if (res % 2 != 0) color = Color.Black;
+                        if (res > 1) type = Type.King;
+                        var checker = new Checker { color =color, type = type };
+                        map.board[i, j] = Option<Checker>.Some(checker);
                     }
-                    map.board[i, j] = Option<Checker>.Some(checker);
                 }
             }
 
-            DestroyHighlightCells(res.storageHighlightCells.transform);
+            DestroyHighlightCells(storageHighlightCells.transform);
 
             SpawnCheckers(map.board);
             allCheckerMoves = null;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
-            res.loadMenu.SetActive(false);
+            loadMenu.SetActive(false);
             enabled = true;
         }
 
         public void Save(string path) {
-            List<List<string>> rows = new List<List<string>>();
+            var rows = new List<List<string>>();
+            var fileName = path.Replace(Application.persistentDataPath, "").Replace(".csv", "");
             for (int i = 0; i < map.board.GetLength(1); i++) {
                 rows.Add(new List<string>());
                 for (int j = 0; j < map.board.GetLength(0); j++) {
                     if (map.board[i, j].IsNone()) {
-                        rows[i].Add("0");
+                        rows[i].Add("-");
                     }
 
                     if (map.board[i, j].IsSome()) {
                         var checker = map.board[i, j].Peel();
                         if (checker.color == Color.Black) {
-                            rows[i].Add("2");
-                        } else if (checker.color == Color.White) {
                             rows[i].Add("1");
+                        } else if (checker.color == Color.White) {
+                            rows[i].Add("0");
                         }
                     }
                 }
@@ -417,8 +414,7 @@ namespace controller {
                     "ChKind",
                     ((int)chKind).ToString(),
                     "name",
-                    res.saveInputField.text.ToString()
-                    
+                    fileName
                 }
             );
 
@@ -431,7 +427,7 @@ namespace controller {
                 return;
             }
 
-            res.loadMenu.SetActive(false);
+            loadMenu.SetActive(false);
             this.enabled = true;
         }
 
@@ -450,7 +446,7 @@ namespace controller {
                     res.loadTemplate,
                     new Vector3(),
                     Quaternion.identity,
-                    res.saveTemplatesStorage.transform
+                    saveTemplatesStorage.transform
                 );
 
                 foreach (Transform child in curObj.transform) {
@@ -492,9 +488,9 @@ namespace controller {
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
-            var size = res.cellTransform.localScale;
+            var size = boardInfo.cellTransform.localScale;
             var floatVec = new Vector3(boardPoint.x, 0.1f, boardPoint.y);
-            var cellLoc = res.cellTransform.localPosition;
+            var cellLoc = boardInfo.cellTransform.localPosition;
             var point = size.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + size / 2f;
 
             return point;
@@ -520,8 +516,7 @@ namespace controller {
                             return ControllerErrors.NoSuchColor;
                         }
                         var pos = new Vector2Int(i, j);
-                        var boardTransform = res.boardTransform.transform;
-                        map.obj[i, j] = SpawnObject(prefab, pos, boardTransform);
+                        map.obj[i, j] = SpawnObject(prefab, pos, boardInfo.boardTransform);
                     }
                 }
             }
@@ -550,16 +545,16 @@ namespace controller {
         }
 
         public void OpenMenu() {
-            foreach (Transform child in res.saveTemplatesStorage.transform) {
+            foreach (Transform child in saveTemplatesStorage.transform) {
                 Destroy(child.gameObject);
             }
             FillLoadMenu();
 
-            if (res.loadMenu.activeSelf == true) {
-                res.loadMenu.SetActive(false);
+            if (loadMenu.activeSelf == true) {
+                loadMenu.SetActive(false);
                 this.enabled = true;
             } else {
-                res.loadMenu.SetActive(true);
+                loadMenu.SetActive(true);
                 this.enabled = false;
             }
         }
