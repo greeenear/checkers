@@ -43,7 +43,14 @@ namespace controller {
     }
 
     public class Controller : MonoBehaviour {
+        public GameObject storageHighlightCells;
+        public GameObject mainMenu;
+        public GameObject saveTemplatesStorage;
+        public Button saveBut;
+        public GameObject loadMenu;
+
         private Resources res;
+        private BoardInfo boardInfo;
         private Map map;
         private ChKind chKind;
 
