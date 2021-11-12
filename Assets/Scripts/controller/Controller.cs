@@ -59,7 +59,6 @@ namespace controller {
         private Option<Vector2Int> selected;
 
         private Color whoseMove;
-        private string inputFileName;
 
         private void Awake() {
             res = gameObject.GetComponentInParent<Resources>();
@@ -68,23 +67,12 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
-            res.InitializeBoard(chKind.ToString());
-            if (res.blackChecker == null) {
-                Debug.LogError("NoCheckers");
-                this.enabled = false;
-                return;
-            }
             if (res.whiteChecker == null) {
                 Debug.LogError("NoCheckers");
                 this.enabled = false;
                 return;
             }
-            if (res.cellTransform == null) {
-                Debug.LogError("NoCellSize");
-                this.enabled = false;
-                return;
-            }
-            if (res.storageHighlightCells == null) {
+            if (storageHighlightCells == null) {
                 Debug.LogError("NoStorageHighlightCells");
                 this.enabled = false;
                 return;
@@ -94,17 +82,7 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
-            if (res.boardTransform == null) {
-                Debug.LogError("NoBoardPos");
-                this.enabled = false;
-                return;
-            }
-            if (res.boardSize == null) {
-                Debug.LogError("NoBoardSize");
-                this.enabled = false;
-                return;
-            }
-            if (res.loadMenu == null) {
+            if (loadMenu == null) {
                 Debug.LogError("NoGameMenu");
                 this.enabled = false;
                 return;
@@ -117,22 +95,19 @@ namespace controller {
         }
 
         private void Start() {
-            map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
-            map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
+            boardInfo = res.board8x8;
+            map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
+            map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            res.saveInputField.onValueChanged.AddListener(
-                (input) => inputFileName = Path.Combine(
-                    Application.persistentDataPath,
-                    input + ".csv"
-                )
-            );
-            res.saveBut.onClick.AddListener(() => Save(inputFileName));
+            var date = DateTime.Now.ToString("yyyy/MM/dd   H.m.ss");
+            var path = Path.Combine(Application.persistentDataPath, date + ".csv");
+            saveBut.onClick.AddListener(() => Save(path));
         }
 
         private void Update() {
             if (allCheckerMoves == null) {
                 allCheckerMoves = new Dictionary<Vector2Int, Dictionary<Vector2Int, bool>>();
-                var size = res.boardSize;
+                var size = boardInfo.boardSize;
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
 
@@ -187,7 +162,7 @@ namespace controller {
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) return;
 
-            DestroyHighlightCells(res.storageHighlightCells.transform);
+            DestroyHighlightCells(storageHighlightCells.transform);
             var cliсkPos = ConvertToBoardPoint(hit.point);
 
             var checkerOpt = map.board[cliсkPos.x, cliсkPos.y];
@@ -222,7 +197,7 @@ namespace controller {
 
                 var edgeBoard = 0;
                 if (curCh.color == Color.Black) {
-                    edgeBoard = res.boardSize.x - 1;
+                    edgeBoard = boardInfo.boardSize.x - 1;
                 }
 
 
@@ -252,7 +227,7 @@ namespace controller {
                         xDir = -1;
                     }
 
-                    var size = res.boardSize;
+                    var size = boardInfo.boardSize;
                     foreach (var moveDir in res.directions) {
                         var last = cliсkPos + moveDir;
                         var chFound = false;
@@ -324,10 +299,10 @@ namespace controller {
                 Debug.LogError("ListIsNull");
                 return ControllerErrors.ListIsNull;
             }
-            var boardPos = res.boardTransform.transform.position;
+            var boardPos = boardInfo.boardTransform.transform.position;
             foreach (var pos in moves) {
                 if (attack && pos.Value || !attack && !pos.Value) {
-                    SpawnObject(res.highlightCell, pos.Key, res.storageHighlightCells.transform);
+                    SpawnObject(res.highlightCell, pos.Key, storageHighlightCells.transform);
                 }
             }
 
@@ -335,9 +310,9 @@ namespace controller {
         }
 
         private Vector2Int ConvertToBoardPoint(Vector3 selectedPoint) {
-            var inversePoint = res.boardTransform.InverseTransformPoint(selectedPoint);
-            var pos = res.cellTransform.localPosition;
-            var size = res.cellTransform.localScale;
+            var inversePoint = boardInfo.boardTransform.InverseTransformPoint(selectedPoint);
+            var pos = boardInfo.cellTransform.localPosition;
+            var size = boardInfo.cellTransform.localScale;
             var floatVec = (inversePoint + new Vector3(-pos.x, 0, pos.z)) / size.x;
             var point = new Vector2Int(Mathf.Abs((int)(floatVec.z)), Mathf.Abs((int)floatVec.x));
 
@@ -345,7 +320,7 @@ namespace controller {
         }
 
         public void Load(string path) {
-            if (res.mainMenu.activeSelf) {
+            if (mainMenu.activeSelf) {
                 path = Path.Combine(Application.streamingAssetsPath, path);
             }
             string input;
@@ -367,21 +342,22 @@ namespace controller {
 
             if (int.TryParse(parseRes.rows[parseRes.rows.Count - 1][3], out int result)) {
                 chKind = (ChKind)result;
-                res.InitializeBoard(chKind.ToString());
                 if (chKind.ToString() == "International") {
-                    res.boardTransform8x8.gameObject.SetActive(false);
-                    res.boardTransform10x10.gameObject.SetActive(true);
+                    boardInfo = res.board10x10;
+                    res.board8x8.boardTransform.gameObject.SetActive(false);
+                    res.board10x10.boardTransform.gameObject.SetActive(true);
                 } else {
-                    res.boardTransform8x8.gameObject.SetActive(true);
-                    res.boardTransform10x10.gameObject.SetActive(false);
+                    boardInfo = res.board8x8;
+                    res.board8x8.boardTransform.gameObject.SetActive(true);
+                    res.board10x10.boardTransform.gameObject.SetActive(false);
                 }
             }
 
             foreach (var chObj in map.obj) {
                 Destroy(chObj);
             }
-            map.obj = new GameObject[res.boardSize.x, res.boardSize.y];
-            map.board = new Option<Checker>[res.boardSize.x, res.boardSize.y];
+            map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
+            map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
             for (int i = 0; i < parseRes.rows.Count; i++) {
                 for (int j = 0; j < parseRes.rows[0].Count; j++) {
                     if (parseRes.rows[i][j] == "WhoseMove") {
