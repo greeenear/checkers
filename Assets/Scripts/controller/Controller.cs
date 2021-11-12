@@ -119,7 +119,6 @@ namespace controller {
                     input + ".csv"
                 )
             );
-
             res.saveBut.onClick.AddListener(() => Save(inputFileName));
         }
 
