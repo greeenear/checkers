@@ -3,26 +3,20 @@ using UnityEngine;
 using UnityEngine.UI;
 
 namespace controller {
+    [System.Serializable]
+    public struct BoardInfo {
+        public Transform boardTransform;
+        public Transform cellTransform;
+        public Vector2Int boardSize;
+    }
+
     public class Resources : MonoBehaviour {
-        public GameObject storageHighlightCells;
+        public BoardInfo board8x8;
+        public BoardInfo board10x10;
         public GameObject highlightCell;
         public GameObject whiteChecker;
         public GameObject blackChecker;
-        public Transform boardTransform;
-        public Transform cellTransform;
-        public Vector2Int boardSize = new Vector2Int(8, 8);
-
-        public GameObject mainMenu;
-        public GameObject saveTemplatesStorage;
-        public GameObject loadMenu;
         public GameObject loadTemplate;
-        public InputField saveInputField;
-        public Button saveBut;
-
-        public Transform boardTransform10x10;
-        public Transform cellTransform10x10;
-        public Transform boardTransform8x8;
-        public Transform cellTransform8x8;
 
         public readonly List<Vector2Int> directions = new List<Vector2Int> {
             new Vector2Int(1, 1),
@@ -30,17 +24,5 @@ namespace controller {
             new Vector2Int(1, -1),
             new Vector2Int(-1, -1)
         };
-
-        public void InitializeBoard(string chKind) {
-            if (chKind == "International") {
-                boardTransform = boardTransform10x10;
-                cellTransform = cellTransform10x10;
-                boardSize = new Vector2Int(10,10);
-            } else {
-                boardTransform = boardTransform8x8;
-                cellTransform = cellTransform8x8;
-                boardSize = new Vector2Int(8,8);
-            }
-        }
     }
 }
