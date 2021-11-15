@@ -464,7 +464,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 550}
+  m_SizeDelta: {x: 0, y: 800}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &309149158
 MonoBehaviour:
@@ -966,7 +966,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 500, y: 250}
+  m_SizeDelta: {x: 610, y: 250}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &513098885
 MonoBehaviour:
@@ -987,7 +987,7 @@ MonoBehaviour:
   m_Elasticity: 0.1
   m_Inertia: 1
   m_DecelerationRate: 0.135
-  m_ScrollSensitivity: 10
+  m_ScrollSensitivity: 30
   m_Viewport: {fileID: 1532875882}
   m_HorizontalScrollbar: {fileID: 0}
   m_VerticalScrollbar: {fileID: 64745111}
@@ -2267,6 +2267,11 @@ MonoBehaviour:
   saveTemplatesStorage: {fileID: 309149156}
   saveBut: {fileID: 716069268}
   loadMenu: {fileID: 1160670903}
+  boardImage10x10: {fileID: 471743491836341314, guid: 49b4d745daa504f48bad59ca7be8fe89, type: 3}
+  boardImage8x8: {fileID: 3222907635835207550, guid: e73ae6999571fa246813069e71d63016, type: 3}
+  whiteCheckerImage: {fileID: 7227086002716453466, guid: 564b4074d6a76ee4ea73531a64cb7114, type: 3}
+  blackCheckerImage: {fileID: 1398944857341771647, guid: c9de6b42fca51974d925f8f9f0eff38f, type: 3}
+  emptyCell: {fileID: 2392801059328195261, guid: 0d965bdc4651d424384eef02d3422994, type: 3}
 --- !u!4 &1439324533
 Transform:
   m_ObjectHideFlags: 0
