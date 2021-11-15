@@ -49,6 +49,12 @@ namespace controller {
         public Button saveBut;
         public GameObject loadMenu;
 
+        public GameObject boardImage10x10;
+        public GameObject boardImage8x8;
+        public RawImage whiteCheckerImage;
+        public RawImage blackCheckerImage;
+        public GameObject emptyCell;
+
         private Resources res;
         private BoardInfo boardInfo;
         private Map map;
@@ -449,39 +455,67 @@ namespace controller {
                     saveTemplatesStorage.transform
                 );
 
+                var fstream = File.OpenRead(filename);
+                var bytes = new byte[fstream.Length];
+                fstream.Read(bytes, 0, bytes.Length);
+                string input = System.Text.Encoding.Default.GetString(bytes);
+                var parseRes = CSV.Parse(input);
+
+                var imageBoardPrefab = boardImage10x10;
+                if (parseRes.rows.Count < 10) {
+                    imageBoardPrefab = boardImage8x8;
+                }
+
+                string saveDate = "";
+                string whoseMoveInfo = "";
+                string checkerKindInfo = "";
+
+                var parent = curObj.transform.GetChild(5).transform;
+                var boardGrid = Instantiate(imageBoardPrefab, parent).transform.GetChild(0);
+                foreach (var row in parseRes.rows) {
+                    foreach (var cell in row) {
+                        if (cell == "-") {
+                            Instantiate(emptyCell, boardGrid);
+                        } else if (cell == "0") {
+                            Instantiate(whiteCheckerImage, boardGrid);
+                        } else if (cell == "1") {
+                            Instantiate(blackCheckerImage, boardGrid);
+                        }
+                    }
+                    if (row[0] == "WhoseMove") {
+                        if (int.TryParse(row[1], out int res)) {
+                            whoseMoveInfo += "Move: " + ((Color)res).ToString();
+                        }
+                    }
+                    if (row[2] == "ChKind") {
+                        if (int.TryParse(row[3], out int res)) {
+                            checkerKindInfo += "Checker Kind: " + ((ChKind)res).ToString();
+                        }
+                    }
+                    if (row[4] == "name") {
+                        saveDate += "Save Date: " + row[5].Replace(@"\", "");
+                    }
+                }
+
                 foreach (Transform child in curObj.transform) {
                     if (child.gameObject.TryGetComponent(out Button but)) {
                         if (but.name == "Load") {
                             but.onClick.AddListener(() => Load(filename));
                         } else {
-                            but.onClick.AddListener(() => Save(filename));
+                            but.onClick.AddListener(() => {
+                                    File.Delete(filename);
+                                    Destroy(curObj);
+                                }
+                            );
                         }
                     } else if (child.gameObject.TryGetComponent(out Text text)) {
-                        var fstream = File.OpenRead(filename);
-                        var bytes = new byte[fstream.Length];
-                        fstream.Read(bytes, 0, bytes.Length);
-                        string input = System.Text.Encoding.Default.GetString(bytes);
-
-                        var parseRes = CSV.Parse(input);
-                        string saveDescription = "";
-                        foreach (var row in parseRes.rows) {
-                            if (row[0] == "WhoseMove") {
-                                if (row[1] == "1") {
-                                    saveDescription += "black's move ";
-                                } else if (row[1] == "0") {
-                                    saveDescription += "white's move ";
-                                }
-                            }
-                            if (row[2] == "ChKind") {
-                                if (int.TryParse(row[3], out int res)) {
-                                    saveDescription += ((ChKind)res).ToString();
-                                }
-                            }
-                            if (row[4] == "name") {
-                                saveDescription += " " + row[5];
-                            }
+                        if (text.name == "Date") {
+                            text.text = saveDate;
+                        } else if (text.name == "WhoseMove"){
+                            text.text = whoseMoveInfo;
+                        } else if (text.name == "Kind") {
+                            text.text = checkerKindInfo;
                         }
-                        text.text = saveDescription;
                     }
                 }
             }
@@ -516,7 +550,13 @@ namespace controller {
                             return ControllerErrors.NoSuchColor;
                         }
                         var pos = new Vector2Int(i, j);
-                        map.obj[i, j] = SpawnObject(prefab, pos, boardInfo.boardTransform);
+                        var spawnWorldPos = ConvertToWorldPoint(pos);
+                        map.obj[i, j] = Instantiate(
+                            prefab,
+                            spawnWorldPos,
+                            Quaternion.identity,
+                            boardInfo.boardTransform
+                        );
                     }
                 }
             }
