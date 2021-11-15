@@ -105,9 +105,13 @@ namespace controller {
             map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            var date = DateTime.Now.ToString("yyyy/MM/dd   H.m.ss");
-            var path = Path.Combine(Application.persistentDataPath, date + ".csv");
-            saveBut.onClick.AddListener(() => Save(path));
+            saveBut.onClick.AddListener(() => Save(
+                    Path.Combine(
+                        Application.persistentDataPath,
+                        DateTime.Now.ToString("yyyy/MM/dd   H.m.ss") + ".csv"
+                    )
+                )
+            );
         }
 
         private void Update() {
@@ -308,7 +312,9 @@ namespace controller {
             var boardPos = boardInfo.boardTransform.transform.position;
             foreach (var pos in moves) {
                 if (attack && pos.Value || !attack && !pos.Value) {
-                    SpawnObject(res.highlightCell, pos.Key, storageHighlightCells.transform);
+                    var spawnWorldPos = ConvertToWorldPoint(pos.Key);
+                    var parent = storageHighlightCells.transform;
+                    Instantiate(res.highlightCell, spawnWorldPos, Quaternion.identity, parent);
                 }
             }
 
@@ -573,15 +579,6 @@ namespace controller {
                 child.parent = null;
                 Destroy(child.gameObject);
             }
-        }
-
-        private GameObject SpawnObject(
-            GameObject prefab,
-            Vector2Int spawnPos,
-            Transform parent
-        ) {
-            var spawnWorldPos = ConvertToWorldPoint(spawnPos);
-            return Instantiate(prefab, spawnWorldPos, Quaternion.identity, parent);
         }
 
         public void OpenMenu() {
