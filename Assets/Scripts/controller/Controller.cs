@@ -110,7 +110,7 @@ namespace controller {
             saveBut.onClick.AddListener(() => Save(
                     Path.Combine(
                         Application.persistentDataPath,
-                        DateTime.Now.ToString("yyyy/MM/dd   H.m.ss") + ".csv"
+                        Guid.NewGuid().ToString() + ".save"
                     )
                 )
             );
@@ -435,8 +435,9 @@ namespace controller {
             string output = CSV.Generate(rows);
             try {
                 File.WriteAllText(path, output);
-            } catch (ArgumentNullException) {
+                successfulSaving?.Invoke();
             } catch (Exception err) {
+                unsuccessfulSaving?.Invoke();
                 Debug.LogError(err.ToString());
                 return;
             }
@@ -448,7 +449,7 @@ namespace controller {
         private void FillLoadMenu() {
             string[] allfiles;
             try {
-                allfiles = Directory.GetFiles(Application.persistentDataPath, "*.csv");
+                allfiles = Directory.GetFiles(Application.persistentDataPath, "*.save");
             } catch (Exception err) {
                 Debug.LogError("NoDirectory");
                 Debug.LogError(err.ToString());
