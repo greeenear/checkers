@@ -166,7 +166,13 @@ namespace controller {
                         }
                         allCheckerMoves.Add(pos, checkerMoves);
                     }
+
                 }
+            }
+            if (allCheckerMoves != null && allCheckerMoves.Count == 0) {
+                mainMenu.SetActive(true);
+                this.enabled = false;
+                return;
             }
 
             if (!Input.GetMouseButtonDown(0)) return;
@@ -475,13 +481,24 @@ namespace controller {
                     imageBoardPrefab = boardImage8x8;
                 }
 
-                string saveDate = "";
-                string whoseMoveInfo = "";
+                string saveDate = "Date: " + File.GetLastWriteTime(filename).ToString();
+                var whoseMoveInfo = new Color();
                 string checkerKindInfo = "";
 
                 var parent = curObj.transform.GetChild(5).transform;
                 var boardGrid = Instantiate(imageBoardPrefab, parent).transform.GetChild(0);
                 foreach (var row in parseRes.rows) {
+                    if (row[0] == "WhoseMove") {
+                        if (int.TryParse(row[1], out int res)) {
+                            whoseMoveInfo = ((Color)res);
+                        }
+                    }
+                    if (row[2] == "ChKind") {
+                        if (int.TryParse(row[3], out int res)) {
+                            checkerKindInfo += "Checker Kind: " + ((ChKind)res).ToString();
+                        }
+                        break;
+                    }
                     foreach (var cell in row) {
                         if (cell == "-") {
                             Instantiate(emptyCell, boardGrid);
@@ -490,19 +507,6 @@ namespace controller {
                         } else if (cell == "1") {
                             Instantiate(blackCheckerImage, boardGrid);
                         }
-                    }
-                    if (row[0] == "WhoseMove") {
-                        if (int.TryParse(row[1], out int res)) {
-                            whoseMoveInfo += "Move: " + ((Color)res).ToString();
-                        }
-                    }
-                    if (row[2] == "ChKind") {
-                        if (int.TryParse(row[3], out int res)) {
-                            checkerKindInfo += "Checker Kind: " + ((ChKind)res).ToString();
-                        }
-                    }
-                    if (row[4] == "name") {
-                        saveDate += "Save Date: " + row[5].Replace(@"\", "");
                     }
                 }
 
@@ -520,10 +524,16 @@ namespace controller {
                     } else if (child.gameObject.TryGetComponent(out Text text)) {
                         if (text.name == "Date") {
                             text.text = saveDate;
-                        } else if (text.name == "WhoseMove"){
-                            text.text = whoseMoveInfo;
                         } else if (text.name == "Kind") {
                             text.text = checkerKindInfo;
+                        }
+                    } else if (child.gameObject.TryGetComponent(out RawImage image)) {
+                        if (whoseMoveInfo == Color.White) {
+                            image.texture = whiteCheckerImage.texture;
+                            image.color = whiteCheckerImage.color;
+                        } else if (whoseMoveInfo == Color.Black) {
+                            image.texture = blackCheckerImage.texture;
+                            image.color = blackCheckerImage.color;
                         }
                     }
                 }
