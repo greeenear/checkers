@@ -43,6 +43,8 @@ namespace controller {
     }
 
     public class Controller : MonoBehaviour {
+        public static Action successfulSaving;
+        public static Action unsuccessfulSaving;
         public GameObject storageHighlightCells;
         public GameObject mainMenu;
         public GameObject saveTemplatesStorage;
