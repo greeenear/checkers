@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace controller {
     [System.Serializable]
@@ -16,7 +15,6 @@ namespace controller {
         public GameObject highlightCell;
         public GameObject whiteChecker;
         public GameObject blackChecker;
-        public GameObject loadTemplate;
 
         public readonly List<Vector2Int> directions = new List<Vector2Int> {
             new Vector2Int(1, 1),
