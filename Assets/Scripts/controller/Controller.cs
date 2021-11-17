@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
-using UnityEngine.UI;
 using option;
 
 namespace controller {
@@ -26,7 +25,7 @@ namespace controller {
         King
     }
 
-    public enum Color {
+    public enum ChColor {
         White,
         Black,
         Count
@@ -34,7 +33,7 @@ namespace controller {
 
     public struct Checker {
         public Type type;
-        public Color color;
+        public ChColor color;
     }
 
     public struct Map {
@@ -42,20 +41,20 @@ namespace controller {
         public GameObject[,] obj;
     }
 
-    public class Controller : MonoBehaviour {
-        public static Action successfulSaving;
-        public static Action unsuccessfulSaving;
-        public GameObject storageHighlightCells;
-        public GameObject mainMenu;
-        public GameObject saveTemplatesStorage;
-        public Button saveBut;
-        public GameObject loadMenu;
+    public struct SaveInfo {
+        public string fileName;
+        public string saveDate;
+        public string checkerKind;
+        public ChColor whoseMove;
+        public byte[,] map;
+    }
 
-        public GameObject boardImage10x10;
-        public GameObject boardImage8x8;
-        public RawImage whiteCheckerImage;
-        public RawImage blackCheckerImage;
-        public GameObject emptyCell;
+    public class Controller : MonoBehaviour {
+        public Action successfulSaving;
+        public Action unsuccessfulSaving;
+        public Action changeActiveMainMenu;
+        public Action changeActiveLoadMenu;
+        public GameObject storageHighlightCells;
 
         private Resources res;
         private BoardInfo boardInfo;
@@ -66,7 +65,7 @@ namespace controller {
         private HashSet<Vector2Int> sentenced;
         private Option<Vector2Int> selected;
 
-        private Color whoseMove;
+        private ChColor whoseMove;
 
         private void Awake() {
             res = gameObject.GetComponentInParent<Resources>();
@@ -80,18 +79,8 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
-            if (storageHighlightCells == null) {
-                Debug.LogError("NoStorageHighlightCells");
-                this.enabled = false;
-                return;
-            }
             if (res.highlightCell == null) {
                 Debug.LogError("NoHighlightCells");
-                this.enabled = false;
-                return;
-            }
-            if (loadMenu == null) {
-                Debug.LogError("NoGameMenu");
                 this.enabled = false;
                 return;
             }
@@ -107,13 +96,7 @@ namespace controller {
             map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            saveBut.onClick.AddListener(() => Save(
-                    Path.Combine(
-                        Application.persistentDataPath,
-                        Guid.NewGuid().ToString() + ".save"
-                    )
-                )
-            );
+            this.enabled = false;
         }
 
         private void Update() {
@@ -128,7 +111,7 @@ namespace controller {
                         var curCh = cellOpt.Peel();
 
                         var xDir = 1;
-                        if (curCh.color == Color.White) {
+                        if (curCh.color == ChColor.White) {
                             xDir = -1;
                         }
 
@@ -170,7 +153,7 @@ namespace controller {
                 }
             }
             if (allCheckerMoves != null && allCheckerMoves.Count == 0) {
-                mainMenu.SetActive(true);
+                changeActiveMainMenu?.Invoke();
                 this.enabled = false;
                 return;
             }
@@ -214,7 +197,7 @@ namespace controller {
                 map.obj[cliсkPos.x, cliсkPos.y] = map.obj[curPos.x, curPos.y];
 
                 var edgeBoard = 0;
-                if (curCh.color == Color.Black) {
+                if (curCh.color == ChColor.Black) {
                     edgeBoard = boardInfo.boardSize.x - 1;
                 }
 
@@ -241,7 +224,7 @@ namespace controller {
                 var anySentenced = sentenced.Count != 0;
                 if (anySentenced && secondMove) {
                     var xDir = 1;
-                    if (curCh.color == Color.White) {
+                    if (curCh.color == ChColor.White) {
                         xDir = -1;
                     }
 
@@ -297,7 +280,7 @@ namespace controller {
                         Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
                     }
 
-                    whoseMove = (Color)((int)(whoseMove + 1) % (int)Color.Count);
+                    whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
                     selected = Option<Vector2Int>.None();
                     sentenced.Clear();
                     allCheckerMoves = null;
@@ -340,7 +323,7 @@ namespace controller {
         }
 
         public void Load(string path) {
-            if (mainMenu.activeSelf) {
+            if (!path.Contains(Application.persistentDataPath)) {
                 path = Path.Combine(Application.streamingAssetsPath, path);
             }
             string input;
@@ -362,7 +345,7 @@ namespace controller {
 
             if (int.TryParse(parseRes.rows[parseRes.rows.Count - 1][3], out int result)) {
                 chKind = (ChKind)result;
-                if (chKind.ToString() == "International") {
+                if (chKind == ChKind.International) {
                     boardInfo = res.board10x10;
                     res.board8x8.boardTransform.gameObject.SetActive(false);
                     res.board10x10.boardTransform.gameObject.SetActive(true);
@@ -382,14 +365,14 @@ namespace controller {
                 for (int j = 0; j < parseRes.rows[0].Count; j++) {
                     if (parseRes.rows[i][j] == "WhoseMove") {
                         if (int.TryParse(parseRes.rows[i][j + 1], out result)) {
-                            whoseMove = (Color)result;
+                            whoseMove = (ChColor)result;
                         }
                         break;
                     }
-                    var color = Color.White;
+                    var color = ChColor.White;
                     var type = Type.Checker;
                     if (int.TryParse(parseRes.rows[i][j], out int res)) {
-                        if (res % 2 != 0) color = Color.Black;
+                        if (res % 2 != 0) color = ChColor.Black;
                         if (res > 1) type = Type.King;
                         var checker = new Checker { color =color, type = type };
                         map.board[i, j] = Option<Checker>.Some(checker);
@@ -403,8 +386,7 @@ namespace controller {
             allCheckerMoves = null;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
-            loadMenu.SetActive(false);
-            enabled = true;
+            this.enabled = true;
         }
 
         public void Save(string path) {
@@ -419,16 +401,15 @@ namespace controller {
 
                     if (map.board[i, j].IsSome()) {
                         var checker = map.board[i, j].Peel();
-                        if (checker.color == Color.Black) {
+                        if (checker.color == ChColor.Black) {
                             rows[i].Add("1");
-                        } else if (checker.color == Color.White) {
+                        } else if (checker.color == ChColor.White) {
                             rows[i].Add("0");
                         }
                     }
                 }
             }
-            rows.Add(
-                new List<string>() {
+            rows.Add(new List<string>() {
                     "WhoseMove",
                     ((int)whoseMove).ToString(),
                     "ChKind",
@@ -448,96 +429,62 @@ namespace controller {
                 return;
             }
 
-            loadMenu.SetActive(false);
+            changeActiveLoadMenu?.Invoke();
             this.enabled = true;
         }
 
-        private void FillLoadMenu() {
+        public List<SaveInfo> GetSavesInfo() {
+            var saveInfos = new List<SaveInfo>();
             string[] allfiles;
             try {
                 allfiles = Directory.GetFiles(Application.persistentDataPath, "*.save");
             } catch (Exception err) {
                 Debug.LogError("NoDirectory");
                 Debug.LogError(err.ToString());
-                return;
+                return null;
             }
+            foreach (string fileName in allfiles) {
+                var saveInfo = new SaveInfo();
 
-            foreach (string filename in allfiles) {
-                var curObj = Instantiate(
-                    res.loadTemplate,
-                    new Vector3(),
-                    Quaternion.identity,
-                    saveTemplatesStorage.transform
-                );
-
-                var fstream = File.OpenRead(filename);
+                var fstream = File.OpenRead(fileName);
                 var bytes = new byte[fstream.Length];
                 fstream.Read(bytes, 0, bytes.Length);
                 string input = System.Text.Encoding.Default.GetString(bytes);
                 var parseRes = CSV.Parse(input);
 
-                var imageBoardPrefab = boardImage10x10;
+                saveInfo.fileName = fileName;
+                saveInfo.saveDate = "Date: " + File.GetLastWriteTime(fileName).ToString();
+
+                saveInfo.map = new byte[10, 10];
                 if (parseRes.rows.Count < 10) {
-                    imageBoardPrefab = boardImage8x8;
+                    saveInfo.map = new byte[8, 8];
                 }
-
-                string saveDate = "Date: " + File.GetLastWriteTime(filename).ToString();
-                var whoseMoveInfo = new Color();
-                string checkerKindInfo = "";
-
-                var parent = curObj.transform.GetChild(5).transform;
-                var boardGrid = Instantiate(imageBoardPrefab, parent).transform.GetChild(0);
-                foreach (var row in parseRes.rows) {
-                    if (row[0] == "WhoseMove") {
-                        if (int.TryParse(row[1], out int res)) {
-                            whoseMoveInfo = ((Color)res);
+                for (int i = 0; i < parseRes.rows.Count; i++) {
+                    if (parseRes.rows[i][0] == "WhoseMove") {
+                        if (int.TryParse(parseRes.rows[i][1], out int res)) {
+                            saveInfo.whoseMove = ((ChColor)res);
                         }
                     }
-                    if (row[2] == "ChKind") {
-                        if (int.TryParse(row[3], out int res)) {
-                            checkerKindInfo += "Checker Kind: " + ((ChKind)res).ToString();
+                    if (parseRes.rows[i][2] == "ChKind") {
+                        if (int.TryParse(parseRes.rows[i][3], out int res)) {
+                            saveInfo.checkerKind += "Checker Kind: " + ((ChKind)res).ToString();
                         }
                         break;
                     }
-                    foreach (var cell in row) {
-                        if (cell == "-") {
-                            Instantiate(emptyCell, boardGrid);
-                        } else if (cell == "0") {
-                            Instantiate(whiteCheckerImage, boardGrid);
-                        } else if (cell == "1") {
-                            Instantiate(blackCheckerImage, boardGrid);
+                    for (int j = 0; j < parseRes.rows[i].Count; j++) {
+                        if (parseRes.rows[i][j] == "-") {
+                            saveInfo.map[i,j] = 0;
+                        } else if (parseRes.rows[i][j] == "0") {
+                            saveInfo.map[i,j] = 1;
+                        } else if (parseRes.rows[i][j] == "1") {
+                            saveInfo.map[i,j] = 2;
                         }
                     }
                 }
-
-                foreach (Transform child in curObj.transform) {
-                    if (child.gameObject.TryGetComponent(out Button but)) {
-                        if (but.name == "Load") {
-                            but.onClick.AddListener(() => Load(filename));
-                        } else {
-                            but.onClick.AddListener(() => {
-                                    File.Delete(filename);
-                                    Destroy(curObj);
-                                }
-                            );
-                        }
-                    } else if (child.gameObject.TryGetComponent(out Text text)) {
-                        if (text.name == "Date") {
-                            text.text = saveDate;
-                        } else if (text.name == "Kind") {
-                            text.text = checkerKindInfo;
-                        }
-                    } else if (child.gameObject.TryGetComponent(out RawImage image)) {
-                        if (whoseMoveInfo == Color.White) {
-                            image.texture = whiteCheckerImage.texture;
-                            image.color = whiteCheckerImage.color;
-                        } else if (whoseMoveInfo == Color.Black) {
-                            image.texture = blackCheckerImage.texture;
-                            image.color = blackCheckerImage.color;
-                        }
-                    }
-                }
+                saveInfos.Add(saveInfo);
             }
+
+            return saveInfos;
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
@@ -560,9 +507,9 @@ namespace controller {
                     if (board[i, j].IsSome()) {
                         var checker = board[i, j].Peel();
                         GameObject prefab;
-                        if (checker.color == Color.White) {
+                        if (checker.color == ChColor.White) {
                             prefab = res.whiteChecker;
-                        } else if (checker.color == Color.Black) {
+                        } else if (checker.color == ChColor.Black) {
                             prefab = res.blackChecker;
                         } else {
                             Debug.LogError("NoSuchColor");
@@ -591,21 +538,6 @@ namespace controller {
             foreach (Transform child in sentencedHighlight) {
                 child.parent = null;
                 Destroy(child.gameObject);
-            }
-        }
-
-        public void OpenMenu() {
-            foreach (Transform child in saveTemplatesStorage.transform) {
-                Destroy(child.gameObject);
-            }
-            FillLoadMenu();
-
-            if (loadMenu.activeSelf == true) {
-                loadMenu.SetActive(false);
-                this.enabled = true;
-            } else {
-                loadMenu.SetActive(true);
-                this.enabled = false;
             }
         }
 
