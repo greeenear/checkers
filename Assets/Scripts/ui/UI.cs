@@ -20,8 +20,7 @@ namespace ui {
         public RawImage whiteCheckerImage;
         public RawImage blackCheckerImage;
         public GameObject emptyCell;
-        public GameObject saveTemplatesStorage;
-        public RectTransform saveTemplatesStorage2;
+        public RectTransform saveTemplatesStorage;
 
         private void Start() {
             gameController.successfulSaving += SuccessfulSaving;
@@ -63,18 +62,18 @@ namespace ui {
         }
 
         public void FillLoadMenu() {
-            foreach (Transform child in saveTemplatesStorage2.transform) {
+            foreach (Transform child in saveTemplatesStorage.transform) {
                 Destroy(child.gameObject);
             }
             var saves = gameController.GetSavesInfo();
-            saveTemplatesStorage2.sizeDelta = new Vector2(0, 130 * saves.Count);
+            saveTemplatesStorage.sizeDelta = new Vector2(0, 130 * saves.Count);
 
             foreach (var save in saves) {
                 var curObj = Instantiate(
                     loadTemplate,
                     Vector3.zero,
                     Quaternion.identity,
-                    saveTemplatesStorage2.transform
+                    saveTemplatesStorage.transform
                 );
                 var imageBoardPrefab = boardImage10x10;
                 if (save.map.GetLength(0) < 10) {
@@ -126,5 +125,4 @@ namespace ui {
             }
         }
     }
-
 }

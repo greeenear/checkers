@@ -312,15 +312,6 @@ namespace controller {
             return ControllerErrors.None;
         }
 
-        private Vector2Int ConvertToBoardPoint(Vector3 selectedPoint) {
-            var inversePoint = boardInfo.boardTransform.InverseTransformPoint(selectedPoint);
-            var pos = boardInfo.cellTransform.localPosition;
-            var size = boardInfo.cellTransform.localScale;
-            var floatVec = (inversePoint + new Vector3(-pos.x, 0, pos.z)) / size.x;
-            var point = new Vector2Int(Mathf.Abs((int)(floatVec.z)), Mathf.Abs((int)floatVec.x));
-
-            return point;
-        }
 
         public void Load(string path) {
             if (!path.Contains(Application.persistentDataPath)) {
@@ -492,6 +483,16 @@ namespace controller {
             var floatVec = new Vector3(boardPoint.x, 0.1f, boardPoint.y);
             var cellLoc = boardInfo.cellTransform.localPosition;
             var point = size.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + size / 2f;
+
+            return point;
+        }
+
+        private Vector2Int ConvertToBoardPoint(Vector3 selectedPoint) {
+            var inversePoint = boardInfo.boardTransform.InverseTransformPoint(selectedPoint);
+            var pos = boardInfo.cellTransform.localPosition;
+            var size = boardInfo.cellTransform.localScale;
+            var floatVec = (inversePoint + new Vector3(-pos.x, 0, pos.z)) / size.x;
+            var point = new Vector2Int(Mathf.Abs((int)(floatVec.z)), Mathf.Abs((int)floatVec.x));
 
             return point;
         }

@@ -2446,8 +2446,7 @@ MonoBehaviour:
   whiteCheckerImage: {fileID: 7227086002716453466, guid: 564b4074d6a76ee4ea73531a64cb7114, type: 3}
   blackCheckerImage: {fileID: 1398944857341771647, guid: c9de6b42fca51974d925f8f9f0eff38f, type: 3}
   emptyCell: {fileID: 2392801059328195261, guid: 0d965bdc4651d424384eef02d3422994, type: 3}
-  saveTemplatesStorage: {fileID: 309149156}
-  saveTemplatesStorage2: {fileID: 309149157}
+  saveTemplatesStorage: {fileID: 309149157}
 --- !u!1 &1446244321
 GameObject:
   m_ObjectHideFlags: 0
