@@ -31,6 +31,11 @@ namespace controller {
         Count
     }
 
+    public enum BoadSize {
+        BigBoard,
+        SmallBoard
+    }
+
     public struct Checker {
         public Type type;
         public ChColor color;
@@ -43,17 +48,17 @@ namespace controller {
 
     public struct SaveInfo {
         public string fileName;
-        public string saveDate;
-        public string checkerKind;
+        public DateTime saveDate;
+        public ChKind checkerKind;
         public ChColor whoseMove;
-        public byte[,] map;
+        public BoadSize boadSize;
+        public Option<Checker>[,] board;
     }
 
     public class Controller : MonoBehaviour {
         public Action successfulSaving;
         public Action unsuccessfulSaving;
         public Action changeActiveMainMenu;
-        public Action changeActiveLoadMenu;
         public GameObject storageHighlightCells;
 
         private Resources res;
@@ -382,7 +387,6 @@ namespace controller {
 
         public void Save(string path) {
             var rows = new List<List<string>>();
-            var fileName = path.Replace(Application.persistentDataPath, "").Replace(".csv", "");
             for (int i = 0; i < map.board.GetLength(1); i++) {
                 rows.Add(new List<string>());
                 for (int j = 0; j < map.board.GetLength(0); j++) {
@@ -404,9 +408,7 @@ namespace controller {
                     "WhoseMove",
                     ((int)whoseMove).ToString(),
                     "ChKind",
-                    ((int)chKind).ToString(),
-                    "name",
-                    fileName
+                    ((int)chKind).ToString()
                 }
             );
 
@@ -419,8 +421,6 @@ namespace controller {
                 Debug.LogError(err.ToString());
                 return;
             }
-
-            changeActiveLoadMenu?.Invoke();
             this.enabled = true;
         }
 
@@ -444,11 +444,13 @@ namespace controller {
                 var parseRes = CSV.Parse(input);
 
                 saveInfo.fileName = fileName;
-                saveInfo.saveDate = "Date: " + File.GetLastWriteTime(fileName).ToString();
+                saveInfo.saveDate = File.GetLastWriteTime(fileName);
 
-                saveInfo.map = new byte[10, 10];
+                saveInfo.board = new Option<Checker>[10, 10];
+                saveInfo.boadSize = BoadSize.BigBoard;
                 if (parseRes.rows.Count < 10) {
-                    saveInfo.map = new byte[8, 8];
+                    saveInfo.boadSize = BoadSize.SmallBoard;
+                    saveInfo.board = new Option<Checker>[8, 8];
                 }
                 for (int i = 0; i < parseRes.rows.Count; i++) {
                     if (parseRes.rows[i][0] == "WhoseMove") {
@@ -458,18 +460,21 @@ namespace controller {
                     }
                     if (parseRes.rows[i][2] == "ChKind") {
                         if (int.TryParse(parseRes.rows[i][3], out int res)) {
-                            saveInfo.checkerKind += "Checker Kind: " + ((ChKind)res).ToString();
+                            saveInfo.checkerKind = (ChKind)res;
                         }
                         break;
                     }
+                    var color = new ChColor();
                     for (int j = 0; j < parseRes.rows[i].Count; j++) {
                         if (parseRes.rows[i][j] == "-") {
-                            saveInfo.map[i,j] = 0;
+                            saveInfo.board[i,j] = Option<Checker>.None();
                         } else if (parseRes.rows[i][j] == "0") {
-                            saveInfo.map[i,j] = 1;
+                            color = ChColor.White;
                         } else if (parseRes.rows[i][j] == "1") {
-                            saveInfo.map[i,j] = 2;
+                            color = ChColor.Black;
                         }
+                        var checker = new Checker { type = Type.Checker, color = color };
+                        saveInfo.board[i,j] = Option<Checker>.Some(checker);
                     }
                 }
                 saveInfos.Add(saveInfo);

@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using System.Threading.Tasks;
 using System;
 using System.IO;
+using option;
 
 namespace ui {
     public class UI : MonoBehaviour {
@@ -11,8 +12,6 @@ namespace ui {
         public RawImage successfulSaving;
         public Button saveBut;
         public Text unsuccessfulSaving;
-        public GameObject mainMenu;
-        public GameObject loadMenu;
 
         public GameObject loadTemplate;
         public GameObject boardImage10x10;
@@ -25,8 +24,6 @@ namespace ui {
         private void Start() {
             gameController.successfulSaving += SuccessfulSaving;
             gameController.unsuccessfulSaving += UnsuccessfulSaving;
-            gameController.changeActiveMainMenu += ChangeActiveMainMenu;
-            gameController.changeActiveLoadMenu += ChangeActiveLoadMenu;
 
             saveBut.onClick.AddListener(() => gameController.Save(
                     Path.Combine(
@@ -53,14 +50,6 @@ namespace ui {
             await Task.Delay(TimeSpan.FromSeconds(waitingTime));
         }
 
-        private void ChangeActiveMainMenu() {
-            mainMenu.SetActive(!mainMenu.activeSelf);
-        }
-
-        public void ChangeActiveLoadMenu() {
-            loadMenu.SetActive(!loadMenu.activeSelf);
-        }
-
         public void FillLoadMenu() {
             foreach (Transform child in saveTemplatesStorage.transform) {
                 Destroy(child.gameObject);
@@ -76,19 +65,22 @@ namespace ui {
                     saveTemplatesStorage.transform
                 );
                 var imageBoardPrefab = boardImage10x10;
-                if (save.map.GetLength(0) < 10) {
+                if (save.boadSize == BoadSize.SmallBoard) {
                     imageBoardPrefab = boardImage8x8;
                 }
 
                 var parent = curObj.transform.GetChild(5).transform;
                 var boardGrid = Instantiate(imageBoardPrefab, parent).transform.GetChild(0);
-                for (int i = 0; i < save.map.GetLength(1); i++) {
-                    for (int j = 0; j < save.map.GetLength(0); j++) {
-                        if (save.map[i, j] == 0) {
+                for (int i = 0; i < save.board.GetLength(1); i++) {
+                    for (int j = 0; j < save.board.GetLength(0); j++) {
+                        if (save.board[i, j].IsNone()) {
                             Instantiate(emptyCell, boardGrid);
-                        } else if (save.map[i, j] == 1) {
+                            continue;
+                        }
+                        var checker = save.board[i, j].Peel();
+                        if (checker.color == ChColor.White) {
                             Instantiate(whiteCheckerImage, boardGrid);
-                        } else if (save.map[i, j] == 2) {
+                        } else if (checker.color == ChColor.Black) {
                             Instantiate(blackCheckerImage, boardGrid);
                         }
                     }
@@ -98,7 +90,6 @@ namespace ui {
                     if (child.gameObject.TryGetComponent(out Button but)) {
                         if (but.name == "Load") {
                             but.onClick.AddListener(() => gameController.Load(save.fileName));
-                            but.onClick.AddListener(() => ChangeActiveLoadMenu());
                         } else {
                             but.onClick.AddListener(() => {
                                     File.Delete(save.fileName);
@@ -108,9 +99,10 @@ namespace ui {
                         }
                     } else if (child.gameObject.TryGetComponent(out Text text)) {
                         if (text.name == "Date") {
-                            text.text = save.saveDate;
+                            var parseDate = save.saveDate.ToString("dd.MM.yyyy HH:mm:ss");
+                            text.text =  "Date: " + parseDate;
                         } else if (text.name == "Kind") {
-                            text.text = save.checkerKind;
+                            text.text = "Checker Kind: " + save.checkerKind.ToString();
                         }
                     } else if (child.gameObject.TryGetComponent(out RawImage image)) {
                         if (save.whoseMove == controller.ChColor.White) {
