@@ -467,7 +467,7 @@ namespace controller {
                     var color = new ChColor();
                     for (int j = 0; j < parseRes.rows[i].Count; j++) {
                         if (parseRes.rows[i][j] == "-") {
-                            saveInfo.board[i,j] = Option<Checker>.None();
+                            continue;
                         } else if (parseRes.rows[i][j] == "0") {
                             color = ChColor.White;
                         } else if (parseRes.rows[i][j] == "1") {
