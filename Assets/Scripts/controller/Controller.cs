@@ -58,7 +58,7 @@ namespace controller {
     public class Controller : MonoBehaviour {
         public Action successfulSaving;
         public Action unsuccessfulSaving;
-        public Action changeActiveMainMenu;
+        public Action gameOver;
         public GameObject storageHighlightCells;
 
         private Resources res;
@@ -158,7 +158,7 @@ namespace controller {
                 }
             }
             if (allCheckerMoves != null && allCheckerMoves.Count == 0) {
-                changeActiveMainMenu?.Invoke();
+                gameOver?.Invoke();
                 this.enabled = false;
                 return;
             }
@@ -383,6 +383,13 @@ namespace controller {
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
             this.enabled = true;
+        }
+
+        public string GenerateSavePath() {
+            return Path.Combine(
+                Application.persistentDataPath,
+                Guid.NewGuid().ToString() + ".save"
+            );
         }
 
         public void Save(string path) {

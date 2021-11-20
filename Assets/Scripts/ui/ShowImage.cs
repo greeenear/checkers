@@ -7,7 +7,7 @@ namespace ui {
         public GameObject image;
         public DelayTimer timer;
 
-        private async void SuccessfulSaving() {
+        public async void SuccessfulSaving() {
             image.gameObject.SetActive(true);
             await timer.Timer(2);
             image.gameObject.SetActive(false);

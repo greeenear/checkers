@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -1181,9 +1181,21 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 1
         m_CallState: 2
-      - m_Target: {fileID: 1439324534}
-        m_TargetAssemblyTypeName: ui.UI, ui
-        m_MethodName: FillLoadMenu
+      - m_Target: {fileID: 1040523410}
+        m_TargetAssemblyTypeName: ui.RecreateLoadPanels, Assembly-CSharp
+        m_MethodName: DestroyOldPanels
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 1040523410}
+        m_TargetAssemblyTypeName: ui.RecreateLoadPanels, Assembly-CSharp
+        m_MethodName: InstantiateNewPanels
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1498,6 +1510,31 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1035263046}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1040523408 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6743891330563563494, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+  m_PrefabInstance: {fileID: 6743891330268586498}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1040523410
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040523408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6dfe3f99b0b9a774a87b44373ddf20ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gameController: {fileID: 1439324532}
+  savePanelsStorage: {fileID: 309149157}
+  loadPanel: {fileID: 4044636460362526868, guid: bcef19fdc9acfe648846bcbe8d47b3be, type: 3}
+  boardImage10x10: {fileID: 471743491836341314, guid: 49b4d745daa504f48bad59ca7be8fe89, type: 3}
+  boardImage8x8: {fileID: 3222907635835207550, guid: e73ae6999571fa246813069e71d63016, type: 3}
+  whiteCheckerImage: {fileID: 7227086002716453466, guid: 564b4074d6a76ee4ea73531a64cb7114, type: 3}
+  blackCheckerImage: {fileID: 1398944857341771647, guid: c9de6b42fca51974d925f8f9f0eff38f, type: 3}
+  emptyCell: {fileID: 2392801059328195261, guid: 0d965bdc4651d424384eef02d3422994, type: 3}
 --- !u!1 &1111596072
 GameObject:
   m_ObjectHideFlags: 0
@@ -1702,20 +1739,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 437a5bf397e47854b93e4c5709b6cb25, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &1160670909
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1160670903}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b1389c48f5fb82469c6cb8972aa027f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  changeActive: {fileID: 1160670908}
-  loadTemplate: {fileID: 4391123521049363094, guid: bcef19fdc9acfe648846bcbe8d47b3be, type: 3}
 --- !u!1 &1286232616
 GameObject:
   m_ObjectHideFlags: 0
@@ -1905,7 +1928,7 @@ MonoBehaviour:
   successfulSaving: {fileID: 1565006151}
   saveBut: {fileID: 716069268}
   unsuccessfulSaving: {fileID: 2140328559}
-  loadTemplate: {fileID: 0}
+  loadTemplate: {fileID: 4044636460362526871, guid: bcef19fdc9acfe648846bcbe8d47b3be, type: 3}
   boardImage10x10: {fileID: 471743491836341314, guid: 49b4d745daa504f48bad59ca7be8fe89, type: 3}
   boardImage8x8: {fileID: 3222907635835207550, guid: e73ae6999571fa246813069e71d63016, type: 3}
   whiteCheckerImage: {fileID: 7227086002716453466, guid: 564b4074d6a76ee4ea73531a64cb7114, type: 3}

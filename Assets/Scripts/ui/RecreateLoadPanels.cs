@@ -9,6 +9,7 @@ using System.IO;
 namespace ui {
     public class RecreateLoadPanels : MonoBehaviour {
         public Controller gameController;
+        public ChangeActive changeActiveLoad;
         public RectTransform savePanelsStorage;
         public RectTransform loadPanel;
         public GameObject boardImage10x10;
@@ -61,6 +62,7 @@ namespace ui {
                     if (child.gameObject.TryGetComponent(out Button but)) {
                         if (but.name == "Load") {
                             but.onClick.AddListener(() => gameController.Load(save.fileName));
+                            but.onClick.AddListener(() => changeActiveLoad.ChangeActiveObject());
                         } else {
                             but.onClick.AddListener(() => {
                                     File.Delete(save.fileName);
