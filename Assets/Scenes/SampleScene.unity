@@ -1195,7 +1195,7 @@ MonoBehaviour:
         m_CallState: 2
       - m_Target: {fileID: 1040523410}
         m_TargetAssemblyTypeName: ui.RecreateLoadPanels, Assembly-CSharp
-        m_MethodName: InstantiateNewPanels
+        m_MethodName: InstantiateLoadPanels
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1528,13 +1528,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gameController: {fileID: 1439324532}
+  changeActiveLoad: {fileID: 1160670908}
   savePanelsStorage: {fileID: 309149157}
-  loadPanel: {fileID: 4044636460362526868, guid: bcef19fdc9acfe648846bcbe8d47b3be, type: 3}
-  boardImage10x10: {fileID: 471743491836341314, guid: 49b4d745daa504f48bad59ca7be8fe89, type: 3}
-  boardImage8x8: {fileID: 3222907635835207550, guid: e73ae6999571fa246813069e71d63016, type: 3}
-  whiteCheckerImage: {fileID: 7227086002716453466, guid: 564b4074d6a76ee4ea73531a64cb7114, type: 3}
-  blackCheckerImage: {fileID: 1398944857341771647, guid: c9de6b42fca51974d925f8f9f0eff38f, type: 3}
-  emptyCell: {fileID: 2392801059328195261, guid: 0d965bdc4651d424384eef02d3422994, type: 3}
+  res: {fileID: 1439324531}
 --- !u!1 &1111596072
 GameObject:
   m_ObjectHideFlags: 0
@@ -1547,6 +1543,7 @@ GameObject:
   - component: {fileID: 1111596075}
   - component: {fileID: 1111596074}
   - component: {fileID: 1111596073}
+  - component: {fileID: 1111596077}
   m_Layer: 5
   m_Name: UI
   m_TagString: Untagged
@@ -1639,6 +1636,23 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &1111596077
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1111596072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51c2cbe4cf0eb0d42af66f2a6b544477, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  controller: {fileID: 1439324532}
+  successfulSaving: {fileID: 1565006154}
+  changeActiveMainMenu: {fileID: 630819411}
+  changeActiveBackMainMenu: {fileID: 2021738977}
+  saveBut: {fileID: 716069268}
 --- !u!1 &1124325905
 GameObject:
   m_ObjectHideFlags: 0
@@ -1751,6 +1765,7 @@ GameObject:
   - component: {fileID: 1286232620}
   - component: {fileID: 1286232619}
   - component: {fileID: 1286232618}
+  - component: {fileID: 1286232621}
   m_Layer: 5
   m_Name: menu
   m_TagString: Untagged
@@ -1840,6 +1855,18 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!114 &1286232621
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1286232616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 437a5bf397e47854b93e4c5709b6cb25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1439324530
 GameObject:
   m_ObjectHideFlags: 0
@@ -1851,7 +1878,6 @@ GameObject:
   - component: {fileID: 1439324533}
   - component: {fileID: 1439324532}
   - component: {fileID: 1439324531}
-  - component: {fileID: 1439324534}
   m_Layer: 0
   m_Name: board
   m_TagString: Untagged
@@ -1882,6 +1908,12 @@ MonoBehaviour:
   highlightCell: {fileID: 2348330142078378444, guid: be7b1bda592d7eb4e813375fb462651b, type: 3}
   whiteChecker: {fileID: 1377750560355865683, guid: 526cc4e6732b8a54690623b7cb6f82a9, type: 3}
   blackChecker: {fileID: 4330666978583885466, guid: b7e4d9b4519e15a49a36af443d91f0df, type: 3}
+  loadPanel: {fileID: 4044636460362526868, guid: bcef19fdc9acfe648846bcbe8d47b3be, type: 3}
+  boardImage10x10: {fileID: 471743491836341314, guid: 49b4d745daa504f48bad59ca7be8fe89, type: 3}
+  boardImage8x8: {fileID: 3222907635835207550, guid: e73ae6999571fa246813069e71d63016, type: 3}
+  whiteCheckerImage: {fileID: 7227086002716453466, guid: 564b4074d6a76ee4ea73531a64cb7114, type: 3}
+  blackCheckerImage: {fileID: 1398944857341771647, guid: c9de6b42fca51974d925f8f9f0eff38f, type: 3}
+  emptyCell: {fileID: 2392801059328195261, guid: 0d965bdc4651d424384eef02d3422994, type: 3}
 --- !u!114 &1439324532
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1912,29 +1944,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1439324534
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1439324530}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 51c2cbe4cf0eb0d42af66f2a6b544477, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gameController: {fileID: 1439324532}
-  successfulSaving: {fileID: 1565006151}
-  saveBut: {fileID: 716069268}
-  unsuccessfulSaving: {fileID: 2140328559}
-  loadTemplate: {fileID: 4044636460362526871, guid: bcef19fdc9acfe648846bcbe8d47b3be, type: 3}
-  boardImage10x10: {fileID: 471743491836341314, guid: 49b4d745daa504f48bad59ca7be8fe89, type: 3}
-  boardImage8x8: {fileID: 3222907635835207550, guid: e73ae6999571fa246813069e71d63016, type: 3}
-  whiteCheckerImage: {fileID: 7227086002716453466, guid: 564b4074d6a76ee4ea73531a64cb7114, type: 3}
-  blackCheckerImage: {fileID: 1398944857341771647, guid: c9de6b42fca51974d925f8f9f0eff38f, type: 3}
-  emptyCell: {fileID: 2392801059328195261, guid: 0d965bdc4651d424384eef02d3422994, type: 3}
-  saveTemplatesStorage: {fileID: 309149157}
 --- !u!1 &1446244321
 GameObject:
   m_ObjectHideFlags: 0
@@ -2794,6 +2803,7 @@ GameObject:
   - component: {fileID: 2021738976}
   - component: {fileID: 2021738975}
   - component: {fileID: 2021738974}
+  - component: {fileID: 2021738977}
   m_Layer: 5
   m_Name: Back to the game
   m_TagString: Untagged
@@ -2951,6 +2961,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2021738972}
   m_CullTransparentMesh: 1
+--- !u!114 &2021738977
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2021738972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 437a5bf397e47854b93e4c5709b6cb25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2029429429
 GameObject:
   m_ObjectHideFlags: 0
@@ -3317,6 +3339,34 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 1111596076}
     m_Modifications:
+    - target: {fileID: 6743891329636416406, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6743891329636416406, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6743891329636416406, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_Target
+      value: 
+      objectReference: {fileID: 1565006154}
+    - target: {fileID: 6743891329636416406, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6743891329636416406, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_MethodName
+      value: SuccessfulSaving
+      objectReference: {fileID: 0}
+    - target: {fileID: 6743891329636416406, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_TargetAssemblyTypeName
+      value: ui.ShowImage, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 6743891329636416406, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
     - target: {fileID: 6743891330563563495, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0.000030200534

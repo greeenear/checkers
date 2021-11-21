@@ -8,9 +8,9 @@ namespace ui {
         public DelayTimer timer;
 
         public async void SuccessfulSaving() {
-            image.gameObject.SetActive(true);
+            image.SetActive(true);
             await timer.Timer(2);
-            image.gameObject.SetActive(false);
+            image.SetActive(false);
         }
     }
 }
