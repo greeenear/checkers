@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace ui {
-    public class ChangeActive : MonoBehaviour {
+    public class ToggleActive : MonoBehaviour {
         public void ChangeActiveObject() {
             gameObject.SetActive(!gameObject.activeSelf);
         }

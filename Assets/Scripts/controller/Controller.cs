@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using option;
+using UnityEngine.Events;
 
 namespace controller {
     public enum ControllerErrors {
@@ -56,9 +57,9 @@ namespace controller {
     }
 
     public class Controller : MonoBehaviour {
-        public Action successfulSaving;
-        public Action unsuccessfulSaving;
-        public Action gameOver;
+        public UnityEvent gameOver;
+        public UnityEvent unsuccessfulSaving;
+        public UnityEvent successfulSaving;
         public GameObject storageHighlightCells;
 
         private Resources res;

@@ -1,14 +1,14 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace ui {
     public class ShowObject : MonoBehaviour {
-        public DelayTimer timer;
+        public int waitingTime;
 
-        public async void SuccessfulSaving() {
+        public async void Show() {
             gameObject.SetActive(true);
-            await timer.Timer(2);
+            await Task.Delay(TimeSpan.FromSeconds(waitingTime));
             gameObject.SetActive(false);
         }
     }
