@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace ui {
-    public class ShowImage : MonoBehaviour {
-        public GameObject image;
+    public class ShowObject : MonoBehaviour {
         public DelayTimer timer;
 
         public async void SuccessfulSaving() {
-            image.SetActive(true);
+            gameObject.SetActive(true);
             await timer.Timer(2);
-            image.SetActive(false);
+            gameObject.SetActive(false);
         }
     }
 }

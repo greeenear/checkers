@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace ui {
     public class UI : MonoBehaviour {
         public Controller controller;
-        public ShowImage successfulSaving;
+        public ShowObject successfulSaving;
         public ChangeActive changeActiveMainMenu;
         public ChangeActive changeActiveBackMainMenu;
         public Button saveBut;
