@@ -57,9 +57,11 @@ namespace controller {
     }
 
     public class Controller : MonoBehaviour {
-        public UnityEvent gameOver;
-        public UnityEvent unsuccessfulSaving;
-        public UnityEvent successfulSaving;
+        public UnityEvent onGameOver;
+        public UnityEvent onUnsuccessfulSaving;
+        public UnityEvent onSuccessfulSaving;
+        public event Action<UnityAction> onStartGame;
+
         public GameObject storageHighlightCells;
 
         private Resources res;
@@ -95,14 +97,14 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
-        }
-
-        private void Start() {
             boardInfo = res.board8x8;
             map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-            this.enabled = false;
+        }
+
+        private void Start() {
+            onStartGame?.Invoke(() => Save(GenerateSavePath()));
         }
 
         private void Update() {
@@ -159,7 +161,7 @@ namespace controller {
                 }
             }
             if (allCheckerMoves != null && allCheckerMoves.Count == 0) {
-                gameOver?.Invoke();
+                onGameOver?.Invoke();
                 this.enabled = false;
                 return;
             }
@@ -423,9 +425,9 @@ namespace controller {
             string output = CSV.Generate(rows);
             try {
                 File.WriteAllText(path, output);
-                successfulSaving?.Invoke();
+                onSuccessfulSaving?.Invoke();
             } catch (Exception err) {
-                unsuccessfulSaving?.Invoke();
+                onUnsuccessfulSaving?.Invoke();
                 Debug.LogError(err.ToString());
                 return;
             }
