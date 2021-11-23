@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 namespace ui {
     public class SetImage : MonoBehaviour {
-        public void SpawnImage(RawImage image) {
+        public void InstantiateImage(RawImage image) {
             Instantiate(image, gameObject.transform);
         }
     }
