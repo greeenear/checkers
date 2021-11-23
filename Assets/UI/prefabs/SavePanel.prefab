@@ -573,6 +573,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   boardImage: {fileID: 2818888487515020999}
+  whoseMoveImage: {fileID: 2358471852250045975}
   date: {fileID: 5951243261867033857}
   kind: {fileID: 8367548377410210522}
   delete: {fileID: 8035497236643734507}
@@ -587,6 +588,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1335893173364572520}
   - component: {fileID: 3076855289750799883}
+  - component: {fileID: 2358471852250045975}
   m_Layer: 5
   m_Name: WhoseMoveImage
   m_TagString: Untagged
@@ -621,6 +623,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4125140736336046039}
   m_CullTransparentMesh: 1
+--- !u!114 &2358471852250045975
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4125140736336046039}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d3f6f9438bd0a243bcd9afa3cea1f8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &6179371864377068838
 GameObject:
   m_ObjectHideFlags: 0
