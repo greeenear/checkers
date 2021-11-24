@@ -7,7 +7,7 @@ namespace ui {
         public MonoBehaviour component;
 
         public void ChangeEnable() {
-            component.enabled = !component.enabled;
+            if (component != null) component.enabled = !component.enabled;
         }
     }
 }

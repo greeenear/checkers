@@ -32,11 +32,6 @@ namespace controller {
         Count
     }
 
-    public enum BoadSize {
-        BigBoard,
-        SmallBoard
-    }
-
     public struct Checker {
         public Type type;
         public ChColor color;
@@ -52,7 +47,6 @@ namespace controller {
         public DateTime saveDate;
         public ChKind checkerKind;
         public ChColor whoseMove;
-        public BoadSize boadSize;
         public Option<Checker>[,] board;
     }
 
@@ -60,7 +54,6 @@ namespace controller {
         public UnityEvent onGameOver;
         public UnityEvent onUnsuccessfulSaving;
         public UnityEvent onSuccessfulSaving;
-        public event Action<UnityAction> onStartGame;
 
         public GameObject storageHighlightCells;
 
@@ -101,10 +94,6 @@ namespace controller {
             map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
-        }
-
-        private void Start() {
-            onStartGame?.Invoke(() => Save(GenerateSavePath()));
         }
 
         private void Update() {
@@ -160,7 +149,7 @@ namespace controller {
 
                 }
             }
-            if (allCheckerMoves != null && allCheckerMoves.Count == 0) {
+            if (allCheckerMoves.Count == 0) {
                 onGameOver?.Invoke();
                 this.enabled = false;
                 return;
@@ -386,14 +375,14 @@ namespace controller {
             selected = Option<Vector2Int>.None();
         }
 
-        public string GenerateSavePath() {
-            return Path.Combine(
-                Application.persistentDataPath,
-                Guid.NewGuid().ToString() + ".save"
-            );
-        }
-
         public void Save(string path) {
+            if (path == "") {
+                path = Path.Combine(
+                    Application.persistentDataPath,
+                    Guid.NewGuid().ToString() + ".save"
+                );
+            }
+
             var rows = new List<List<string>>();
             for (int i = 0; i < map.board.GetLength(1); i++) {
                 rows.Add(new List<string>());
@@ -405,9 +394,17 @@ namespace controller {
                     if (map.board[i, j].IsSome()) {
                         var checker = map.board[i, j].Peel();
                         if (checker.color == ChColor.Black) {
-                            rows[i].Add("1");
+                            if (checker.type == Type.Checker) {
+                                rows[i].Add("1");
+                            } else if (checker.type == Type.King) {
+                                rows[i].Add("3");
+                            }
                         } else if (checker.color == ChColor.White) {
-                            rows[i].Add("0");
+                            if (checker.type == Type.Checker) {
+                                rows[i].Add("0");
+                            } else if (checker.type == Type.King) {
+                                rows[i].Add("2");
+                            }
                         }
                     }
                 }
@@ -455,9 +452,7 @@ namespace controller {
                 saveInfo.saveDate = File.GetLastWriteTime(fileName);
 
                 saveInfo.board = new Option<Checker>[10, 10];
-                saveInfo.boadSize = BoadSize.BigBoard;
                 if (parseRes.rows.Count < 10) {
-                    saveInfo.boadSize = BoadSize.SmallBoard;
                     saveInfo.board = new Option<Checker>[8, 8];
                 }
                 for (int i = 0; i < parseRes.rows.Count; i++) {
@@ -472,23 +467,31 @@ namespace controller {
                         }
                         break;
                     }
-                    var color = new ChColor();
                     for (int j = 0; j < parseRes.rows[i].Count; j++) {
-                        if (parseRes.rows[i][j] == "-") {
-                            continue;
-                        } else if (parseRes.rows[i][j] == "0") {
-                            color = ChColor.White;
-                        } else if (parseRes.rows[i][j] == "1") {
-                            color = ChColor.Black;
+                        if (int.TryParse(parseRes.rows[i][j], out int res)) {
+                            var color = ChColor.White;
+                            var type = Type.Checker;
+                            if (res % 2 != 0) color = ChColor.Black;
+                            if (res > 1) type = Type.King;
+
+                            var checker = new Checker { type = type, color = color };
+                            saveInfo.board[i,j] = Option<Checker>.Some(checker);
                         }
-                        var checker = new Checker { type = Type.Checker, color = color };
-                        saveInfo.board[i,j] = Option<Checker>.Some(checker);
                     }
                 }
                 saveInfos.Add(saveInfo);
             }
 
             return saveInfos;
+        }
+
+        public void DeleteFile(string path) {
+            try {
+                File.Delete(path);
+            } catch (Exception err) {
+                Debug.Log(err.ToString());
+                return;
+            }
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
@@ -537,6 +540,10 @@ namespace controller {
                             Quaternion.identity,
                             boardInfo.boardTransform
                         );
+                        if (checker.type == Type.King) {
+                            var reverse = Quaternion.Euler(180, 0, 0);
+                            map.obj[i, j].transform.rotation = reverse;
+                        }
                     }
                 }
             }

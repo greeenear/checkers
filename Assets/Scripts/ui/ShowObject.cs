@@ -1,15 +1,25 @@
-using System;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace ui {
     public class ShowObject : MonoBehaviour {
-        public int waitingTime;
+        public float duration;
+        private bool isActiveTimer;
+        private float startPoint = 0;
 
-        public async void Show() {
+        public void Show() {
             gameObject.SetActive(true);
-            await Task.Delay(TimeSpan.FromSeconds(waitingTime));
-            gameObject.SetActive(false);
+            isActiveTimer = true;
+        }
+
+        private void Update() {
+            if (isActiveTimer) {
+                startPoint += Time.deltaTime;
+                if (startPoint >= duration) {
+                    gameObject.SetActive(false);
+                    isActiveTimer = false;
+                    startPoint = 0;
+                }
+            }
         }
     }
 }
