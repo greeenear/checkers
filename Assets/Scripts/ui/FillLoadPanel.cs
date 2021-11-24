@@ -19,7 +19,7 @@ namespace ui {
             Controller gameController,
             Button openMenu
         ) {
-            boardImage.FillBoardPreview(save, res);
+            boardImage.Fill(save, res);
             date.WriteText(save.saveDate.ToString("dd.MM.yyyy HH:mm:ss"));
             kind.WriteText("Checker Kind: " + save.checkerKind.ToString());
             delete.SetLisener(() => File.Delete(save.fileName));

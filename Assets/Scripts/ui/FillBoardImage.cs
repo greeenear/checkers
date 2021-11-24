@@ -3,7 +3,7 @@ using controller;
 
 namespace ui {
     public class FillBoardImage : MonoBehaviour {
-        public void FillBoardPreview(SaveInfo save, UiResources res) {
+        public void Fill(SaveInfo save, UiResources res) {
             var imageBoardPrefab = res.boardImage10x10;
             if (save.boadSize == BoadSize.SmallBoard) {
                 imageBoardPrefab = res.boardImage8x8;

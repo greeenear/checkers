@@ -332,7 +332,6 @@ namespace controller {
                 fstream.Read(bytes, 0, bytes.Length);
                 input = System.Text.Encoding.Default.GetString(bytes);
             } catch (Exception err) {
-                Debug.LogError("CantLoad");
                 Debug.LogError(err.ToString());
                 return;
             }
@@ -373,7 +372,7 @@ namespace controller {
                     if (int.TryParse(parseRes.rows[i][j], out int res)) {
                         if (res % 2 != 0) color = ChColor.Black;
                         if (res > 1) type = Type.King;
-                        var checker = new Checker { color =color, type = type };
+                        var checker = new Checker { color = color, type = type };
                         map.board[i, j] = Option<Checker>.Some(checker);
                     }
                 }
@@ -385,7 +384,6 @@ namespace controller {
             allCheckerMoves = null;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
-            this.enabled = true;
         }
 
         public string GenerateSavePath() {
