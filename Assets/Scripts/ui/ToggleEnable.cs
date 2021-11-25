@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace ui {
     public class ToggleEnable : MonoBehaviour {

@@ -1,6 +1,4 @@
 using UnityEngine;
-using controller;
-using System.IO;
 using UnityEngine.UI;
 
 namespace ui {
