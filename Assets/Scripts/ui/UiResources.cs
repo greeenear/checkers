@@ -6,6 +6,7 @@ namespace ui {
         public LoadPanelRes loadPanel;
         public GameObject boardImage10x10;
         public GameObject boardImage8x8;
+
         public RawImage whiteChecker;
         public RawImage blackChecker;
         public RawImage whiteKing;
