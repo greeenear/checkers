@@ -47,6 +47,11 @@ namespace ui {
             }
 
             var saves = gmController.GetSavesInfo();
+            if (saves == null) {
+                Debug.LogError("SaveListIsNull");
+                return;
+            }
+
             saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
             foreach (var save in saves) {
                 var curPanel = Instantiate(

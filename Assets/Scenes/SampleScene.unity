@@ -180,7 +180,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 0b310782aba89264fa34224d947a6e2b, type: 3}
+  m_Texture: {fileID: 2800000, guid: 69cbb6d9875d0964a9d2f17f1f5fb415, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -359,7 +359,7 @@ MonoBehaviour:
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: PoolStartGame.csv
+          m_StringArgument: PoolStartGame.save
           m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 457896383}
@@ -641,7 +641,7 @@ MonoBehaviour:
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: EnglishStartGame.csv
+          m_StringArgument: EnglishStartGame.save
           m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 1444244430}
@@ -1575,7 +1575,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 124.9, y: 0}
-  m_SizeDelta: {x: 43, y: 43}
+  m_SizeDelta: {x: 40, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &720359514
 MonoBehaviour:
@@ -3802,7 +3802,7 @@ MonoBehaviour:
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: InternationalStartGame.csv
+          m_StringArgument: InternationalStartGame.save
           m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 457896383}
@@ -4601,7 +4601,7 @@ MonoBehaviour:
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: RussianStartGame.csv
+          m_StringArgument: RussianStartGame.save
           m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 457896383}
