@@ -107,12 +107,17 @@ namespace ui {
                         }
                         var checker = save.board[i, j].Peel();
                         var checkerImage = res.whiteChecker;
-                        if (checker.color == ChColor.White && checker.type == Type.King) {
-                            checkerImage = res.whiteKing;
-                        } else if (checker.color == ChColor.Black && checker.type == Type.King) {
-                            checkerImage = res.blackKing;
-                        } else if (checker.color == ChColor.Black && checker.type == Type.Checker) {
-                            checkerImage = res.blackChecker;
+
+                        if (checker.color == ChColor.White) {
+                            if (checker.type == Type.King) {
+                                checkerImage = res.whiteKing;
+                            }
+                        } else if (checker.color == ChColor.Black) {
+                            if (checker.type == Type.King) {
+                                checkerImage = res.blackKing;
+                            } else if (checker.type == Type.Checker) {
+                                checkerImage = res.blackChecker;
+                            }
                         }
 
                         Instantiate(checkerImage, boardGrid.transform);

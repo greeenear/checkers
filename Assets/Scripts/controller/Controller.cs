@@ -4,6 +4,7 @@ using UnityEngine;
 using System.IO;
 using option;
 using UnityEngine.Events;
+using UnityEditor;
 
 namespace controller {
     public enum ControllerErrors {
@@ -572,6 +573,11 @@ namespace controller {
             }
 
             return false;
+        }
+
+        public void ExitGame() {
+            Application.Quit();
+            EditorApplication.isPlaying = false;
         }
     }
 }
