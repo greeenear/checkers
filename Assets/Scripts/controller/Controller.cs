@@ -7,7 +7,7 @@ using UnityEngine.Events;
 using UnityEditor;
 
 namespace controller {
-    public enum ControllerErrors {
+    public enum @void {
         None,
         BoardIsNull,
         GameObjectIsNull,
@@ -19,7 +19,8 @@ namespace controller {
         Russian,
         English,
         Pool,
-        International
+        International,
+        Wigman
     }
 
     public enum Type {
@@ -62,6 +63,7 @@ namespace controller {
         private BoardInfo boardInfo;
         private Map map;
         private ChKind chKind;
+        private int moveCounter;
 
         private Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
         private HashSet<Vector2Int> sentenced;
@@ -129,6 +131,7 @@ namespace controller {
                                     var wrongMove = curCh.type == Type.Checker && dir.x != xDir;
                                     switch (chKind) {
                                         case ChKind.Pool:
+                                        case ChKind.Wigman:
                                         case ChKind.Russian:
                                         case ChKind.International:
                                             wrongMove = wrongMove && !chFound;
@@ -242,6 +245,7 @@ namespace controller {
                                 var wrongMove = curCh.type == Type.Checker && dir.x != xDir;
                                 switch (chKind) {
                                     case ChKind.Pool:
+                                    case ChKind.Wigman:
                                     case ChKind.Russian:
                                     case ChKind.International:
                                         wrongMove = wrongMove && !chFound;
@@ -278,10 +282,14 @@ namespace controller {
                         Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
                     }
 
-                    whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
                     selected = Option<Vector2Int>.None();
                     sentenced.Clear();
                     allCheckerMoves = null;
+                    if (chKind != ChKind.Wigman || (moveCounter) % 2 != 0) {
+                        whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
+                    }
+
+                    moveCounter++;
                 }
             }
         }
@@ -293,10 +301,10 @@ namespace controller {
             return true;
         }
 
-        private ControllerErrors HighlightCells(Dictionary<Vector2Int, bool> moves, bool attack) {
+        private void HighlightCells(Dictionary<Vector2Int, bool> moves, bool attack) {
             if (moves == null) {
                 Debug.LogError("ListIsNull");
-                return ControllerErrors.ListIsNull;
+                return;
             }
             var boardPos = boardInfo.boardTransform.transform.position;
             foreach (var pos in moves) {
@@ -306,8 +314,6 @@ namespace controller {
                     Instantiate(res.highlightCell, spawnWorldPos, Quaternion.identity, parent);
                 }
             }
-
-            return ControllerErrors.None;
         }
 
 
@@ -317,10 +323,7 @@ namespace controller {
             }
             string input;
             try {
-                var fstream = File.OpenRead(path);
-                var bytes = new byte[fstream.Length];
-                fstream.Read(bytes, 0, bytes.Length);
-                input = System.Text.Encoding.Default.GetString(bytes);
+                input = File.ReadAllText(path);
             } catch (Exception err) {
                 Debug.LogError(err.ToString());
                 return;
@@ -347,6 +350,7 @@ namespace controller {
             foreach (var chObj in map.obj) {
                 Destroy(chObj);
             }
+
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
             map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
             for (int i = 0; i < parseRes.rows.Count; i++) {
@@ -369,19 +373,16 @@ namespace controller {
             }
 
             DestroyHighlightCells(storageHighlightCells.transform);
-
             SpawnCheckers(map.board);
             allCheckerMoves = null;
+            moveCounter = 0;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
         }
 
         public void Save(string path) {
             if (path == "") {
-                path = Path.Combine(
-                    Application.persistentDataPath,
-                    Guid.NewGuid().ToString() + ".save"
-                );
+                path = Path.Combine(Application.persistentDataPath, Guid.NewGuid() + ".save");
             }
 
             var rows = new List<List<string>>();
@@ -410,17 +411,12 @@ namespace controller {
                     }
                 }
             }
-            rows.Add(new List<string>() {
-                    "WhoseMove",
-                    ((int)whoseMove).ToString(),
-                    "ChKind",
-                    ((int)chKind).ToString()
-                }
-            );
+            var whoseMoveNow = ((int)whoseMove).ToString();
+            var kind = ((int)chKind).ToString();
+            rows.Add(new List<string>() {"WhoseMove",whoseMoveNow , "ChKind", kind });
 
-            string output = CSV.Generate(rows);
             try {
-                File.WriteAllText(path, output);
+                File.WriteAllText(path, CSV.Generate(rows));
                 onSuccessfulSaving?.Invoke();
             } catch (Exception err) {
                 onUnsuccessfulSaving?.Invoke();
@@ -436,18 +432,13 @@ namespace controller {
             try {
                 allfiles = Directory.GetFiles(Application.persistentDataPath, "*.save");
             } catch (Exception err) {
-                Debug.LogError("NoDirectory");
                 Debug.LogError(err.ToString());
                 return null;
             }
+
             foreach (string fileName in allfiles) {
                 var saveInfo = new SaveInfo();
-
-                var fstream = File.OpenRead(fileName);
-                var bytes = new byte[fstream.Length];
-                fstream.Read(bytes, 0, bytes.Length);
-                string input = System.Text.Encoding.Default.GetString(bytes);
-                var parseRes = CSV.Parse(input);
+                var parseRes = CSV.Parse(File.ReadAllText(fileName));
 
                 saveInfo.fileName = fileName;
                 saveInfo.saveDate = File.GetLastWriteTime(fileName);
@@ -459,7 +450,7 @@ namespace controller {
                 for (int i = 0; i < parseRes.rows.Count; i++) {
                     if (parseRes.rows[i][0] == "WhoseMove") {
                         if (int.TryParse(parseRes.rows[i][1], out int res)) {
-                            saveInfo.whoseMove = ((ChColor)res);
+                            saveInfo.whoseMove = (ChColor)res;
                         }
                     }
                     if (parseRes.rows[i][2] == "ChKind") {
@@ -468,6 +459,7 @@ namespace controller {
                         }
                         break;
                     }
+
                     for (int j = 0; j < parseRes.rows[i].Count; j++) {
                         if (int.TryParse(parseRes.rows[i][j], out int res)) {
                             var color = ChColor.White;
@@ -514,42 +506,33 @@ namespace controller {
             return point;
         }
 
-        private ControllerErrors SpawnCheckers(Option<Checker>[,] board) {
+        private void SpawnCheckers(Option<Checker>[,] board) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
-                return ControllerErrors.BoardIsNull;
+                return;
             }
+
             for (int i = 0; i < board.GetLength(0); i++) {
                 for (int j = 0; j < board.GetLength(1); j++) {
-                    Destroy(map.obj[i, j]);
-                    if (board[i, j].IsSome()) {
-                        var checker = board[i, j].Peel();
-                        GameObject prefab;
-                        if (checker.color == ChColor.White) {
-                            prefab = res.whiteChecker;
-                        } else if (checker.color == ChColor.Black) {
-                            prefab = res.blackChecker;
-                        } else {
-                            Debug.LogError("NoSuchColor");
-                            return ControllerErrors.NoSuchColor;
-                        }
-                        var pos = new Vector2Int(i, j);
-                        var spawnWorldPos = ConvertToWorldPoint(pos);
-                        map.obj[i, j] = Instantiate(
-                            prefab,
-                            spawnWorldPos,
-                            Quaternion.identity,
-                            boardInfo.boardTransform
-                        );
-                        if (checker.type == Type.King) {
-                            var reverse = Quaternion.Euler(180, 0, 0);
-                            map.obj[i, j].transform.rotation = reverse;
-                        }
+                    if (board[i, j].IsNone()) {
+                        continue;
+                    }
+
+                    var checker = board[i, j].Peel();
+                    var pref = res.whiteChecker;
+                    if (checker.color == ChColor.Black) {
+                        pref = res.blackChecker;
+                    }
+
+                    var spawnWorldPos = ConvertToWorldPoint(new Vector2Int(i, j));
+                    var parent = boardInfo.boardTransform;
+                    map.obj[i, j] = Instantiate(pref, spawnWorldPos, Quaternion.identity, parent);
+
+                    if (checker.type == Type.King) {
+                        map.obj[i, j].transform.rotation = Quaternion.Euler(180, 0, 0);
                     }
                 }
             }
-
-            return ControllerErrors.None;
         }
 
         private void DestroyHighlightCells(Transform parent) {
@@ -566,9 +549,8 @@ namespace controller {
         private bool IsNeedAttack(Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkers) {
             foreach (var checker in checkers) {
                 foreach (var move in checker.Value) {
-                    if (move.Value) {
-                        return true;
-                    }
+
+                    if (move.Value) return true;
                 }
             }
 
