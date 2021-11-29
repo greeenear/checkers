@@ -62,32 +62,32 @@ namespace ui {
                 );
 
                 if (curPanel.boardImage == null) {
-                    Debug.LogError("NoBoardImageRef");
+                    Debug.LogError("NoBoardImage");
                     return;
                 }
 
                 if (curPanel.whoseMove == null) {
-                    Debug.LogError("NoWhoseMoveRef");
+                    Debug.LogError("NoWhoseMove");
                     return;
                 }
 
                 if (curPanel.date == null) {
-                    Debug.LogError("NoDateRef");
+                    Debug.LogError("NoDate");
                     return;
                 }
 
                 if (curPanel.kind == null) {
-                    Debug.LogError("NoKindRef");
+                    Debug.LogError("NoKind");
                     return;
                 }
 
                 if (curPanel.delete == null) {
-                    Debug.LogError("NoDeleteRef");
+                    Debug.LogError("NoDelete");
                     return;
                 }
 
                 if (curPanel.load == null) {
-                    Debug.LogError("NoLoadRef");
+                    Debug.LogError("NoLoad");
                     return;
                 }
 

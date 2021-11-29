@@ -23,13 +23,16 @@ namespace ui {
 
         public void ChangeButtonInteractable() {
             var saves = controller.GetSavesInfo();
-            if (saves == null || saves.Count == 0) {
-                loadButton.interactable = false;
+            if (saves == null) {
+                Debug.LogError("SavesIsNull");
                 return;
             }
 
-            loadButton.interactable = true;
-            return;
+            if (saves.Count == 0) {
+                loadButton.interactable = false;
+            } else {
+                loadButton.interactable = true;
+            }
         }
 
         public void LoadLastSave() {
