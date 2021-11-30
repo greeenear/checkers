@@ -27,12 +27,7 @@ namespace ui {
                 Debug.LogError("SavesIsNull");
                 return;
             }
-
-            if (saves.Count == 0) {
-                loadButton.interactable = false;
-            } else {
-                loadButton.interactable = true;
-            }
+            loadButton.interactable = saves.Count != 0;
         }
 
         public void LoadLastSave() {
@@ -43,8 +38,18 @@ namespace ui {
                 return;
             }
 
-            saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
-            controller.Load(saves[0].fileName);
+            if (saves.Count == 0) {
+                return;
+            }
+
+            var lastSave = saves[0];
+            foreach (var save in saves) {
+                if (lastSave.saveDate.CompareTo(save.saveDate) < 0) {
+                    lastSave = save;
+                }
+            }
+
+            controller.Load(lastSave.fileName);
         }
     }
 }
