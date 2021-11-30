@@ -3,22 +3,20 @@ using UnityEngine;
 namespace ui {
     public class ShowObject : MonoBehaviour {
         public float duration;
-        private bool isActiveTimer;
-        private float startPoint = 0;
+        private float time;
 
         public void Show() {
             gameObject.SetActive(true);
-            isActiveTimer = true;
+            this.enabled = true;
+            time = 0;
         }
 
         private void Update() {
-            if (isActiveTimer) {
-                startPoint += Time.deltaTime;
-                if (startPoint >= duration) {
-                    gameObject.SetActive(false);
-                    isActiveTimer = false;
-                    startPoint = 0;
-                }
+            time += Time.deltaTime;
+            if (time >= duration) {
+                this.enabled = false;
+                gameObject.SetActive(false);
+                time = 0;
             }
         }
     }

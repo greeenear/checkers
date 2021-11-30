@@ -413,7 +413,7 @@ namespace controller {
             }
             var whoseMoveNow = ((int)whoseMove).ToString();
             var kind = ((int)chKind).ToString();
-            rows.Add(new List<string>() {"WhoseMove",whoseMoveNow , "ChKind", kind });
+            rows.Add(new List<string>() {"WhoseMove", whoseMoveNow , "ChKind", kind });
 
             try {
                 File.WriteAllText(path, CSV.Generate(rows));
@@ -549,7 +549,6 @@ namespace controller {
         private bool IsNeedAttack(Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkers) {
             foreach (var checker in checkers) {
                 foreach (var move in checker.Value) {
-
                     if (move.Value) return true;
                 }
             }
