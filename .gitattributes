@@ -1,1 +1,2 @@
 *.csv -crlf
+*.save -crlf
