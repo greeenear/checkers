@@ -2,11 +2,13 @@ using UnityEngine;
 using controller;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using System.IO;
 
 namespace ui {
     public class RefreshLoadPanels : MonoBehaviour {
         public Controller gmController;
         public Button openMenu;
+        public List<LoadPanelRes> loadPanels;
         public RectTransform savePanelsStorage;
         public GameObject pageList;
         public UiResources res;
@@ -53,10 +55,6 @@ namespace ui {
                 child.SetParent(null);
             }
 
-            foreach (Transform child in transform) {
-                Destroy(child.gameObject);
-            }
-
             var saves = gmController.GetSavesInfo();
             if (saves == null) {
                 Debug.LogError("SaveListIsNull");
@@ -68,16 +66,11 @@ namespace ui {
             for (int i = 0; i < numberOfPage; i++) {
                 var curBut = Instantiate(res.pageBut, pageList.transform);
                 int loadNum = i;
-                curBut.onClick.AddListener(() => ShowOnePage(loadNum));
+                curBut.onClick.AddListener(() => FillPage(loadNum));
             }
-            ShowOnePage(0);
         }
 
-        public void ShowOnePage(int pageNumber) {
-            foreach (Transform child in transform) {
-                Destroy(child.gameObject);
-            }
-
+        public void FillPage(int pageNumber) {
             var saves = gmController.GetSavesInfo();
 
             saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
@@ -116,33 +109,48 @@ namespace ui {
             }
 
             for (int i = pageNumber * 4; i < pageNumber * 4 + 4; i++) {
-                if (i >= saves.Count) break;
-                var curPanel = Instantiate(
-                    res.loadPanel,
-                    Vector3.zero,
-                    Quaternion.identity,
-                    savePanelsStorage.transform
-                );
+                var curPanel = loadPanels[i - pageNumber * 4];
+                // foreach (Transform obj in curPanel.boardImage.transform) {
+                //     Destroy(obj.gameObject);
+                // }
 
-                curPanel.date.text = saves[i].saveDate.ToString("dd.MM.yyyy HH:mm:ss");
-                int curIndex = i;
-                curPanel.kind.text = "Checker Kind: " + saves[curIndex].checkerKind.ToString();
-                curPanel.delete.onClick.AddListener(() => gmController.DeleteFile(saves[curIndex].fileName));
-                curPanel.delete.onClick.AddListener(() => ShowOnePage(pageNumber));
-                curPanel.delete.onClick.AddListener(() => Destroy(curPanel.gameObject));
-                curPanel.load.onClick.AddListener(() => gmController.Load(saves[curIndex].fileName));
-                curPanel.load.onClick.AddListener(() => openMenu.onClick?.Invoke());
-
-                var imageBoardPrefab = res.boardImages.boardImage10x10;
-                if (saves[curIndex].board.GetLength(0) < 10) {
-                    imageBoardPrefab = res.boardImages.boardImage8x8;
+                curPanel.gameObject.SetActive(true);
+                curPanel.delete.onClick.RemoveAllListeners();
+                curPanel.load.onClick.RemoveAllListeners();
+                if (i >= saves.Count) {
+                    curPanel.gameObject.SetActive(false);
+                    continue;
                 }
 
-                var boardGrid = Instantiate(imageBoardPrefab, curPanel.boardImage.transform);
+                int curIndex = i;
+                var fileName = saves[curIndex].fileName;
+
+                curPanel.date.text = saves[curIndex].saveDate.ToString("dd.MM.yyyy HH:mm:ss");
+                curPanel.kind.text = "Checker Kind: " + saves[curIndex].checkerKind.ToString();
+                curPanel.delete.onClick.AddListener(() => gmController.DeleteFile(fileName));
+                curPanel.delete.onClick.AddListener(() => Refresh());
+                curPanel.delete.onClick.AddListener(() => FillPage(pageNumber));
+                curPanel.delete.onClick.AddListener(() => {
+                        if (File.Exists(fileName)) {
+                            Debug.LogError("FileNotDeleted");
+                        }
+                    }
+                );
+
+                curPanel.load.onClick.AddListener(() => gmController.Load(fileName));
+                curPanel.load.onClick.AddListener(() => openMenu.onClick?.Invoke());
+                var imageBoardPrefab = curPanel.boardImage8x8;
+                // var imageBoardPrefab = res.boardImages.boardImage10x10;
+                // if (saves[curIndex].board.GetLength(0) < 10) {
+                //     imageBoardPrefab = res.boardImages.boardImage8x8;
+                // }
+
+                //var boardGrid = Instantiate(imageBoardPrefab, curPanel.boardImage.transform);
                 for (int o = 0; o < saves[curIndex].board.GetLength(1); o++) {
                     for (int j = 0; j < saves[curIndex].board.GetLength(0); j++) {
+                        imageBoardPrefab.boardCells[o * saves[curIndex].board.GetLength(0) + j].texture = res.checkerImages.emptyCell.texture;
+                        imageBoardPrefab.boardCells[o * saves[curIndex].board.GetLength(0) + j].color = res.checkerImages.emptyCell.color;
                         if (saves[curIndex].board[o, j].IsNone()) {
-                            Instantiate(res.checkerImages.emptyCell, boardGrid.transform);
                             continue;
                         }
                         var checker = saves[i].board[o, j].Peel();
@@ -160,15 +168,17 @@ namespace ui {
                             }
                         }
 
-                        Instantiate(checkerImage, boardGrid.transform);
+                        imageBoardPrefab.boardCells[o * saves[curIndex].board.GetLength(0) + j].texture = checkerImage.texture;
+                        imageBoardPrefab.boardCells[o * saves[curIndex].board.GetLength(0) + j].color = checkerImage.color;
                     }
                 }
 
-                var whoseMovePref = res.checkerImages.whiteChecker;
+                curPanel.whoseMove.texture = res.checkerImages.whiteChecker.texture;
+                curPanel.whoseMove.color = res.checkerImages.whiteChecker.color;
                 if (saves[curIndex].whoseMove == controller.ChColor.Black) {
-                    whoseMovePref = res.checkerImages.blackChecker;
+                    curPanel.whoseMove.texture = res.checkerImages.blackChecker.texture;
+                    curPanel.whoseMove.color = res.checkerImages.blackChecker.color;
                 }
-                Instantiate(whoseMovePref, curPanel.whoseMove.transform);
             }
         }
     }

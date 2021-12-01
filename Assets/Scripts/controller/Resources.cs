@@ -13,6 +13,7 @@ namespace controller {
         public BoardInfo board8x8;
         public BoardInfo board10x10;
         public GameObject highlightCell;
+        public GameObject highlightCh;
         public GameObject whiteChecker;
         public GameObject blackChecker;
 
