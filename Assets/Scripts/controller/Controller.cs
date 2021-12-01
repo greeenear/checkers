@@ -169,11 +169,27 @@ namespace controller {
 
             var checkerOpt = map.board[cliсkPos.x, cliсkPos.y];
 
+            var isAttack = IsNeedAttack(allCheckerMoves);
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
                 if (!allCheckerMoves.ContainsKey(cliсkPos)) return;
                 selected = Option<Vector2Int>.Some(cliсkPos);
 
-                HighlightCells(allCheckerMoves[cliсkPos], IsNeedAttack(allCheckerMoves));
+                if (allCheckerMoves[cliсkPos].Count == 0 || isAttack 
+                && !IsCheckerNeedAttack(isAttack, allCheckerMoves[cliсkPos])) {
+                    foreach (var checker in allCheckerMoves) {
+                        if (checker.Value.Count != 0) {
+                            if (isAttack && !IsCheckerNeedAttack(isAttack, checker.Value)) {
+                                continue;
+                            }
+
+                            var parent = storageHighlightCells.transform;
+                            var pos = ConvertToWorldPoint(checker.Key) - new Vector3(0, 0.1f, 0);
+                            Instantiate(res.highlightCh, pos, Quaternion.identity, parent);
+                        }
+                    }
+                }
+
+                HighlightCells(allCheckerMoves[cliсkPos], isAttack);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
                 if (map.board[curPos.x, curPos.y].IsNone()) return;
@@ -187,7 +203,7 @@ namespace controller {
                 }
 
                 var isClickAttack = curChMoves[cliсkPos];
-                if (!isClickAttack && IsNeedAttack(allCheckerMoves)) return;
+                if (!isClickAttack && isAttack) return;
 
                 map.board[cliсkPos.x, cliсkPos.y] = map.board[curPos.x, curPos.y];
                 map.board[curPos.x, curPos.y] = Option<Checker>.None();
@@ -556,9 +572,21 @@ namespace controller {
             return false;
         }
 
+        private bool IsCheckerNeedAttack(bool isAttack, Dictionary<Vector2Int, bool> moves) {
+            foreach (var move in moves) {
+                if (isAttack && move.Value || !isAttack && !move.Value) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public void ExitGame() {
             Application.Quit();
+            #if UNITY_EDITOR
             EditorApplication.isPlaying = false;
+            #endif
         }
     }
 }
