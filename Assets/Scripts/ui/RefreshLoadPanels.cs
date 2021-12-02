@@ -12,6 +12,7 @@ namespace ui {
         public RectTransform loadPanelsStorage;
         public RectTransform loadPanel;
         public GameObject pageList;
+        private int curPage;
         public UiResources res;
 
         private void Awake() {
@@ -33,20 +34,15 @@ namespace ui {
                 return;
             }
 
-            if (res.checkerImages.blackChecker == null) {
+            if (res.checkerImages.checkerImg == null) {
                 Debug.LogError("NoBlackCheckerImage");
-                this.enabled = false;
-                return;
-            }
-
-            if (res.checkerImages.whiteChecker == null) {
-                Debug.LogError("NoWhiteCheckerImage");
                 this.enabled = false;
                 return;
             }
         }
 
-        public void Refresh() {
+        public void Refresh(int numberOfPage) {
+            curPage = numberOfPage;
             var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
             var sentencedHighlight = new List<Transform>();
             foreach (Transform child in pageList.transform) {
@@ -62,18 +58,47 @@ namespace ui {
                 Debug.LogError("SaveListIsNull");
                 return;
             }
-            var numberOfPage = saves.Count / countSavesInPanel;
-            if (saves.Count % countSavesInPanel != 0) numberOfPage++;
 
-            for (int i = 0; i < numberOfPage; i++) {
-                var curBut = Instantiate(res.pageBut, pageList.transform);
-                int loadNum = i;
-                curBut.onClick.AddListener(() => FillPage(loadNum));
+            var countOfPage = saves.Count / countSavesInPanel;
+            if (saves.Count % countSavesInPanel != 0) countOfPage++;
+
+            int showed = 0;
+            int skipPages = 4;
+            if (countOfPage - numberOfPage < 12 - skipPages) {
+                skipPages  = skipPages + (12 - skipPages - countOfPage + numberOfPage);//shit
             }
+
+            for (int i = numberOfPage - skipPages; i < countOfPage; i++) {
+                if (showed == 12) {
+                    break;
+                }
+                if (i < 0) {
+                    continue;
+                }
+
+                var curBut = Instantiate(res.pageBut, pageList.transform);
+                var text = curBut.GetComponentInChildren<Text>();
+                int loadNum = i;
+                if (loadNum == curPage) {
+                    curBut.interactable = false;
+                }
+                text.text = loadNum.ToString();
+                curBut.onClick.AddListener(() => FillPage(loadNum));
+                curBut.onClick.AddListener(() => Refresh(loadNum));
+                showed++;
+            }
+        }
+
+        public void SkipPages(int dir) {
+            Refresh(curPage + 12 * dir);
         }
 
         public void FillPage(int pageNumber) {
             var saves = gmController.GetSavesInfo();
+            if (saves == null) {
+                return;
+            }
+
             var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
 
             saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
@@ -112,39 +137,47 @@ namespace ui {
             }
 
             var startSave = pageNumber * countSavesInPanel;
-            for (int i = startSave; i < pageNumber * countSavesInPanel + countSavesInPanel; i++) {
-                var curPanel = loadPanels[i - pageNumber * countSavesInPanel];
+            for (int i = 0; i < countSavesInPanel; i++) {
+                var curPanel = loadPanels[i];
 
                 curPanel.gameObject.SetActive(true);
                 curPanel.delete.onClick.RemoveAllListeners();
                 curPanel.load.onClick.RemoveAllListeners();
-                if (i >= saves.Count) {
+
+                int curIndex = i + startSave;
+                if (curIndex >= saves.Count) {
                     curPanel.gameObject.SetActive(false);
                     continue;
                 }
 
-                int curIndex = i;
                 var fileName = saves[curIndex].fileName;
 
                 curPanel.date.text = saves[curIndex].saveDate.ToString("dd.MM.yyyy HH:mm:ss");
                 curPanel.kind.text = "Checker Kind: " + saves[curIndex].checkerKind.ToString();
-                curPanel.delete.onClick.AddListener(() => gmController.DeleteFile(fileName));
-                curPanel.delete.onClick.AddListener(() => Refresh());
-                curPanel.delete.onClick.AddListener(() => FillPage(pageNumber));
                 curPanel.delete.onClick.AddListener(() => {
-                        if (File.Exists(fileName)) {
-                            Debug.LogError("FileNotDeleted");
+                        if (gmController.DeleteFile(fileName) != Errors.None) {
+                            Debug.LogError("cant delete");
+                            return;
+                        }
+                    }
+                );
+                curPanel.delete.onClick.AddListener(() => Refresh(pageNumber));
+                curPanel.delete.onClick.AddListener(() => FillPage(pageNumber));
+
+                curPanel.load.onClick.AddListener(() => { 
+                        if (gmController.Load(fileName) != Errors.None) {
+                            Debug.LogError("cant load");
+                            return;
                         }
                     }
                 );
 
-                curPanel.load.onClick.AddListener(() => gmController.Load(fileName));
                 curPanel.load.onClick.AddListener(() => openMenu.onClick?.Invoke());
-                curPanel.whoseMove.texture = res.checkerImages.whiteChecker.texture;
-                curPanel.whoseMove.color = res.checkerImages.whiteChecker.color;
+                curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
+                curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
                 if (saves[curIndex].whoseMove == controller.ChColor.Black) {
-                    curPanel.whoseMove.texture = res.checkerImages.blackChecker.texture;
-                    curPanel.whoseMove.color = res.checkerImages.blackChecker.color;
+                    curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
+                    curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
                 }
 
                 var imageBoard = curPanel.boardImage8x8;
@@ -152,36 +185,39 @@ namespace ui {
                     continue;
                 }
 
-                for (int o = 0; o < saves[curIndex].board.GetLength(1); o++) {
+                for (int k = 0; k < saves[curIndex].board.GetLength(1); k++) {
                     for (int j = 0; j < saves[curIndex].board.GetLength(0); j++) {
-                        var saveNum = o * saves[curIndex].board.GetLength(0) + j;
+                        var saveNum = k * saves[curIndex].board.GetLength(0) + j;
 
                         var emptyImage = res.checkerImages.emptyCell.texture;
                         imageBoard.boardCells[saveNum].texture = emptyImage;
                         imageBoard.boardCells[saveNum].color = res.checkerImages.emptyCell.color;
-                        if (saves[curIndex].board[o, j].IsNone()) {
+
+                        var checkerOpt = saves[curIndex].board[k, j];
+                        if (checkerOpt.IsNone()) {
                             continue;
                         }
-                        var checker = saves[i].board[o, j].Peel();
-                        var checkerImage = res.checkerImages.whiteChecker;
+                        var checker = checkerOpt.Peel();
+                        var checkerImage = res.checkerImages.checkerImg;
 
+                        var color = res.checkerImages.checkerImg.color;
                         if (checker.color == ChColor.White) {
                             if (checker.type == Type.King) {
-                                checkerImage = res.checkerImages.whiteKing;
+                                checkerImage = res.checkerImages.kingImg;
                             }
                         } else if (checker.color == ChColor.Black) {
+                            color = Color.gray;
                             if (checker.type == Type.King) {
-                                checkerImage = res.checkerImages.blackKing;
+                                checkerImage = res.checkerImages.kingImg;
                             } else if (checker.type == Type.Checker) {
-                                checkerImage = res.checkerImages.blackChecker;
+                                checkerImage = res.checkerImages.checkerImg;
                             }
                         }
 
                         imageBoard.boardCells[saveNum].texture = checkerImage.texture;
-                        imageBoard.boardCells[saveNum].color = checkerImage.color;
+                        imageBoard.boardCells[saveNum].color = color;
                     }
                 }
-
             }
         }
     }

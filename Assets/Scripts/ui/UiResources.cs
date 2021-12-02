@@ -4,10 +4,8 @@ using UnityEngine.UI;
 namespace ui {
     [System.Serializable]
     public struct CheckerImages {
-        public RawImage whiteChecker;
-        public RawImage blackChecker;
-        public RawImage whiteKing;
-        public RawImage blackKing;
+        public RawImage checkerImg;
+        public RawImage kingImg;
         public RawImage emptyCell;
     }
 

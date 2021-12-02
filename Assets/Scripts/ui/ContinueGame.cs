@@ -31,7 +31,6 @@ namespace ui {
         }
 
         public void LoadLastSave() {
-            controller.enabled = true;
             var saves = controller.GetSavesInfo();
             if (saves == null) {
                 Debug.LogError("SavesIsNull");
@@ -49,7 +48,11 @@ namespace ui {
                 }
             }
 
-            controller.Load(lastSave.fileName);
+            var res = controller.Load(lastSave.fileName);
+            if (res != Errors.None) {
+                return;
+            }
+            controller.enabled = true;
         }
     }
 }
