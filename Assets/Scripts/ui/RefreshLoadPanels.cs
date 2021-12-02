@@ -9,7 +9,8 @@ namespace ui {
         public Controller gmController;
         public Button openMenu;
         public List<LoadPanelRes> loadPanels;
-        public RectTransform savePanelsStorage;
+        public RectTransform loadPanelsStorage;
+        public RectTransform loadPanel;
         public GameObject pageList;
         public UiResources res;
 
@@ -46,6 +47,7 @@ namespace ui {
         }
 
         public void Refresh() {
+            var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
             var sentencedHighlight = new List<Transform>();
             foreach (Transform child in pageList.transform) {
                 sentencedHighlight.Add(child);
@@ -60,8 +62,8 @@ namespace ui {
                 Debug.LogError("SaveListIsNull");
                 return;
             }
-            var numberOfPage = saves.Count / 4;
-            if (saves.Count % 4 != 0) numberOfPage++;
+            var numberOfPage = saves.Count / countSavesInPanel;
+            if (saves.Count % countSavesInPanel != 0) numberOfPage++;
 
             for (int i = 0; i < numberOfPage; i++) {
                 var curBut = Instantiate(res.pageBut, pageList.transform);
@@ -72,6 +74,7 @@ namespace ui {
 
         public void FillPage(int pageNumber) {
             var saves = gmController.GetSavesInfo();
+            var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
 
             saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
             if (res.loadPanel.boardImage == null) {
@@ -108,11 +111,9 @@ namespace ui {
                 return;
             }
 
-            for (int i = pageNumber * 4; i < pageNumber * 4 + 4; i++) {
-                var curPanel = loadPanels[i - pageNumber * 4];
-                // foreach (Transform obj in curPanel.boardImage.transform) {
-                //     Destroy(obj.gameObject);
-                // }
+            var startSave = pageNumber * countSavesInPanel;
+            for (int i = startSave; i < pageNumber * countSavesInPanel + countSavesInPanel; i++) {
+                var curPanel = loadPanels[i - pageNumber * countSavesInPanel];
 
                 curPanel.gameObject.SetActive(true);
                 curPanel.delete.onClick.RemoveAllListeners();
@@ -139,17 +140,25 @@ namespace ui {
 
                 curPanel.load.onClick.AddListener(() => gmController.Load(fileName));
                 curPanel.load.onClick.AddListener(() => openMenu.onClick?.Invoke());
-                var imageBoardPrefab = curPanel.boardImage8x8;
-                // var imageBoardPrefab = res.boardImages.boardImage10x10;
-                // if (saves[curIndex].board.GetLength(0) < 10) {
-                //     imageBoardPrefab = res.boardImages.boardImage8x8;
-                // }
+                curPanel.whoseMove.texture = res.checkerImages.whiteChecker.texture;
+                curPanel.whoseMove.color = res.checkerImages.whiteChecker.color;
+                if (saves[curIndex].whoseMove == controller.ChColor.Black) {
+                    curPanel.whoseMove.texture = res.checkerImages.blackChecker.texture;
+                    curPanel.whoseMove.color = res.checkerImages.blackChecker.color;
+                }
 
-                //var boardGrid = Instantiate(imageBoardPrefab, curPanel.boardImage.transform);
+                var imageBoard = curPanel.boardImage8x8;
+                if (saves[curIndex].board.GetLength(0) == 10) {
+                    continue;
+                }
+
                 for (int o = 0; o < saves[curIndex].board.GetLength(1); o++) {
                     for (int j = 0; j < saves[curIndex].board.GetLength(0); j++) {
-                        imageBoardPrefab.boardCells[o * saves[curIndex].board.GetLength(0) + j].texture = res.checkerImages.emptyCell.texture;
-                        imageBoardPrefab.boardCells[o * saves[curIndex].board.GetLength(0) + j].color = res.checkerImages.emptyCell.color;
+                        var saveNum = o * saves[curIndex].board.GetLength(0) + j;
+
+                        var emptyImage = res.checkerImages.emptyCell.texture;
+                        imageBoard.boardCells[saveNum].texture = emptyImage;
+                        imageBoard.boardCells[saveNum].color = res.checkerImages.emptyCell.color;
                         if (saves[curIndex].board[o, j].IsNone()) {
                             continue;
                         }
@@ -168,17 +177,11 @@ namespace ui {
                             }
                         }
 
-                        imageBoardPrefab.boardCells[o * saves[curIndex].board.GetLength(0) + j].texture = checkerImage.texture;
-                        imageBoardPrefab.boardCells[o * saves[curIndex].board.GetLength(0) + j].color = checkerImage.color;
+                        imageBoard.boardCells[saveNum].texture = checkerImage.texture;
+                        imageBoard.boardCells[saveNum].color = checkerImage.color;
                     }
                 }
 
-                curPanel.whoseMove.texture = res.checkerImages.whiteChecker.texture;
-                curPanel.whoseMove.color = res.checkerImages.whiteChecker.color;
-                if (saves[curIndex].whoseMove == controller.ChColor.Black) {
-                    curPanel.whoseMove.texture = res.checkerImages.blackChecker.texture;
-                    curPanel.whoseMove.color = res.checkerImages.blackChecker.color;
-                }
             }
         }
     }
