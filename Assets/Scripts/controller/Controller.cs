@@ -7,12 +7,16 @@ using UnityEngine.Events;
 using UnityEditor;
 
 namespace controller {
-    public enum @void {
+    public enum Errors {
         None,
         BoardIsNull,
         GameObjectIsNull,
         ListIsNull,
-        NoSuchColor
+        StringIsNull,
+        NoSuchColor,
+        LoadError,
+        CSVError,
+        CantDelete
     }
 
     public enum ChKind {
@@ -333,21 +337,23 @@ namespace controller {
         }
 
 
-        public void Load(string path) {
-            if (!path.Contains(Application.persistentDataPath)) {
-                path = Path.Combine(Application.streamingAssetsPath, path);
+        public Errors Load(string path) {
+            if (path == null) {
+                return Errors.StringIsNull;
             }
+
             string input;
             try {
                 input = File.ReadAllText(path);
             } catch (Exception err) {
                 Debug.LogError(err.ToString());
-                return;
+                return Errors.LoadError;
             }
 
             var parseRes = CSV.Parse(input);
             if (parseRes.error != CSV.ErrorType.None) {
                 Debug.LogError(parseRes.error.ToString());
+                return Errors.CSVError;
             }
 
             if (int.TryParse(parseRes.rows[parseRes.rows.Count - 1][3], out int result)) {
@@ -394,11 +400,26 @@ namespace controller {
             moveCounter = 0;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
+
+            return Errors.None;
+        }
+
+        public void NewGame(String path) {
+            if (path == null) {
+                Debug.LogError("CantLoadNewGame");
+                return;
+            }
+            path = Path.Combine(Application.streamingAssetsPath, path);
+            Load(path);
         }
 
         public void Save(string path) {
             if (path == "") {
                 path = Path.Combine(Application.persistentDataPath, Guid.NewGuid() + ".save");
+            }
+
+            if (map.board == null) {
+                return;
             }
 
             var rows = new List<List<string>>();
@@ -427,6 +448,7 @@ namespace controller {
                     }
                 }
             }
+
             var whoseMoveNow = ((int)whoseMove).ToString();
             var kind = ((int)chKind).ToString();
             rows.Add(new List<string>() {"WhoseMove", whoseMoveNow , "ChKind", kind });
@@ -494,13 +516,15 @@ namespace controller {
             return saveInfos;
         }
 
-        public void DeleteFile(string path) {
+        public Errors DeleteFile(string path) {
             try {
                 File.Delete(path);
             } catch (Exception err) {
                 Debug.Log(err.ToString());
-                return;
+                return Errors.CantDelete;
             }
+
+            return Errors.None;
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
