@@ -6,13 +6,13 @@ namespace ui {
     public struct CheckerImages {
         public RawImage checkerImg;
         public RawImage kingImg;
-        public RawImage emptyCell;
+        public BoardImageRes emptyCell;
     }
 
     [System.Serializable]
     public struct BoardImages {
         public GameObject boardImage10x10;
-        public BoardImageRes boardImage8x8;
+        public GameObject boardImage8x8;
     }
 
     public class UiResources : MonoBehaviour {

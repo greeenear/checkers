@@ -2,20 +2,27 @@ using UnityEngine;
 using controller;
 using UnityEngine.UI;
 using System.Collections.Generic;
-using System.IO;
 
 namespace ui {
     public class RefreshLoadPanels : MonoBehaviour {
+        public int howManyButShow;
         public Controller gmController;
         public Button openMenu;
+        public Button leftPointer;
+        public Button rightPointer;
+
         public List<LoadPanelRes> loadPanels;
         public RectTransform loadPanelsStorage;
         public RectTransform loadPanel;
+
         public GameObject pageList;
-        private int curPage;
         public UiResources res;
 
+        private Dictionary<int, List<BoardImageRes>> boardsImageRef;
+        private int curPage;
+
         private void Awake() {
+            boardsImageRef = new Dictionary<int, List<BoardImageRes>>();
             if (res == null) {
                 Debug.LogError("CantGetResources");
                 this.enabled = false;
@@ -42,7 +49,6 @@ namespace ui {
         }
 
         public void Refresh(int numberOfPage) {
-            curPage = numberOfPage;
             var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
             var sentencedHighlight = new List<Transform>();
             foreach (Transform child in pageList.transform) {
@@ -59,17 +65,32 @@ namespace ui {
                 return;
             }
 
+            if (saves.Count == 0) {
+                openMenu.onClick.Invoke();
+                return;
+            }
+
             var countOfPage = saves.Count / countSavesInPanel;
             if (saves.Count % countSavesInPanel != 0) countOfPage++;
 
-            int showed = 0;
+            leftPointer.gameObject.SetActive(true);
+            if (curPage == 0) {
+                leftPointer.gameObject.SetActive(false);
+            }
+
+            rightPointer.gameObject.SetActive(true);
+            if (curPage + 1 == countOfPage) {
+                rightPointer.gameObject.SetActive(false);
+            }
+
+            int showedPages = 0;
             int skipPages = 4;
-            if (countOfPage - numberOfPage < 12 - skipPages) {
-                skipPages  = skipPages + (12 - skipPages - countOfPage + numberOfPage);//shit
+            if (countOfPage - numberOfPage < howManyButShow - skipPages) {
+                skipPages  = howManyButShow - countOfPage + numberOfPage;
             }
 
             for (int i = numberOfPage - skipPages; i < countOfPage; i++) {
-                if (showed == 12) {
+                if (showedPages == howManyButShow) {
                     break;
                 }
                 if (i < 0) {
@@ -82,30 +103,38 @@ namespace ui {
                 if (loadNum == curPage) {
                     curBut.interactable = false;
                 }
-                text.text = loadNum.ToString();
+
+                text.text = (loadNum + 1).ToString();
                 curBut.onClick.AddListener(() => FillPage(loadNum));
                 curBut.onClick.AddListener(() => Refresh(loadNum));
-                showed++;
+                showedPages++;
             }
         }
 
         public void SkipPages(int dir) {
-            Refresh(curPage + 12 * dir);
+            curPage = curPage + dir;
+            if (curPage + dir < 0) {
+                curPage = 0;
+            }
+
+            Refresh(curPage);
+            FillPage(curPage);
         }
 
         public void FillPage(int pageNumber) {
+            curPage = pageNumber;
             var saves = gmController.GetSavesInfo();
             if (saves == null) {
+                return;
+            }
+
+            if (saves.Count == 0) {
                 return;
             }
 
             var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
 
             saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
-            if (res.loadPanel.boardImage == null) {
-                Debug.LogError("NoBoardImage");
-                return;
-            }
 
             if (res.loadPanel.whoseMove == null) {
                 Debug.LogError("NoWhoseMove");
@@ -146,6 +175,12 @@ namespace ui {
 
                 int curIndex = i + startSave;
                 if (curIndex >= saves.Count) {
+                    if (i == 0) {
+                        curPage = curPage - 1;
+                        Refresh(curPage);
+                        FillPage(curPage);
+                        return;
+                    }
                     curPanel.gameObject.SetActive(false);
                     continue;
                 }
@@ -161,9 +196,9 @@ namespace ui {
                         }
                     }
                 );
+
                 curPanel.delete.onClick.AddListener(() => Refresh(pageNumber));
                 curPanel.delete.onClick.AddListener(() => FillPage(pageNumber));
-
                 curPanel.load.onClick.AddListener(() => { 
                         if (gmController.Load(fileName) != Errors.None) {
                             Debug.LogError("cant load");
@@ -171,32 +206,57 @@ namespace ui {
                         }
                     }
                 );
-
                 curPanel.load.onClick.AddListener(() => openMenu.onClick?.Invoke());
+
                 curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
                 curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
                 if (saves[curIndex].whoseMove == controller.ChColor.Black) {
+
                     curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
                     curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
                 }
 
-                var imageBoard = curPanel.boardImage8x8;
+                var imageBoard = curPanel.boardImage.boardImage8x8;
+                curPanel.boardImage.boardImage10x10.gameObject.SetActive(false);
+                curPanel.boardImage.boardImage8x8.gameObject.SetActive(true);
                 if (saves[curIndex].board.GetLength(0) == 10) {
-                    continue;
+                    curPanel.boardImage.boardImage8x8.gameObject.SetActive(false);
+                    curPanel.boardImage.boardImage10x10.gameObject.SetActive(true);
+                    imageBoard = curPanel.boardImage.boardImage10x10;
                 }
 
                 for (int k = 0; k < saves[curIndex].board.GetLength(1); k++) {
+                    var saveLength = saves[curIndex].board.Length;
+                    if (!boardsImageRef.ContainsKey(i) || saveLength != boardsImageRef[i].Count) {
+                        var cellsList = new List<BoardImageRes>();
+                        foreach (Transform child in imageBoard.transform) {
+                            Destroy(child.gameObject);
+                        }
+
+                        foreach (var cell in saves[curIndex].board) {
+                            cellsList.Add(
+                                Instantiate(
+                                    res.checkerImages.emptyCell,
+                                    imageBoard.transform
+                                )
+                            );
+                        }
+                        boardsImageRef[i] = cellsList;
+                    }
+
                     for (int j = 0; j < saves[curIndex].board.GetLength(0); j++) {
                         var saveNum = k * saves[curIndex].board.GetLength(0) + j;
 
-                        var emptyImage = res.checkerImages.emptyCell.texture;
-                        imageBoard.boardCells[saveNum].texture = emptyImage;
-                        imageBoard.boardCells[saveNum].color = res.checkerImages.emptyCell.color;
+                        var emptyTexture = res.checkerImages.emptyCell.cell.texture;
+                        var emptyColor = res.checkerImages.emptyCell.cell.color;
+                        boardsImageRef[i][saveNum].cell.texture = emptyTexture;
+                        boardsImageRef[i][saveNum].cell.color = emptyColor;
 
                         var checkerOpt = saves[curIndex].board[k, j];
                         if (checkerOpt.IsNone()) {
                             continue;
                         }
+
                         var checker = checkerOpt.Peel();
                         var checkerImage = res.checkerImages.checkerImg;
 
@@ -213,9 +273,8 @@ namespace ui {
                                 checkerImage = res.checkerImages.checkerImg;
                             }
                         }
-
-                        imageBoard.boardCells[saveNum].texture = checkerImage.texture;
-                        imageBoard.boardCells[saveNum].color = color;
+                        boardsImageRef[i][saveNum].cell.texture = checkerImage.texture;
+                        boardsImageRef[i][saveNum].cell.color = color;
                     }
                 }
             }
