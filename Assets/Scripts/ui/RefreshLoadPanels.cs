@@ -5,11 +5,12 @@ using System.Collections.Generic;
 
 namespace ui {
     public class RefreshLoadPanels : MonoBehaviour {
-        public int howManyButShow;
+        public int howManyPagesShow;
         public Controller gmController;
         public Button openMenu;
         public Button leftPointer;
         public Button rightPointer;
+        public Button lastPage;
 
         public List<LoadPanelRes> loadPanels;
         public RectTransform loadPanelsStorage;
@@ -51,6 +52,8 @@ namespace ui {
         public void Refresh(int numberOfPage) {
             var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
             var sentencedHighlight = new List<Transform>();
+            lastPage.gameObject.SetActive(false);
+
             foreach (Transform child in pageList.transform) {
                 sentencedHighlight.Add(child);
             }
@@ -85,12 +88,24 @@ namespace ui {
 
             int showedPages = 0;
             int skipPages = 4;
-            if (countOfPage - numberOfPage < howManyButShow - skipPages) {
-                skipPages  = howManyButShow - countOfPage + numberOfPage;
+            if (countOfPage - numberOfPage < howManyPagesShow - skipPages) {
+                skipPages  = howManyPagesShow - countOfPage + numberOfPage;
+            }
+
+            var isLastPageShown = curPage + howManyPagesShow - skipPages != countOfPage;
+            if (countOfPage > howManyPagesShow && isLastPageShown) {
+                lastPage.gameObject.SetActive(true);
+                var text = lastPage.GetComponentInChildren<Text>();
+                if (text != null) {
+                    text.text = (countOfPage).ToString();
+                    lastPage.onClick.RemoveAllListeners();
+                    lastPage.onClick.AddListener(() => FillPage(countOfPage));
+                    lastPage.onClick.AddListener(() => Refresh(countOfPage));
+                }
             }
 
             for (int i = numberOfPage - skipPages; i < countOfPage; i++) {
-                if (showedPages == howManyButShow) {
+                if (showedPages == howManyPagesShow) {
                     break;
                 }
                 if (i < 0) {
@@ -98,12 +113,15 @@ namespace ui {
                 }
 
                 var curBut = Instantiate(res.pageBut, pageList.transform);
-                var text = curBut.GetComponentInChildren<Text>();
                 int loadNum = i;
                 if (loadNum == curPage) {
                     curBut.interactable = false;
                 }
 
+                var text = curBut.GetComponentInChildren<Text>();
+                if (text == null) {
+                    continue;
+                }
                 text.text = (loadNum + 1).ToString();
                 curBut.onClick.AddListener(() => FillPage(loadNum));
                 curBut.onClick.AddListener(() => Refresh(loadNum));
