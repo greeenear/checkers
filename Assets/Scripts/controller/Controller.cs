@@ -111,7 +111,7 @@ namespace controller {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
 
                         var cellOpt = map.board[i, j];
-                        if (cellOpt.IsNone() || cellOpt.Peel().color != whoseMove) continue;
+                        if (cellOpt.IsNone()) continue;
                         var curCh = cellOpt.Peel();
 
                         var xDir = 1;
@@ -169,22 +169,24 @@ namespace controller {
             if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) return;
 
             DestroyHighlightCells(storageHighlightCells.transform);
-            var cliсkPos = ConvertToBoardPoint(hit.point);
+            var clickPos = ConvertToBoardPoint(hit.point);
 
-            var checkerOpt = map.board[cliсkPos.x, cliсkPos.y];
+            var checkerOpt = map.board[clickPos.x, clickPos.y];
 
             var isAttack = IsNeedAttack(allCheckerMoves);
-            if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
-                if (!allCheckerMoves.ContainsKey(cliсkPos)) return;
-                selected = Option<Vector2Int>.Some(cliсkPos);
-
-                if (allCheckerMoves[cliсkPos].Count == 0 || isAttack 
-                && !IsCheckerNeedAttack(isAttack, allCheckerMoves[cliсkPos])) {
+            if (checkerOpt.IsSome()) {
+                if (!allCheckerMoves.ContainsKey(clickPos)) return;
+                selected = Option<Vector2Int>.Some(clickPos);
+                
+                var curMoves = allCheckerMoves[clickPos];
+                var isDifColor = checkerOpt.Peel().color != whoseMove;
+                if (curMoves.Count == 0 || isAttack && !HasAttack(curMoves) || isDifColor) {
                     foreach (var checker in allCheckerMoves) {
                         if (checker.Value.Count != 0) {
-                            if (isAttack && !IsCheckerNeedAttack(isAttack, checker.Value)) {
-                                continue;
-                            }
+                            var curChOpt = map.board[checker.Key.x, checker.Key.y];
+                            if (curChOpt.IsNone() || curChOpt.Peel().color != whoseMove) continue;
+
+                            if (isAttack && !HasAttack(checker.Value)) continue;
 
                             var parent = storageHighlightCells.transform;
                             var pos = ConvertToWorldPoint(checker.Key) - new Vector3(0, 0.1f, 0);
@@ -192,8 +194,11 @@ namespace controller {
                         }
                     }
                 }
-
-                HighlightCells(allCheckerMoves[cliсkPos], isAttack);
+                if (checkerOpt.Peel().color != whoseMove) {
+                    selected = Option<Vector2Int>.None();
+                    return;
+                }
+                HighlightCells(allCheckerMoves[clickPos], isAttack);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
                 if (map.board[curPos.x, curPos.y].IsNone()) return;
@@ -201,21 +206,21 @@ namespace controller {
                 var origCurCh = curCh;
 
                 var curChMoves = allCheckerMoves[curPos];
-                if (!curChMoves.ContainsKey(cliсkPos)) {
+                if (!curChMoves.ContainsKey(clickPos)) {
                     selected = Option<Vector2Int>.None();
                     return;
                 }
 
-                var isClickAttack = curChMoves[cliсkPos];
+                var isClickAttack = curChMoves[clickPos];
                 if (!isClickAttack && isAttack) return;
 
-                map.board[cliсkPos.x, cliсkPos.y] = map.board[curPos.x, curPos.y];
+                map.board[clickPos.x, clickPos.y] = map.board[curPos.x, curPos.y];
                 map.board[curPos.x, curPos.y] = Option<Checker>.None();
                 allCheckerMoves.Clear();
 
-                var worldPos = ConvertToWorldPoint(cliсkPos);
+                var worldPos = ConvertToWorldPoint(clickPos);
                 map.obj[curPos.x, curPos.y].transform.position = worldPos;
-                map.obj[cliсkPos.x, cliсkPos.y] = map.obj[curPos.x, curPos.y];
+                map.obj[clickPos.x, clickPos.y] = map.obj[curPos.x, curPos.y];
 
                 var edgeBoard = 0;
                 if (curCh.color == ChColor.Black) {
@@ -223,20 +228,20 @@ namespace controller {
                 }
 
 
-                var dir = cliсkPos - curPos;
+                var dir = clickPos - curPos;
                 var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
-                for (var next = curPos + nDir; next != cliсkPos; next += nDir) {
+                for (var next = curPos + nDir; next != clickPos; next += nDir) {
                     if (map.board[next.x, next.y].IsSome()) {
                         sentenced.Add(next);
                     }
                 }
 
-                var onEdgeBoard = cliсkPos.x == edgeBoard;
+                var onEdgeBoard = clickPos.x == edgeBoard;
                 if (onEdgeBoard && !(chKind == ChKind.International && sentenced.Count != 0)) {
                     var king = new Checker { type = Type.King, color = whoseMove };
-                    map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
+                    map.board[clickPos.x, clickPos.y] = Option<Checker>.Some(king);
                     var reverse = Quaternion.Euler(180, 0, 0);
-                    map.obj[cliсkPos.x, cliсkPos.y].transform.rotation = reverse;
+                    map.obj[clickPos.x, clickPos.y].transform.rotation = reverse;
                     curCh = king;
                 }
 
@@ -251,9 +256,9 @@ namespace controller {
 
                     var size = boardInfo.boardSize;
                     foreach (var moveDir in res.directions) {
-                        var last = cliсkPos + moveDir;
+                        var last = clickPos + moveDir;
                         var chFound = false;
-                        for (last = cliсkPos + moveDir; IsOnBoard(size, last); last += moveDir) {
+                        for (last = clickPos + moveDir; IsOnBoard(size, last); last += moveDir) {
                             var nextOpt = map.board[last.x, last.y];
                             if (nextOpt.IsSome()) {
                                 var nextColor = nextOpt.Peel().color;
@@ -285,15 +290,15 @@ namespace controller {
                 }
 
                 if (secondMoveInfos.Count != 0) {
-                    allCheckerMoves.Add(cliсkPos, secondMoveInfos);
+                    allCheckerMoves.Add(clickPos, secondMoveInfos);
                     HighlightCells(secondMoveInfos, true);
-                    selected = Option<Vector2Int>.Some(cliсkPos);
+                    selected = Option<Vector2Int>.Some(clickPos);
                 }  else {
                     if (onEdgeBoard && chKind == ChKind.International) {
                         var king = new Checker { type = Type.King, color = whoseMove };
-                        map.board[cliсkPos.x, cliсkPos.y] = Option<Checker>.Some(king);
+                        map.board[clickPos.x, clickPos.y] = Option<Checker>.Some(king);
                         var reverse = Quaternion.Euler(180, 0, 0);
-                        map.obj[cliсkPos.x, cliсkPos.y].transform.rotation = reverse;
+                        map.obj[clickPos.x, clickPos.y].transform.rotation = reverse;
                         curCh = king;
                     }
 
@@ -596,11 +601,9 @@ namespace controller {
             return false;
         }
 
-        private bool IsCheckerNeedAttack(bool isAttack, Dictionary<Vector2Int, bool> moves) {
+        private bool HasAttack(Dictionary<Vector2Int, bool> moves) {
             foreach (var move in moves) {
-                if (isAttack && move.Value || !isAttack && !move.Value) {
-                    return true;
-                }
+                if (move.Value ) return true;
             }
 
             return false;
