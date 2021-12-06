@@ -10,7 +10,7 @@ namespace ui {
         public Button openMenu;
         public Button leftPointer;
         public Button rightPointer;
-        public Button lastPage;
+        public PageButRes lastPage;
 
         public List<LoadPanelRes> loadPanels;
         public RectTransform loadPanelsStorage;
@@ -98,9 +98,9 @@ namespace ui {
                 var text = lastPage.GetComponentInChildren<Text>();
                 if (text != null) {
                     text.text = (countOfPage).ToString();
-                    lastPage.onClick.RemoveAllListeners();
-                    lastPage.onClick.AddListener(() => FillPage(countOfPage));
-                    lastPage.onClick.AddListener(() => Refresh(countOfPage));
+                    lastPage.button.onClick.RemoveAllListeners();
+                    lastPage.button.onClick.AddListener(() => FillPage(countOfPage));
+                    lastPage.button.onClick.AddListener(() => Refresh(countOfPage));
                 }
             }
 
@@ -115,16 +115,16 @@ namespace ui {
                 var curBut = Instantiate(res.pageBut, pageList.transform);
                 int loadNum = i;
                 if (loadNum == curPage) {
-                    curBut.interactable = false;
+                    curBut.button.interactable = false;
                 }
 
-                var text = curBut.GetComponentInChildren<Text>();
-                if (text == null) {
+                if (curBut.text == null) {
                     continue;
                 }
-                text.text = (loadNum + 1).ToString();
-                curBut.onClick.AddListener(() => FillPage(loadNum));
-                curBut.onClick.AddListener(() => Refresh(loadNum));
+
+                curBut.text.text = (loadNum + 1).ToString();
+                curBut.button.onClick.AddListener(() => FillPage(loadNum));
+                curBut.button.onClick.AddListener(() => Refresh(loadNum));
                 showedPages++;
             }
         }

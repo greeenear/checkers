@@ -17,7 +17,7 @@ namespace ui {
 
     public class UiResources : MonoBehaviour {
         public LoadPanelRes loadPanel;
-        public Button pageBut;
+        public PageButRes pageBut;
         public CheckerImages checkerImages;
         public BoardImages boardImages;
     }
