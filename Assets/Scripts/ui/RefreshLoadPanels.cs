@@ -118,13 +118,13 @@ namespace ui {
                     curBut.button.interactable = false;
                 }
 
-                if (curBut.text == null) {
-                    continue;
-                }
 
                 curBut.text.text = (loadNum + 1).ToString();
                 curBut.button.onClick.AddListener(() => FillPage(loadNum));
                 curBut.button.onClick.AddListener(() => Refresh(loadNum));
+                if (curBut.text == null) {
+                    continue;
+                }
                 showedPages++;
             }
         }
@@ -142,11 +142,7 @@ namespace ui {
         public void FillPage(int pageNumber) {
             curPage = pageNumber;
             var saves = gmController.GetSavesInfo();
-            if (saves == null) {
-                return;
-            }
-
-            if (saves.Count == 0) {
+            if (saves == null || saves.Count == 0) {
                 return;
             }
 
@@ -161,11 +157,6 @@ namespace ui {
 
             if (res.loadPanel.date == null) {
                 Debug.LogError("NoDate");
-                return;
-            }
-
-            if (res.loadPanel.kind == null) {
-                Debug.LogError("NoKind");
                 return;
             }
 
@@ -203,12 +194,10 @@ namespace ui {
                     continue;
                 }
 
-                var fileName = saves[curIndex].fileName;
-
                 curPanel.date.text = saves[curIndex].saveDate.ToString("dd.MM.yyyy HH:mm:ss");
                 curPanel.kind.text = "Checker Kind: " + saves[curIndex].checkerKind.ToString();
                 curPanel.delete.onClick.AddListener(() => {
-                        if (gmController.DeleteFile(fileName) != Errors.None) {
+                        if (gmController.DeleteFile(saves[curIndex].fileName) != Errors.None) {
                             Debug.LogError("cant delete");
                             return;
                         }
@@ -218,7 +207,7 @@ namespace ui {
                 curPanel.delete.onClick.AddListener(() => Refresh(pageNumber));
                 curPanel.delete.onClick.AddListener(() => FillPage(pageNumber));
                 curPanel.load.onClick.AddListener(() => { 
-                        if (gmController.Load(fileName) != Errors.None) {
+                        if (gmController.Load(saves[curIndex].fileName) != Errors.None) {
                             Debug.LogError("cant load");
                             return;
                         }
@@ -229,9 +218,7 @@ namespace ui {
                 curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
                 curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
                 if (saves[curIndex].whoseMove == controller.ChColor.Black) {
-
-                    curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
-                    curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
+                    curPanel.whoseMove.color = Color.grey;
                 }
 
                 var imageBoard = curPanel.boardImage.boardImage8x8;

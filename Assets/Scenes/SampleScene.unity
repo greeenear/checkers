@@ -13648,7 +13648,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6743891331423177912, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6743891331423177912, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
       propertyPath: m_PixelPerfect

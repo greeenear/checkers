@@ -176,7 +176,6 @@ namespace controller {
             var isAttack = IsNeedAttack(allCheckerMoves);
             if (checkerOpt.IsSome()) {
                 if (!allCheckerMoves.ContainsKey(clickPos)) return;
-                selected = Option<Vector2Int>.Some(clickPos);
                 
                 var curMoves = allCheckerMoves[clickPos];
                 var isDifColor = checkerOpt.Peel().color != whoseMove;
@@ -194,10 +193,9 @@ namespace controller {
                         }
                     }
                 }
-                if (checkerOpt.Peel().color != whoseMove) {
-                    selected = Option<Vector2Int>.None();
-                    return;
-                }
+                if (checkerOpt.Peel().color != whoseMove) return;
+
+                selected = Option<Vector2Int>.Some(clickPos);
                 HighlightCells(allCheckerMoves[clickPos], isAttack);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
@@ -593,9 +591,7 @@ namespace controller {
 
         private bool IsNeedAttack(Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkers) {
             foreach (var checker in checkers) {
-                foreach (var move in checker.Value) {
-                    if (move.Value) return true;
-                }
+                if (HasAttack(checker.Value)) return true;
             }
 
             return false;
