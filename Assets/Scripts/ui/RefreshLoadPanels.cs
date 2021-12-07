@@ -6,11 +6,12 @@ using System.Collections.Generic;
 namespace ui {
     public class RefreshLoadPanels : MonoBehaviour {
         public int howManyPagesShow;
+        public int howManySkipPages;
         public Controller gmController;
         public Button openMenu;
         public Button leftPointer;
         public Button rightPointer;
-        public PageButRes lastPage;
+        public PageButRes lastPg;
 
         public List<LoadPanelRes> loadPanels;
         public RectTransform loadPanelsStorage;
@@ -26,34 +27,32 @@ namespace ui {
             boardsImageRef = new Dictionary<int, List<BoardImageRes>>();
             if (res == null) {
                 Debug.LogError("CantGetResources");
-                this.enabled = false;
                 return;
             }
 
             if (res.boardImages.boardImage10x10 == null) {
                 Debug.LogError("NoBoardImage10x10");
-                this.enabled = false;
                 return;
             }
 
             if (res.boardImages.boardImage8x8 == null) {
                 Debug.LogError("NoBoardImage8x8");
-                this.enabled = false;
                 return;
             }
 
             if (res.checkerImages.checkerImg == null) {
                 Debug.LogError("NoBlackCheckerImage");
-                this.enabled = false;
                 return;
             }
+
+            if (lastPg.text == null || lastPg.button == null) {
+                Debug.LogError("LastPageNoRef");
+                return;
+            };
         }
 
-        public void Refresh(int numberOfPage) {
-            var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
+        public void RefreshPagesBut(int numberOfPage) {
             var sentencedHighlight = new List<Transform>();
-            lastPage.gameObject.SetActive(false);
-
             foreach (Transform child in pageList.transform) {
                 sentencedHighlight.Add(child);
             }
@@ -62,55 +61,24 @@ namespace ui {
                 child.SetParent(null);
             }
 
+            int countPanelsOnPage = 4;
             var saves = gmController.GetSavesInfo();
-            if (saves == null) {
-                Debug.LogError("SaveListIsNull");
-                return;
-            }
+            if (saves == null || saves.Count == 0) return;
 
-            if (saves.Count == 0) {
-                openMenu.onClick.Invoke();
-                return;
-            }
+            var countOfPage = saves.Count / countPanelsOnPage;
+            if (saves.Count % countPanelsOnPage != 0) countOfPage++;
 
-            var countOfPage = saves.Count / countSavesInPanel;
-            if (saves.Count % countSavesInPanel != 0) countOfPage++;
+            curPage = numberOfPage;
+            int showedPageBut = 0;
 
-            leftPointer.gameObject.SetActive(true);
-            if (curPage == 0) {
-                leftPointer.gameObject.SetActive(false);
-            }
-
-            rightPointer.gameObject.SetActive(true);
-            if (curPage + 1 == countOfPage) {
-                rightPointer.gameObject.SetActive(false);
-            }
-
-            int showedPages = 0;
-            int skipPages = 4;
+            var skipPages = howManySkipPages;
             if (countOfPage - numberOfPage < howManyPagesShow - skipPages) {
                 skipPages  = howManyPagesShow - countOfPage + numberOfPage;
             }
 
-            var isLastPageShown = curPage + howManyPagesShow - skipPages != countOfPage;
-            if (countOfPage > howManyPagesShow && isLastPageShown) {
-                lastPage.gameObject.SetActive(true);
-                var text = lastPage.GetComponentInChildren<Text>();
-                if (text != null) {
-                    text.text = (countOfPage).ToString();
-                    lastPage.button.onClick.RemoveAllListeners();
-                    lastPage.button.onClick.AddListener(() => FillPage(countOfPage));
-                    lastPage.button.onClick.AddListener(() => Refresh(countOfPage));
-                }
-            }
-
             for (int i = numberOfPage - skipPages; i < countOfPage; i++) {
-                if (showedPages == howManyPagesShow) {
-                    break;
-                }
-                if (i < 0) {
-                    continue;
-                }
+                if (showedPageBut == howManyPagesShow) break;
+                if (i < 0) continue;
 
                 var curBut = Instantiate(res.pageBut, pageList.transform);
                 int loadNum = i;
@@ -118,33 +86,39 @@ namespace ui {
                     curBut.button.interactable = false;
                 }
 
-
-                curBut.text.text = (loadNum + 1).ToString();
                 curBut.button.onClick.AddListener(() => FillPage(loadNum));
-                curBut.button.onClick.AddListener(() => Refresh(loadNum));
-                if (curBut.text == null) {
-                    continue;
-                }
-                showedPages++;
+                curBut.button.onClick.AddListener(() => RefreshPagesBut(loadNum));
+                curBut.text.text = (loadNum + 1).ToString();
+                showedPageBut++;
             }
+
+            lastPg.gameObject.SetActive(false);
+            var isLastNotVisible = curPage + howManyPagesShow - skipPages != countOfPage;
+            if (countOfPage > howManyPagesShow && isLastNotVisible) {
+                lastPg.button.onClick.RemoveAllListeners();
+                lastPg.text.text = countOfPage.ToString();
+                lastPg.button.onClick.AddListener(() => FillPage(countOfPage));
+                lastPg.button.onClick.AddListener(() => lastPg.gameObject.SetActive(false));
+                lastPg.gameObject.SetActive(true);
+            }
+
+            leftPointer.gameObject.SetActive(true);
+            if (curPage == 0) leftPointer.gameObject.SetActive(false);
+
+            rightPointer.gameObject.SetActive(true);
+            if (curPage + 1 == countOfPage) rightPointer.gameObject.SetActive(false);
         }
 
-        public void SkipPages(int dir) {
+        public void TurnPage(int dir) {
             curPage = curPage + dir;
-            if (curPage + dir < 0) {
-                curPage = 0;
-            }
-
-            Refresh(curPage);
+            RefreshPagesBut(curPage);
             FillPage(curPage);
         }
 
         public void FillPage(int pageNumber) {
             curPage = pageNumber;
             var saves = gmController.GetSavesInfo();
-            if (saves == null || saves.Count == 0) {
-                return;
-            }
+            if (saves == null || saves.Count == 0) return;
 
             var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
 
@@ -186,7 +160,7 @@ namespace ui {
                 if (curIndex >= saves.Count) {
                     if (i == 0) {
                         curPage = curPage - 1;
-                        Refresh(curPage);
+                        RefreshPagesBut(curPage);
                         FillPage(curPage);
                         return;
                     }
@@ -204,9 +178,9 @@ namespace ui {
                     }
                 );
 
-                curPanel.delete.onClick.AddListener(() => Refresh(pageNumber));
+                curPanel.delete.onClick.AddListener(() => RefreshPagesBut(pageNumber));
                 curPanel.delete.onClick.AddListener(() => FillPage(pageNumber));
-                curPanel.load.onClick.AddListener(() => { 
+                curPanel.load.onClick.AddListener(() => {
                         if (gmController.Load(saves[curIndex].fileName) != Errors.None) {
                             Debug.LogError("cant load");
                             return;
@@ -232,6 +206,7 @@ namespace ui {
 
                 for (int k = 0; k < saves[curIndex].board.GetLength(1); k++) {
                     var saveLength = saves[curIndex].board.Length;
+                    var emptyCell = res.checkerImages.emptyCell;
                     if (!boardsImageRef.ContainsKey(i) || saveLength != boardsImageRef[i].Count) {
                         var cellsList = new List<BoardImageRes>();
                         foreach (Transform child in imageBoard.transform) {
@@ -239,12 +214,7 @@ namespace ui {
                         }
 
                         foreach (var cell in saves[curIndex].board) {
-                            cellsList.Add(
-                                Instantiate(
-                                    res.checkerImages.emptyCell,
-                                    imageBoard.transform
-                                )
-                            );
+                            cellsList.Add(Instantiate(emptyCell, imageBoard.transform));
                         }
                         boardsImageRef[i] = cellsList;
                     }
@@ -252,15 +222,11 @@ namespace ui {
                     for (int j = 0; j < saves[curIndex].board.GetLength(0); j++) {
                         var saveNum = k * saves[curIndex].board.GetLength(0) + j;
 
-                        var emptyTexture = res.checkerImages.emptyCell.cell.texture;
-                        var emptyColor = res.checkerImages.emptyCell.cell.color;
-                        boardsImageRef[i][saveNum].cell.texture = emptyTexture;
-                        boardsImageRef[i][saveNum].cell.color = emptyColor;
+                        boardsImageRef[i][saveNum].cell.texture = emptyCell.cell.texture;
+                        boardsImageRef[i][saveNum].cell.color = emptyCell.cell.color;
 
                         var checkerOpt = saves[curIndex].board[k, j];
-                        if (checkerOpt.IsNone()) {
-                            continue;
-                        }
+                        if (checkerOpt.IsNone()) continue;
 
                         var checker = checkerOpt.Peel();
                         var checkerImage = res.checkerImages.checkerImg;
