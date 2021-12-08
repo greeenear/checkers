@@ -4,18 +4,32 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 
 namespace ui {
-    public class RefreshLoadPanels : MonoBehaviour {
+    [System.Serializable]
+    public struct PageShowInfo {
         public int howManyPagesShow;
         public int howManySkipPages;
+    }
+
+    [System.Serializable]
+    public struct PagePointers {
+        public Button left;
+        public Button right;
+    }
+
+    [System.Serializable]
+    public struct LoadPanels {
+        public List<LoadPanelRes> loadPanels;
+        public RectTransform storage;
+        public RectTransform panel;
+    }
+
+    public class RefreshLoadPanels : MonoBehaviour {
+        public PageShowInfo pageShowInfo;
+        public PagePointers pagePointers;
         public Controller gmController;
         public Button openMenu;
-        public Button leftPointer;
-        public Button rightPointer;
         public PageButRes lastPg;
-
-        public List<LoadPanelRes> loadPanels;
-        public RectTransform loadPanelsStorage;
-        public RectTransform loadPanel;
+        public LoadPanels loadPanelsData;
 
         public GameObject pageList;
         public UiResources res;
@@ -51,7 +65,7 @@ namespace ui {
             };
         }
 
-        public void RefreshPagesBut(int numberOfPage) {
+        public void RefreshPagesBut() {
             var sentencedHighlight = new List<Transform>();
             foreach (Transform child in pageList.transform) {
                 sentencedHighlight.Add(child);
@@ -61,66 +75,69 @@ namespace ui {
                 child.SetParent(null);
             }
 
-            int countPanelsOnPage = 4;
+            int pageCount = loadPanelsData.storage.transform.childCount;
             var saves = gmController.GetSavesInfo();
-            if (saves == null || saves.Count == 0) return;
+            if (saves == null) return;
 
-            var countOfPage = saves.Count / countPanelsOnPage;
-            if (saves.Count % countPanelsOnPage != 0) countOfPage++;
-
-            curPage = numberOfPage;
-            int showedPageBut = 0;
-
-            var skipPages = howManySkipPages;
-            if (countOfPage - numberOfPage < howManyPagesShow - skipPages) {
-                skipPages  = howManyPagesShow - countOfPage + numberOfPage;
+            if (saves.Count == 0) {
+                openMenu.onClick.Invoke();
+                openMenu.onClick.Invoke();
             }
 
-            for (int i = numberOfPage - skipPages; i < countOfPage; i++) {
-                if (showedPageBut == howManyPagesShow) break;
-                if (i < 0) continue;
+            var countOfPage = saves.Count / pageCount;
+            if (saves.Count % pageCount != 0) countOfPage++;
 
+            var skipCount = pageShowInfo.howManySkipPages;
+            if (countOfPage - curPage < pageShowInfo.howManyPagesShow - skipCount) {
+                skipCount  = pageShowInfo.howManyPagesShow - countOfPage + curPage;
+            }
+
+            var start = Mathf.Clamp(curPage - skipCount, 0, int.MaxValue);
+            var showCount = start + pageShowInfo.howManyPagesShow;
+            var lastPage = Mathf.Min(showCount, countOfPage);
+            for (int i = start; i < lastPage; i++) {
                 var curBut = Instantiate(res.pageBut, pageList.transform);
-                int loadNum = i;
-                if (loadNum == curPage) {
-                    curBut.button.interactable = false;
-                }
+                curBut.button.interactable = i != curPage;
 
-                curBut.button.onClick.AddListener(() => FillPage(loadNum));
-                curBut.button.onClick.AddListener(() => RefreshPagesBut(loadNum));
-                curBut.text.text = (loadNum + 1).ToString();
-                showedPageBut++;
+                int loadNum = i;
+                curBut.button.onClick.AddListener(() => {
+                        curPage = loadNum;
+                        FillPage();
+                        RefreshPagesBut();
+                    }
+                );
+                curBut.text.text = (i + 1).ToString();
             }
 
             lastPg.gameObject.SetActive(false);
-            var isLastNotVisible = curPage + howManyPagesShow - skipPages != countOfPage;
-            if (countOfPage > howManyPagesShow && isLastNotVisible) {
+            if (countOfPage > pageShowInfo.howManyPagesShow && lastPage != countOfPage) {
                 lastPg.button.onClick.RemoveAllListeners();
                 lastPg.text.text = countOfPage.ToString();
-                lastPg.button.onClick.AddListener(() => FillPage(countOfPage));
-                lastPg.button.onClick.AddListener(() => lastPg.gameObject.SetActive(false));
+                lastPg.button.onClick.AddListener(() => {
+                        curPage = countOfPage;
+                        FillPage();
+                        lastPg.gameObject.SetActive(false);
+                    }
+                );
                 lastPg.gameObject.SetActive(true);
             }
 
-            leftPointer.gameObject.SetActive(true);
-            if (curPage == 0) leftPointer.gameObject.SetActive(false);
-
-            rightPointer.gameObject.SetActive(true);
-            if (curPage + 1 == countOfPage) rightPointer.gameObject.SetActive(false);
+            pagePointers.left.interactable = curPage != 0;
+            pagePointers.right.interactable = curPage + 1 != countOfPage;
         }
 
         public void TurnPage(int dir) {
             curPage = curPage + dir;
-            RefreshPagesBut(curPage);
-            FillPage(curPage);
+            RefreshPagesBut();
+            FillPage();
         }
 
-        public void FillPage(int pageNumber) {
-            curPage = pageNumber;
+        public void FillPage() {
             var saves = gmController.GetSavesInfo();
             if (saves == null || saves.Count == 0) return;
 
-            var countSavesInPanel = (int)(loadPanelsStorage.sizeDelta.y / loadPanel.sizeDelta.y);
+            var sizePanel = loadPanelsData.panel.sizeDelta.y;
+            var countSavesInPanel = (int)(loadPanelsData.storage.sizeDelta.y / sizePanel);
 
             saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
 
@@ -143,30 +160,32 @@ namespace ui {
                 Debug.LogError("NoLoad");
                 return;
             }
-            if (saves == null) {
-                Debug.LogError("SaveListIsNull");
-                return;
-            }
 
-            var startSave = pageNumber * countSavesInPanel;
+            var startSave = curPage * countSavesInPanel;
+            var howMatchSavesShow = 0;
             for (int i = 0; i < countSavesInPanel; i++) {
-                var curPanel = loadPanels[i];
-
-                curPanel.gameObject.SetActive(true);
-                curPanel.delete.onClick.RemoveAllListeners();
-                curPanel.load.onClick.RemoveAllListeners();
-
+                var curPanel = loadPanelsData.loadPanels[i];
                 int curIndex = i + startSave;
                 if (curIndex >= saves.Count) {
                     if (i == 0) {
                         curPage = curPage - 1;
-                        RefreshPagesBut(curPage);
-                        FillPage(curPage);
+                        RefreshPagesBut();
+                        FillPage();
                         return;
                     }
                     curPanel.gameObject.SetActive(false);
                     continue;
                 }
+                howMatchSavesShow++;
+            }
+
+            for (int i = 0; i < howMatchSavesShow; i++) {
+                var curPanel = loadPanelsData.loadPanels[i];
+
+                curPanel.gameObject.SetActive(true);
+                curPanel.delete.onClick.RemoveAllListeners();
+                curPanel.load.onClick.RemoveAllListeners();
+                int curIndex = i + startSave;
 
                 curPanel.date.text = saves[curIndex].saveDate.ToString("dd.MM.yyyy HH:mm:ss");
                 curPanel.kind.text = "Checker Kind: " + saves[curIndex].checkerKind.ToString();
@@ -175,19 +194,19 @@ namespace ui {
                             Debug.LogError("cant delete");
                             return;
                         }
+                        RefreshPagesBut();
+                        FillPage();
                     }
                 );
 
-                curPanel.delete.onClick.AddListener(() => RefreshPagesBut(pageNumber));
-                curPanel.delete.onClick.AddListener(() => FillPage(pageNumber));
                 curPanel.load.onClick.AddListener(() => {
                         if (gmController.Load(saves[curIndex].fileName) != Errors.None) {
                             Debug.LogError("cant load");
+                            openMenu.onClick?.Invoke();
                             return;
                         }
                     }
                 );
-                curPanel.load.onClick.AddListener(() => openMenu.onClick?.Invoke());
 
                 curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
                 curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
