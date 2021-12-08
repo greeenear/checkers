@@ -1934,7 +1934,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1040523410}
         m_TargetAssemblyTypeName: ui.RefreshLoadPanels, Assembly-CSharp
-        m_MethodName: SkipPages
+        m_MethodName: TurnPage
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -5014,8 +5014,8 @@ MonoBehaviour:
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 250
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
-  m_ScreenMatchMode: 0
+  m_ReferenceResolution: {x: 400, y: 500}
+  m_ScreenMatchMode: 1
   m_MatchWidthOrHeight: 0.459
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
@@ -5331,8 +5331,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000011444, y: 34.05}
-  m_SizeDelta: {x: 347.0865, y: 374.3364}
+  m_AnchoredPosition: {x: 0, y: 34.050003}
+  m_SizeDelta: {x: 331.0865, y: 388.3364}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1286232618
 MonoBehaviour:
@@ -13444,7 +13444,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1040523410}
         m_TargetAssemblyTypeName: ui.RefreshLoadPanels, Assembly-CSharp
-        m_MethodName: SkipPages
+        m_MethodName: TurnPage
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
