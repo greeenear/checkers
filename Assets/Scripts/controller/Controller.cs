@@ -176,7 +176,6 @@ namespace controller {
             var isAttack = IsNeedAttack(allCheckerMoves);
             if (checkerOpt.IsSome()) {
                 if (!allCheckerMoves.ContainsKey(clickPos)) return;
-                
                 var curMoves = allCheckerMoves[clickPos];
                 var isDifColor = checkerOpt.Peel().color != whoseMove;
                 if (curMoves.Count == 0 || isAttack && !HasAttack(curMoves) || isDifColor) {
@@ -454,7 +453,7 @@ namespace controller {
 
             var whoseMoveNow = ((int)whoseMove).ToString();
             var kind = ((int)chKind).ToString();
-            rows.Add(new List<string>() {"WhoseMove", whoseMoveNow , "ChKind", kind });
+            rows.Add(new List<string>() { "WhoseMove", whoseMoveNow, "ChKind", kind });
 
             try {
                 File.WriteAllText(path, CSV.Generate(rows));
@@ -590,8 +589,10 @@ namespace controller {
         }
 
         private bool IsNeedAttack(Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkers) {
-            foreach (var checker in checkers) {
-                if (HasAttack(checker.Value)) return true;
+            foreach (var ch in checkers) {
+                if (HasAttack(ch.Value) && map.board[ch.Key.x, ch.Key.y].IsSome()) {
+                    if (map.board[ch.Key.x, ch.Key.y].Peel().color == whoseMove) return true;
+                }
             }
 
             return false;
