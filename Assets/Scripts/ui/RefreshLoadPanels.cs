@@ -38,21 +38,6 @@ namespace ui {
 
         private void Awake() {
             boardsImageRef = new Dictionary<int, List<BoardImageRes>>();
-
-            if (res.boardImages.boardImage10x10 == null) {
-                Debug.LogError("NoBoardImage10x10");
-                return;
-            }
-
-            if (res.boardImages.boardImage8x8 == null) {
-                Debug.LogError("NoBoardImage8x8");
-                return;
-            }
-
-            if (res.checkerImages.checkerImg == null) {
-                Debug.LogError("NoBlackCheckerImage");
-                return;
-            }
         }
 
         public void RefreshPagesBut() {

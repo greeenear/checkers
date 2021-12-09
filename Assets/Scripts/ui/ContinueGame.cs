@@ -47,11 +47,7 @@ namespace ui {
                     lastSave = save;
                 }
             }
-
-            var res = controller.Load(lastSave.fileName);
-            if (res != Errors.None) {
-                return;
-            }
+            if (!controller.Load(lastSave.fileName)) return;
             controller.enabled = true;
         }
     }

@@ -7,18 +7,6 @@ using UnityEngine.Events;
 using UnityEditor;
 
 namespace controller {
-    public enum Errors {
-        None,
-        BoardIsNull,
-        GameObjectIsNull,
-        ListIsNull,
-        StringIsNull,
-        NoSuchColor,
-        LoadError,
-        CSVError,
-        CantDelete
-    }
-
     public enum ChKind {
         Russian,
         English,
@@ -82,21 +70,17 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
-            if (res.whiteChecker == null) {
-                Debug.LogError("NoCheckers");
+            if (res.board8x8.boardTransform == null || res.board8x8.cellTransform == null) {
+                Debug.LogError("NoBoard");
                 this.enabled = false;
                 return;
             }
-            if (res.highlightCell == null) {
-                Debug.LogError("NoHighlightCells");
+            if (res.board10x10.boardTransform == null || res.board10x10.cellTransform == null) {
+                Debug.LogError("NoBoard");
                 this.enabled = false;
                 return;
             }
-            if (res.directions == null) {
-                Debug.LogError("NoDirectionsList");
-                this.enabled = false;
-                return;
-            }
+
             boardInfo = res.board8x8;
             map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
@@ -154,10 +138,10 @@ namespace controller {
                         }
                         allCheckerMoves.Add(pos, checkerMoves);
                     }
-
                 }
             }
-            if (allCheckerMoves.Count == 0) {
+
+            if (IsGameOver()) {
                 onGameOver?.Invoke();
                 this.enabled = false;
                 return;
@@ -188,7 +172,11 @@ namespace controller {
 
                             var parent = storageHighlightCells.transform;
                             var pos = ConvertToWorldPoint(checker.Key) - new Vector3(0, 0.1f, 0);
-                            Instantiate(res.highlightCh, pos, Quaternion.identity, parent);
+                            if (res.highlightCh == null) {
+                                Debug.LogError("NoHighlightCh");
+                            } else {
+                                Instantiate(res.highlightCh, pos, Quaternion.identity, parent);
+                            }
                         }
                     }
                 }
@@ -333,15 +321,19 @@ namespace controller {
                 if (attack && pos.Value || !attack && !pos.Value) {
                     var spawnWorldPos = ConvertToWorldPoint(pos.Key);
                     var parent = storageHighlightCells.transform;
-                    Instantiate(res.highlightCell, spawnWorldPos, Quaternion.identity, parent);
+                    if (res.highlightCell == null) {
+                        Debug.LogError("NoHighlightCell");
+                    } else {
+                        Instantiate(res.highlightCell, spawnWorldPos, Quaternion.identity, parent);
+                    }
                 }
             }
         }
 
 
-        public Errors Load(string path) {
+        public bool Load(string path) {
             if (path == null) {
-                return Errors.StringIsNull;
+                return false;
             }
 
             string input;
@@ -349,13 +341,13 @@ namespace controller {
                 input = File.ReadAllText(path);
             } catch (Exception err) {
                 Debug.LogError(err.ToString());
-                return Errors.LoadError;
+                return false;
             }
 
             var parseRes = CSV.Parse(input);
             if (parseRes.error != CSV.ErrorType.None) {
                 Debug.LogError(parseRes.error.ToString());
-                return Errors.CSVError;
+                return false;
             }
 
             if (int.TryParse(parseRes.rows[parseRes.rows.Count - 1][3], out int result)) {
@@ -397,13 +389,17 @@ namespace controller {
             }
 
             DestroyHighlightCells(storageHighlightCells.transform);
-            SpawnCheckers(map.board);
+            if (!SpawnCheckers(map.board)) {
+                this.enabled = false;
+                return false;
+            }
+
             allCheckerMoves = null;
             moveCounter = 0;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
 
-            return Errors.None;
+            return true;
         }
 
         public void NewGame(String path) {
@@ -415,13 +411,13 @@ namespace controller {
             Load(path);
         }
 
-        public void Save(string path) {
+        public bool Save(string path) {
             if (path == "") {
                 path = Path.Combine(Application.persistentDataPath, Guid.NewGuid() + ".save");
             }
 
             if (map.board == null) {
-                return;
+                return false;
             }
 
             var rows = new List<List<string>>();
@@ -461,9 +457,11 @@ namespace controller {
             } catch (Exception err) {
                 onUnsuccessfulSaving?.Invoke();
                 Debug.LogError(err.ToString());
-                return;
+                return false;
             }
             this.enabled = true;
+
+            return true;
         }
 
         public List<SaveInfo> GetSavesInfo() {
@@ -518,15 +516,15 @@ namespace controller {
             return saveInfos;
         }
 
-        public Errors DeleteFile(string path) {
+        public bool DeleteFile(string path) {
             try {
                 File.Delete(path);
             } catch (Exception err) {
                 Debug.Log(err.ToString());
-                return Errors.CantDelete;
+                return false;
             }
 
-            return Errors.None;
+            return true;
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
@@ -548,10 +546,18 @@ namespace controller {
             return point;
         }
 
-        private void SpawnCheckers(Option<Checker>[,] board) {
+        private bool SpawnCheckers(Option<Checker>[,] board) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
-                return;
+                return false;
+            }
+            if (res.whiteChecker == false) {
+                Debug.LogError("NoWhiteChecker");
+                return false;
+            }
+            if (res.blackChecker == false) {
+                Debug.LogError("NoBlackChecker");
+                return false;
             }
 
             for (int i = 0; i < board.GetLength(0); i++) {
@@ -575,6 +581,8 @@ namespace controller {
                     }
                 }
             }
+
+            return true;
         }
 
         private void DestroyHighlightCells(Transform parent) {
@@ -611,6 +619,20 @@ namespace controller {
             #if UNITY_EDITOR
             EditorApplication.isPlaying = false;
             #endif
+        }
+
+        private bool IsGameOver() {
+            foreach (var checker in allCheckerMoves) {
+                var chOpt = map.board[checker.Key.x, checker.Key.y];
+                if (chOpt.IsNone()) continue;
+                var ch = chOpt.Peel();
+
+                if (ch.color == whoseMove) {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }
