@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -48,10 +49,9 @@ namespace controller {
         public UnityEvent onGameOver;
         public UnityEvent onUnsuccessfulSaving;
         public UnityEvent onSuccessfulSaving;
-
+        public Resources res;
         public GameObject storageHighlightCells;
 
-        private Resources res;
         private BoardInfo boardInfo;
         private Map map;
         private ChKind chKind;
@@ -64,18 +64,13 @@ namespace controller {
         private ChColor whoseMove;
 
         private void Awake() {
-            res = gameObject.GetComponentInParent<Resources>();
             if (res == null) {
                 Debug.LogError("CantGetResources");
                 this.enabled = false;
                 return;
             }
+
             if (res.board8x8.boardTransform == null || res.board8x8.cellTransform == null) {
-                Debug.LogError("NoBoard");
-                this.enabled = false;
-                return;
-            }
-            if (res.board10x10.boardTransform == null || res.board10x10.cellTransform == null) {
                 Debug.LogError("NoBoard");
                 this.enabled = false;
                 return;
@@ -88,6 +83,11 @@ namespace controller {
         }
 
         private void Update() {
+            if (res == null) {
+                Debug.LogError("CantGetResources");
+                this.enabled = false;
+                return;
+            }
             if (allCheckerMoves == null) {
                 allCheckerMoves = new Dictionary<Vector2Int, Dictionary<Vector2Int, bool>>();
                 var size = boardInfo.boardSize;
@@ -162,13 +162,15 @@ namespace controller {
                 if (!allCheckerMoves.ContainsKey(clickPos)) return;
                 var curMoves = allCheckerMoves[clickPos];
                 var isDifColor = checkerOpt.Peel().color != whoseMove;
-                if (curMoves.Count == 0 || isAttack && !HasAttack(curMoves) || isDifColor) {
+                var canMoveWhithOutAttack = chKind == ChKind.Wigman && moveCounter % 2 == 0;
+
+                if (curMoves.Count == 0 || isAttack && !HasAttack(curMoves) && chKind != ChKind.Wigman || isDifColor) {
                     foreach (var checker in allCheckerMoves) {
                         if (checker.Value.Count != 0) {
                             var curChOpt = map.board[checker.Key.x, checker.Key.y];
                             if (curChOpt.IsNone() || curChOpt.Peel().color != whoseMove) continue;
 
-                            if (isAttack && !HasAttack(checker.Value)) continue;
+                            if (isAttack && !HasAttack(checker.Value) && chKind != ChKind.Wigman) continue;
 
                             var parent = storageHighlightCells.transform;
                             var pos = ConvertToWorldPoint(checker.Key) - new Vector3(0, 0.1f, 0);
@@ -197,7 +199,8 @@ namespace controller {
                 }
 
                 var isClickAttack = curChMoves[clickPos];
-                if (!isClickAttack && isAttack) return;
+                var canMoveWhithOutAttack = chKind == ChKind.Wigman && moveCounter % 2 == 0;
+                if (!isClickAttack && isAttack && !canMoveWhithOutAttack) return;
 
                 map.board[clickPos.x, clickPos.y] = map.board[curPos.x, curPos.y];
                 map.board[curPos.x, curPos.y] = Option<Checker>.None();
@@ -211,7 +214,6 @@ namespace controller {
                 if (curCh.color == ChColor.Black) {
                     edgeBoard = boardInfo.boardSize.x - 1;
                 }
-
 
                 var dir = clickPos - curPos;
                 var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
@@ -316,9 +318,10 @@ namespace controller {
                 Debug.LogError("ListIsNull");
                 return;
             }
+            var canMoveWhithOutAttack = chKind == ChKind.Wigman && moveCounter % 2 == 0;
             var boardPos = boardInfo.boardTransform.transform.position;
             foreach (var pos in moves) {
-                if (attack && pos.Value || !attack && !pos.Value) {
+                if (attack && pos.Value || !attack && !pos.Value || canMoveWhithOutAttack) {
                     var spawnWorldPos = ConvertToWorldPoint(pos.Key);
                     var parent = storageHighlightCells.transform;
                     if (res.highlightCell == null) {
@@ -333,6 +336,24 @@ namespace controller {
 
         public bool Load(string path) {
             if (path == null) {
+                return false;
+            }
+
+            if (res == null) {
+                Debug.LogError("CantGetResources");
+                this.enabled = false;
+                return false;
+            }
+
+            if (res.board8x8.boardTransform == null || res.board8x8.cellTransform == null) {
+                Debug.LogError("NoBoard");
+                this.enabled = false;
+                return false;
+            }
+
+            if (res.board10x10.boardTransform == null || res.board10x10.cellTransform == null) {
+                Debug.LogError("NoBoard");
+                this.enabled = false;
                 return false;
             }
 
@@ -424,26 +445,13 @@ namespace controller {
             for (int i = 0; i < map.board.GetLength(1); i++) {
                 rows.Add(new List<string>());
                 for (int j = 0; j < map.board.GetLength(0); j++) {
-                    if (map.board[i, j].IsNone()) {
-                        rows[i].Add("-");
-                    }
-
+                    char cellInf = '-';
                     if (map.board[i, j].IsSome()) {
                         var checker = map.board[i, j].Peel();
-                        if (checker.color == ChColor.Black) {
-                            if (checker.type == Type.Checker) {
-                                rows[i].Add("1");
-                            } else if (checker.type == Type.King) {
-                                rows[i].Add("3");
-                            }
-                        } else if (checker.color == ChColor.White) {
-                            if (checker.type == Type.Checker) {
-                                rows[i].Add("0");
-                            } else if (checker.type == Type.King) {
-                                rows[i].Add("2");
-                            }
-                        }
+                        int typeNum = (int)checker.color + (int)checker.type * 2;
+                        cellInf = Char.Parse(typeNum.ToString());
                     }
+                    rows[i].Add(cellInf.ToString());
                 }
             }
 
@@ -547,14 +555,22 @@ namespace controller {
         }
 
         private bool SpawnCheckers(Option<Checker>[,] board) {
+            if (res == null) {
+                Debug.LogError("CantGetResources");
+                this.enabled = false;
+                return false;
+            }
+
             if (board == null) {
                 Debug.LogError("BoardIsNull");
                 return false;
             }
+
             if (res.whiteChecker == false) {
                 Debug.LogError("NoWhiteChecker");
                 return false;
             }
+
             if (res.blackChecker == false) {
                 Debug.LogError("NoBlackChecker");
                 return false;
@@ -622,6 +638,10 @@ namespace controller {
         }
 
         private bool IsGameOver() {
+            if (allCheckerMoves == null) {
+                return false;
+            }
+
             foreach (var checker in allCheckerMoves) {
                 var chOpt = map.board[checker.Key.x, checker.Key.y];
                 if (chOpt.IsNone()) continue;
