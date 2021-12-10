@@ -6,8 +6,8 @@ using System.Collections.Generic;
 namespace ui {
     [System.Serializable]
     public struct PageShowInfo {
-        public int howManyPagesShow;
-        public int howManySkipPages;
+        public int maxVisiblePage;
+        public int leftPageRadius;
     }
 
     [System.Serializable]
@@ -35,6 +35,8 @@ namespace ui {
 
         private Dictionary<int, List<BoardImageRes>> boardsImageRef;
         private int curPage;
+        private List<SaveInfo> saves = new List<SaveInfo>();
+        private List<PageButRes> pageButs = new List<PageButRes>();
 
         private void Awake() {
             boardsImageRef = new Dictionary<int, List<BoardImageRes>>();
@@ -54,34 +56,28 @@ namespace ui {
                 return;
             }
 
-            var sentencedHighlight = new List<Transform>();
+            var pageButtons = new List<Transform>();
             foreach (Transform child in pageList.transform) {
-                sentencedHighlight.Add(child);
+                pageButtons.Add(child);
             }
-            foreach (Transform child in sentencedHighlight) {
+            foreach (Transform child in pageButtons) {
                 Destroy(child.gameObject);
                 child.SetParent(null);
             }
 
             int saveCount = loadPanelsData.storage.transform.childCount;
-            var saves = gmController.GetSavesInfo();
             if (saves == null) return;
-
-            if (saves.Count == 0) {
-                openMenu.onClick.Invoke();
-                openMenu.onClick.Invoke();
-            }
 
             var countOfPage = saves.Count / saveCount;
             if (saves.Count % saveCount != 0) countOfPage++;
 
-            var skipCount = pageShowInfo.howManySkipPages;
-            if (countOfPage - curPage < pageShowInfo.howManyPagesShow - skipCount) {
-                skipCount  = pageShowInfo.howManyPagesShow - countOfPage + curPage;
+            var skipCount = pageShowInfo.leftPageRadius;
+            if (countOfPage - curPage < pageShowInfo.maxVisiblePage - skipCount) {
+                skipCount  = pageShowInfo.maxVisiblePage - countOfPage + curPage;
             }
 
             var start = Mathf.Clamp(curPage - skipCount, 0, int.MaxValue);
-            var showCount = start + pageShowInfo.howManyPagesShow;
+            var showCount = start + pageShowInfo.maxVisiblePage;
             var lastPage = Mathf.Min(showCount, countOfPage);
             for (int i = start; i < lastPage; i++) {
                 int loadNum = i;
@@ -93,7 +89,7 @@ namespace ui {
                             Instantiate(res.spaceBetweenButtons, pageList.transform);
                         }
                     }
-                    loadNum = countOfPage-1;
+                    loadNum = countOfPage - 1;
                 }
 
                 var curBut = Instantiate(res.pageBut, pageList.transform);
@@ -121,8 +117,15 @@ namespace ui {
             pagePointers.right.interactable = curPage + 1 != countOfPage;
         }
 
+        public void SetSavesInfo() {
+            saves = gmController.GetSavesInfo();
+            if (saves.Count == 0) {
+                openMenu.onClick?.Invoke();
+                openMenu.onClick?.Invoke();
+            }
+        }
+
         public void TurnPage(int dir) {
-            var saves = gmController.GetSavesInfo();
             if (curPage + dir < 0 || curPage + dir > saves.Count) {
                 Debug.LogError("IndexOutOfRange");
                 return;
@@ -138,7 +141,6 @@ namespace ui {
                 return;
             }
 
-            var saves = gmController.GetSavesInfo();
             if (saves == null || saves.Count == 0) return;
 
             var sizePanel = loadPanelsData.panel.sizeDelta.y;
@@ -177,13 +179,15 @@ namespace ui {
             for (int i = 0; i < howMatchSavesShow; i++) {
                 var curPanel = loadPanelsData.loadPanels[i];
                 int curIndex = i + startSave;
+                var curSave = saves[curIndex];
+                var fileName = curSave.fileName;
 
                 if (res.loadPanel.load == null) {
                     Debug.LogError("NoLoad");
                 } {
                     curPanel.load.onClick.RemoveAllListeners();
                     curPanel.load.onClick.AddListener(() => {
-                            if (!gmController.Load(saves[curIndex].fileName)) {
+                            if (!gmController.Load(fileName)) {
                                 Debug.LogError("cant load");
                                 openMenu.onClick?.Invoke();
                                 return;
@@ -198,10 +202,11 @@ namespace ui {
                 } {
                     curPanel.delete.onClick.RemoveAllListeners();
                     curPanel.delete.onClick.AddListener(() => {
-                            if (!gmController.DeleteFile(saves[curIndex].fileName)) {
+                            if (!gmController.DeleteFile(fileName)) {
                                 Debug.LogError("cant delete");
                                 return;
                             }
+                            SetSavesInfo();
                             RefreshPagesBut();
                             FillPage();
                         }
@@ -213,7 +218,7 @@ namespace ui {
                 } {
                     curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
                     curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
-                    if (saves[curIndex].whoseMove == controller.ChColor.Black) {
+                    if (curSave.whoseMove == controller.ChColor.Black) {
                         curPanel.whoseMove.color = Color.grey;
                     }
                 }
@@ -221,8 +226,8 @@ namespace ui {
                 if (curPanel.date.text == null) {
                     Debug.LogError("NoLoadPanelText");
                 } {
-                    curPanel.date.text = saves[curIndex].saveDate.ToString("dd.MM.yyyy HH:mm:ss");
-                    curPanel.kind.text = "Checker Kind: " + saves[curIndex].checkerKind.ToString();
+                    curPanel.date.text = curSave.saveDate.ToString("dd.MM.yyyy HH:mm:ss");
+                    curPanel.kind.text = "Checker Kind: " + curSave.checkerKind.ToString();
                 }
                 curPanel.gameObject.SetActive(true);
 
@@ -238,14 +243,14 @@ namespace ui {
                 var imageBoard = curPanel.boardImage.boardImage8x8;
                 curPanel.boardImage.boardImage10x10.gameObject.SetActive(false);
                 curPanel.boardImage.boardImage8x8.gameObject.SetActive(true);
-                if (saves[curIndex].board.GetLength(0) == 10) {
+                if (curSave.board.GetLength(0) == 10) {
                     curPanel.boardImage.boardImage8x8.gameObject.SetActive(false);
                     curPanel.boardImage.boardImage10x10.gameObject.SetActive(true);
                     imageBoard = curPanel.boardImage.boardImage10x10;
                 }
 
-                for (int k = 0; k < saves[curIndex].board.GetLength(1); k++) {
-                    var saveLength = saves[curIndex].board.Length;
+                for (int k = 0; k < curSave.board.GetLength(1); k++) {
+                    var saveLength = curSave.board.Length;
                     var emptyCell = res.checkerImages.emptyCell;
                     if (!boardsImageRef.ContainsKey(i) || saveLength != boardsImageRef[i].Count) {
                         var cellsList = new List<BoardImageRes>();
@@ -253,19 +258,19 @@ namespace ui {
                             Destroy(child.gameObject);
                         }
 
-                        foreach (var cell in saves[curIndex].board) {
+                        foreach (var cell in curSave.board) {
                             cellsList.Add(Instantiate(emptyCell, imageBoard.transform));
                         }
                         boardsImageRef[i] = cellsList;
                     }
 
-                    for (int j = 0; j < saves[curIndex].board.GetLength(0); j++) {
-                        var saveNum = k * saves[curIndex].board.GetLength(0) + j;
+                    for (int j = 0; j < curSave.board.GetLength(0); j++) {
+                        var saveNum = k * curSave.board.GetLength(0) + j;
 
                         boardsImageRef[i][saveNum].cell.texture = emptyCell.cell.texture;
                         boardsImageRef[i][saveNum].cell.color = emptyCell.cell.color;
 
-                        var checkerOpt = saves[curIndex].board[k, j];
+                        var checkerOpt = curSave.board[k, j];
                         if (checkerOpt.IsNone()) continue;
 
                         var checker = checkerOpt.Peel();
