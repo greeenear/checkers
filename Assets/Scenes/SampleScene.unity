@@ -1465,30 +1465,6 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 1
         m_CallState: 2
-      - m_Target: {fileID: 2029429429}
-        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
-        m_MethodName: SetActive
-        m_Mode: 6
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 1
-        m_CallState: 2
-      - m_Target: {fileID: 630819406}
-        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
-        m_MethodName: SetActive
-        m_Mode: 6
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
       - m_Target: {fileID: 457896389}
         m_TargetAssemblyTypeName: ui.ToggleEnable, Assembly-CSharp
         m_MethodName: ChangeEnable
@@ -2709,7 +2685,7 @@ MonoBehaviour:
         m_CallState: 2
       - m_Target: {fileID: 1040523410}
         m_TargetAssemblyTypeName: ui.RefreshLoadPanels, Assembly-CSharp
-        m_MethodName: RefreshPagesBut
+        m_MethodName: SetSavesInfo
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2771,6 +2747,18 @@ MonoBehaviour:
         m_TargetAssemblyTypeName: UnityEngine.Behaviour, UnityEngine
         m_MethodName: set_enabled
         m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 1040523410}
+        m_TargetAssemblyTypeName: ui.RefreshLoadPanels, Assembly-CSharp
+        m_MethodName: RefreshPagesBut
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -4905,8 +4893,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pageShowInfo:
-    howManyPagesShow: 9
-    howManySkipPages: 4
+    maxVisiblePage: 0
+    leftPageRadius: 0
   pagePointers:
     left: {fileID: 2145173865}
     right: {fileID: 652087759}
@@ -9496,6 +9484,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 1
         m_CallState: 2
+  res: {fileID: 1439324531}
   storageHighlightCells: {fileID: 2036292521}
 --- !u!4 &1439324533
 Transform:
