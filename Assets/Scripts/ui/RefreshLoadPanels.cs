@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using controller;
 using UnityEngine.UI;
@@ -24,18 +25,20 @@ namespace ui {
     }
 
     public class RefreshLoadPanels : MonoBehaviour {
+        public Action onCloseMenu;
+
         public PageShowInfo pageShowInfo;
         public PagePointers pagePointers;
         public Controller gmController;
         public Button openMenu;
         public LoadPanels loadPanelsData;
+        public List<SaveInfo> saves = new List<SaveInfo>();
 
         public GameObject pageList;
         public UiResources res;
 
         private Dictionary<int, List<BoardImageRes>> boardsImageRef;
         private int curPage;
-        private List<SaveInfo> saves = new List<SaveInfo>();
         private List<PageButRes> pageButs = new List<PageButRes>();
 
         private void Awake() {
@@ -47,22 +50,23 @@ namespace ui {
                 Debug.LogError("CantGetResources");
                 return;
             }
+
             if (res.pageBut == null) {
                 Debug.LogError("CantGetResources");
                 return;
             }
+
             if (res.pageBut.button == null) {
                 Debug.LogError("CantGetResources");
                 return;
             }
 
             var pageButtons = new List<Transform>();
-            foreach (Transform child in pageList.transform) {
-                pageButtons.Add(child);
-            }
-            foreach (Transform child in pageButtons) {
-                Destroy(child.gameObject);
-                child.SetParent(null);
+            if (pageButs == null || pageButs.Count == 0) {
+                pageButs = new List<PageButRes>();
+                for (int i = 0; i < pageShowInfo.maxVisiblePage; i++) {
+                    pageButs.Add(Instantiate(res.pageBut, pageList.transform));
+                }
             }
 
             int saveCount = loadPanelsData.storage.transform.childCount;
@@ -71,38 +75,35 @@ namespace ui {
             var countOfPage = saves.Count / saveCount;
             if (saves.Count % saveCount != 0) countOfPage++;
 
-            var skipCount = pageShowInfo.leftPageRadius;
-            if (countOfPage - curPage < pageShowInfo.maxVisiblePage - skipCount) {
-                skipCount  = pageShowInfo.maxVisiblePage - countOfPage + curPage;
+            var leftPageRadius = pageShowInfo.leftPageRadius;
+            if (countOfPage - curPage < pageShowInfo.maxVisiblePage - leftPageRadius) {
+                leftPageRadius  = pageShowInfo.maxVisiblePage - countOfPage + curPage;
             }
 
-            var start = Mathf.Clamp(curPage - skipCount, 0, int.MaxValue);
+            var start = Mathf.Clamp(curPage - leftPageRadius, 0, int.MaxValue);
             var showCount = start + pageShowInfo.maxVisiblePage;
             var lastPage = Mathf.Min(showCount, countOfPage);
-            for (int i = start; i < lastPage; i++) {
-                int loadNum = i;
-                if (i == lastPage - 1) {
-                    if (lastPage != countOfPage) {
-                        if (res.spaceBetweenButtons == null) {
-                            Debug.LogError("CantGetSpaceBetweenButtons");
-                        } else {
-                            Instantiate(res.spaceBetweenButtons, pageList.transform);
-                        }
-                    }
-                    loadNum = countOfPage - 1;
-                }
+            if (res.spaceBetweenButtons == null) {
+                Debug.LogError("CantGetSpaceBetweenButtons");
+                return;
+            }
 
-                var curBut = Instantiate(res.pageBut, pageList.transform);
+            for (int i = start; i < lastPage; i++) {
+                var curBut = pageButs[i - start];
+                curBut.image.sprite = res.pageBut.image.sprite;
+                curBut.gameObject.SetActive(true);
+
+                curBut.button.onClick.RemoveAllListeners();
                 curBut.button.interactable = i != curPage;
-                if (i == start) {
-                    if (start > 0) {
-                        if (res.spaceBetweenButtons == null) {
-                            Debug.LogError("CantGetSpaceBetweenButtons");
-                        } else {
-                            Instantiate(res.spaceBetweenButtons, pageList.transform);
-                        }
-                    }
-                    loadNum = 0;
+
+                int loadNum = i;
+                if (i == lastPage - 1) loadNum = countOfPage - 1;
+                if (i == start) loadNum = 0;
+
+                if (lastPage != countOfPage && i == lastPage - 2 || start > 0 && i == start + 1) {
+                    curBut.image.sprite = res.spaceBetweenButtons.sprite;
+                    curBut.text.text = "";
+                    continue;
                 }
 
                 curBut.button.onClick.AddListener(() => {
@@ -112,16 +113,19 @@ namespace ui {
                     }
                 );
                 curBut.text.text = (loadNum + 1).ToString();
+
+                if (i == lastPage - 1) {
+                    for (int j = lastPage; j < pageButs.Count; j++) {
+                        pageButs[j].gameObject.SetActive(false);
+                    }
+                }
             }
-            pagePointers.left.interactable = curPage != 0;
-            pagePointers.right.interactable = curPage + 1 != countOfPage;
         }
 
         public void SetSavesInfo() {
             saves = gmController.GetSavesInfo();
             if (saves.Count == 0) {
-                openMenu.onClick?.Invoke();
-                openMenu.onClick?.Invoke();
+                onCloseMenu?.Invoke();
             }
         }
 
@@ -141,13 +145,6 @@ namespace ui {
                 return;
             }
 
-            if (saves == null || saves.Count == 0) return;
-
-            var sizePanel = loadPanelsData.panel.sizeDelta.y;
-            var countSavesInPanel = (int)(loadPanelsData.storage.sizeDelta.y / sizePanel);
-
-            saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
-
             if (res.loadPanel.whoseMove == null) {
                 Debug.LogError("NoWhoseMove");
                 return;
@@ -157,6 +154,14 @@ namespace ui {
                 Debug.LogError("NoDate");
                 return;
             }
+
+            if (saves == null || saves.Count == 0) return;
+
+            var sizePanel = loadPanelsData.panel.sizeDelta.y;
+            var countSavesInPanel = (int)(loadPanelsData.storage.sizeDelta.y / sizePanel);
+
+            saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
+
 
             var startSave = curPage * countSavesInPanel;
             var howMatchSavesShow = 0;
@@ -175,16 +180,16 @@ namespace ui {
                 }
                 howMatchSavesShow++;
             }
+            var noLoadBut = res.loadPanel.load == null;
 
             for (int i = 0; i < howMatchSavesShow; i++) {
                 var curPanel = loadPanelsData.loadPanels[i];
                 int curIndex = i + startSave;
                 var curSave = saves[curIndex];
                 var fileName = curSave.fileName;
-
-                if (res.loadPanel.load == null) {
+                if (noLoadBut) {
                     Debug.LogError("NoLoad");
-                } {
+                } else {
                     curPanel.load.onClick.RemoveAllListeners();
                     curPanel.load.onClick.AddListener(() => {
                             if (!gmController.Load(fileName)) {
@@ -199,7 +204,7 @@ namespace ui {
 
                 if (curPanel.delete == null) {
                     Debug.LogError("NoDelete");
-                } {
+                } else {
                     curPanel.delete.onClick.RemoveAllListeners();
                     curPanel.delete.onClick.AddListener(() => {
                             if (!gmController.DeleteFile(fileName)) {
@@ -215,7 +220,7 @@ namespace ui {
 
                 if (curPanel.whoseMove == null) {
                     Debug.LogError("NoWhoseMove");
-                } {
+                } else {
                     curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
                     curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
                     if (curSave.whoseMove == controller.ChColor.Black) {
@@ -225,7 +230,7 @@ namespace ui {
 
                 if (curPanel.date.text == null) {
                     Debug.LogError("NoLoadPanelText");
-                } {
+                } else {
                     curPanel.date.text = curSave.saveDate.ToString("dd.MM.yyyy HH:mm:ss");
                     curPanel.kind.text = "Checker Kind: " + curSave.checkerKind.ToString();
                 }
@@ -278,14 +283,14 @@ namespace ui {
 
                         var color = res.checkerImages.checkerImg.color;
                         if (checker.color == ChColor.White) {
-                            if (checker.type == Type.King) {
+                            if (checker.type == ChType.King) {
                                 checkerImage = res.checkerImages.kingImg;
                             }
                         } else if (checker.color == ChColor.Black) {
                             color = Color.gray;
-                            if (checker.type == Type.King) {
+                            if (checker.type == ChType.King) {
                                 checkerImage = res.checkerImages.kingImg;
-                            } else if (checker.type == Type.Checker) {
+                            } else if (checker.type == ChType.Checker) {
                                 checkerImage = res.checkerImages.checkerImg;
                             }
                         }

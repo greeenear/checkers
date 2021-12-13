@@ -16,7 +16,7 @@ namespace controller {
         Wigman
     }
 
-    public enum Type {
+    public enum ChType {
         Checker,
         King
     }
@@ -28,7 +28,7 @@ namespace controller {
     }
 
     public struct Checker {
-        public Type type;
+        public ChType type;
         public ChColor color;
     }
 
@@ -116,7 +116,7 @@ namespace controller {
 
                                     chFound = true;
                                 } else {
-                                    var wrongMove = curCh.type == Type.Checker && dir.x != xDir;
+                                    var wrongMove = curCh.type == ChType.Checker && dir.x != xDir;
                                     switch (chKind) {
                                         case ChKind.Pool:
                                         case ChKind.Wigman:
@@ -130,7 +130,7 @@ namespace controller {
                                         checkerMoves.Add(next, chFound);
                                     }
 
-                                    if (curCh.type == Type.Checker || chKind == ChKind.English) {
+                                    if (curCh.type == ChType.Checker || chKind == ChKind.English) {
                                         break;
                                     }
                                 }
@@ -170,7 +170,9 @@ namespace controller {
                             var curChOpt = map.board[checker.Key.x, checker.Key.y];
                             if (curChOpt.IsNone() || curChOpt.Peel().color != whoseMove) continue;
 
-                            if (isAttack && !HasAttack(checker.Value) && chKind != ChKind.Wigman) continue;
+                            if (isAttack && !HasAttack(checker.Value) && chKind != ChKind.Wigman) {
+                                continue;
+                            }
 
                             var parent = storageHighlightCells.transform;
                             var pos = ConvertToWorldPoint(checker.Key) - new Vector3(0, 0.1f, 0);
@@ -225,7 +227,7 @@ namespace controller {
 
                 var onEdgeBoard = clickPos.x == edgeBoard;
                 if (onEdgeBoard && !(chKind == ChKind.International && sentenced.Count != 0)) {
-                    var king = new Checker { type = Type.King, color = whoseMove };
+                    var king = new Checker { type = ChType.King, color = whoseMove };
                     map.board[clickPos.x, clickPos.y] = Option<Checker>.Some(king);
                     var reverse = Quaternion.Euler(180, 0, 0);
                     map.obj[clickPos.x, clickPos.y].transform.rotation = reverse;
@@ -254,7 +256,7 @@ namespace controller {
                                 if (isSentenced || chFound || nextColor == curCh.color) break;
                                 chFound = true;
                             } else {
-                                var wrongMove = curCh.type == Type.Checker && dir.x != xDir;
+                                var wrongMove = curCh.type == ChType.Checker && dir.x != xDir;
                                 switch (chKind) {
                                     case ChKind.Pool:
                                     case ChKind.Wigman:
@@ -268,7 +270,7 @@ namespace controller {
                                     secondMoveInfos.Add(last, chFound);
                                 }
 
-                                if (curCh.type == Type.Checker || chKind == ChKind.English) {
+                                if (curCh.type == ChType.Checker || chKind == ChKind.English) {
                                     break;
                                 }
                             }
@@ -282,7 +284,7 @@ namespace controller {
                     selected = Option<Vector2Int>.Some(clickPos);
                 }  else {
                     if (onEdgeBoard && chKind == ChKind.International) {
-                        var king = new Checker { type = Type.King, color = whoseMove };
+                        var king = new Checker { type = ChType.King, color = whoseMove };
                         map.board[clickPos.x, clickPos.y] = Option<Checker>.Some(king);
                         var reverse = Quaternion.Euler(180, 0, 0);
                         map.obj[clickPos.x, clickPos.y].transform.rotation = reverse;
@@ -399,10 +401,10 @@ namespace controller {
                         break;
                     }
                     var color = ChColor.White;
-                    var type = Type.Checker;
+                    var type = ChType.Checker;
                     if (int.TryParse(parseRes.rows[i][j], out int res)) {
                         if (res % 2 != 0) color = ChColor.Black;
-                        if (res > 1) type = Type.King;
+                        if (res > 1) type = ChType.King;
                         var checker = new Checker { color = color, type = type };
                         map.board[i, j] = Option<Checker>.Some(checker);
                     }
@@ -509,9 +511,9 @@ namespace controller {
                     for (int j = 0; j < parseRes.rows[i].Count; j++) {
                         if (int.TryParse(parseRes.rows[i][j], out int res)) {
                             var color = ChColor.White;
-                            var type = Type.Checker;
+                            var type = ChType.Checker;
                             if (res % 2 != 0) color = ChColor.Black;
-                            if (res > 1) type = Type.King;
+                            if (res > 1) type = ChType.King;
 
                             var checker = new Checker { type = type, color = color };
                             saveInfo.board[i,j] = Option<Checker>.Some(checker);
@@ -592,7 +594,7 @@ namespace controller {
                     var parent = boardInfo.boardTransform;
                     map.obj[i, j] = Instantiate(pref, spawnWorldPos, Quaternion.identity, parent);
 
-                    if (checker.type == Type.King) {
+                    if (checker.type == ChType.King) {
                         map.obj[i, j].transform.rotation = Quaternion.Euler(180, 0, 0);
                     }
                 }

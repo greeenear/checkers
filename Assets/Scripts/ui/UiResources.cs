@@ -20,6 +20,6 @@ namespace ui {
         public PageButRes pageBut;
         public CheckerImages checkerImages;
         public BoardImages boardImages;
-        public RawImage spaceBetweenButtons;
+        public Image spaceBetweenButtons;
     }
 }

@@ -1549,6 +1549,30 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 1
         m_CallState: 2
+      - m_Target: {fileID: 1111596072}
+        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+        m_MethodName: SetActive
+        m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 1
+        m_CallState: 2
+      - m_Target: {fileID: 2029429429}
+        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+        m_MethodName: SetActive
+        m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 1
+        m_CallState: 2
 --- !u!114 &457896386
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2705,7 +2729,7 @@ MonoBehaviour:
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
-          m_BoolArgument: 0
+          m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 956743963}
         m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
@@ -2717,7 +2741,7 @@ MonoBehaviour:
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
-          m_BoolArgument: 0
+          m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 1758431285}
         m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
@@ -2729,7 +2753,7 @@ MonoBehaviour:
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
-          m_BoolArgument: 0
+          m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 1040523410}
         m_TargetAssemblyTypeName: ui.RefreshLoadPanels, Assembly-CSharp
@@ -2753,7 +2777,7 @@ MonoBehaviour:
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
-          m_BoolArgument: 0
+          m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 1040523410}
         m_TargetAssemblyTypeName: ui.RefreshLoadPanels, Assembly-CSharp
@@ -4893,8 +4917,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pageShowInfo:
-    maxVisiblePage: 0
-    leftPageRadius: 0
+    maxVisiblePage: 11
+    leftPageRadius: 4
   pagePointers:
     left: {fileID: 2145173865}
     right: {fileID: 652087759}
@@ -5090,7 +5114,7 @@ MonoBehaviour:
   boardImages:
     boardImage10x10: {fileID: 471743491836341314, guid: 49b4d745daa504f48bad59ca7be8fe89, type: 3}
     boardImage8x8: {fileID: 3222907635835207550, guid: e73ae6999571fa246813069e71d63016, type: 3}
-  spaceBetweenButtons: {fileID: 4752314295554211926, guid: 889c7012ec0f7084a9ed29cfc04d93e6, type: 3}
+  spaceBetweenButtons: {fileID: 990186502877734100, guid: ffcc8cdba7b57ca40b55a30faa91d660, type: 3}
 --- !u!222 &1111596078
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -13828,3 +13852,22 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+--- !u!1 &6743891330268586499 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6743891331423177909, guid: e5e90b88d7d490f4890cb7d36fa7ab28, type: 3}
+  m_PrefabInstance: {fileID: 6743891330268586498}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6743891330268586500
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6743891330268586499}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55a9040b0e0205e4c8420f83c07cbe83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loadMenu: {fileID: 1040523410}
+  loadMenuCanvas: {fileID: 1160670906}
