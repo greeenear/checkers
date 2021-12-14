@@ -163,8 +163,9 @@ namespace controller {
                 var curMoves = allCheckerMoves[clickPos];
                 var isDifColor = checkerOpt.Peel().color != whoseMove;
                 var canMoveWhithOutAttack = chKind == ChKind.Wigman && moveCounter % 2 == 0;
+                var cantAttack = isAttack && !HasAttack(curMoves);
 
-                if (curMoves.Count == 0 || isAttack && !HasAttack(curMoves) && chKind != ChKind.Wigman || isDifColor) {
+                if (curMoves.Count == 0 || cantAttack && chKind != ChKind.Wigman || isDifColor) {
                     foreach (var checker in allCheckerMoves) {
                         if (checker.Value.Count != 0) {
                             var curChOpt = map.board[checker.Key.x, checker.Key.y];
