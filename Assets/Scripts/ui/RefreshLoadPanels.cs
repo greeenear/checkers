@@ -25,14 +25,14 @@ namespace ui {
     }
 
     public class RefreshLoadPanels : MonoBehaviour {
-        public Action onCloseMenu;
+        public Action<int> onChangeSavesCount;
 
         public PageShowInfo pageShowInfo;
         public PagePointers pagePointers;
         public Controller gmController;
         public Button openMenu;
         public LoadPanels loadPanelsData;
-        public List<SaveInfo> saves = new List<SaveInfo>();
+        public List<SaveInfo> saves;
 
         public GameObject pageList;
         public UiResources res;
@@ -43,6 +43,10 @@ namespace ui {
 
         private void Awake() {
             boardsImageRef = new Dictionary<int, List<BoardImageRes>>();
+        }
+
+        private void OnEnable() {
+            saves = gmController.GetSavesInfo();
         }
 
         public void RefreshPagesBut() {
@@ -119,13 +123,6 @@ namespace ui {
                         pageButs[j].gameObject.SetActive(false);
                     }
                 }
-            }
-        }
-
-        public void SetSavesInfo() {
-            saves = gmController.GetSavesInfo();
-            if (saves.Count == 0) {
-                onCloseMenu?.Invoke();
             }
         }
 
@@ -211,7 +208,8 @@ namespace ui {
                                 Debug.LogError("cant delete");
                                 return;
                             }
-                            SetSavesInfo();
+                            saves.Remove(curSave);
+                            onChangeSavesCount?.Invoke(saves.Count);
                             RefreshPagesBut();
                             FillPage();
                         }
@@ -269,11 +267,13 @@ namespace ui {
                         boardsImageRef[i] = cellsList;
                     }
 
+                    var cellsRef = boardsImageRef[i];
+
                     for (int j = 0; j < curSave.board.GetLength(0); j++) {
                         var saveNum = k * curSave.board.GetLength(0) + j;
 
-                        boardsImageRef[i][saveNum].cell.texture = emptyCell.cell.texture;
-                        boardsImageRef[i][saveNum].cell.color = emptyCell.cell.color;
+                        cellsRef[saveNum].cell.texture = emptyCell.cell.texture;
+                        cellsRef[saveNum].cell.color = emptyCell.cell.color;
 
                         var checkerOpt = curSave.board[k, j];
                         if (checkerOpt.IsNone()) continue;
@@ -294,8 +294,8 @@ namespace ui {
                                 checkerImage = res.checkerImages.checkerImg;
                             }
                         }
-                        boardsImageRef[i][saveNum].cell.texture = checkerImage.texture;
-                        boardsImageRef[i][saveNum].cell.color = color;
+                        cellsRef[saveNum].cell.texture = checkerImage.texture;
+                        cellsRef[saveNum].cell.color = color;
                     }
                 }
             }

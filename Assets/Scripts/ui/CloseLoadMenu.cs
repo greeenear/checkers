@@ -6,11 +6,11 @@ namespace ui {
         public Canvas loadMenuCanvas;
 
         private void Awake() {
-            loadMenu.onCloseMenu += CloseMenu;
+            loadMenu.onChangeSavesCount += CheckNeedMenuCLose;
         }
 
-        public void CloseMenu() {
-            loadMenuCanvas.enabled = false;
+        public void CheckNeedMenuCLose(int saveCount) {
+            if (saveCount == 0) loadMenuCanvas.enabled = false;
         }
     }
 }
