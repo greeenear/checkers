@@ -12,8 +12,7 @@ namespace controller {
         Russian,
         English,
         Pool,
-        International,
-        Wigman
+        International
     }
 
     public enum ChType {
@@ -55,7 +54,6 @@ namespace controller {
         private BoardInfo boardInfo;
         private Map map;
         private ChKind chKind;
-        private int moveCounter;
 
         private Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
         private HashSet<Vector2Int> sentenced;
@@ -119,7 +117,6 @@ namespace controller {
                                     var wrongMove = curCh.type == ChType.Checker && dir.x != xDir;
                                     switch (chKind) {
                                         case ChKind.Pool:
-                                        case ChKind.Wigman:
                                         case ChKind.Russian:
                                         case ChKind.International:
                                             wrongMove = wrongMove && !chFound;
@@ -162,16 +159,15 @@ namespace controller {
                 if (!allCheckerMoves.ContainsKey(clickPos)) return;
                 var curMoves = allCheckerMoves[clickPos];
                 var isDifColor = checkerOpt.Peel().color != whoseMove;
-                var canMoveWhithOutAttack = chKind == ChKind.Wigman && moveCounter % 2 == 0;
                 var cantAttack = isAttack && !HasAttack(curMoves);
 
-                if (curMoves.Count == 0 || cantAttack && chKind != ChKind.Wigman || isDifColor) {
+                if (curMoves.Count == 0 || cantAttack || isDifColor) {
                     foreach (var checker in allCheckerMoves) {
                         if (checker.Value.Count != 0) {
                             var curChOpt = map.board[checker.Key.x, checker.Key.y];
                             if (curChOpt.IsNone() || curChOpt.Peel().color != whoseMove) continue;
 
-                            if (isAttack && !HasAttack(checker.Value) && chKind != ChKind.Wigman) {
+                            if (isAttack && !HasAttack(checker.Value)) {
                                 continue;
                             }
 
@@ -202,8 +198,7 @@ namespace controller {
                 }
 
                 var isClickAttack = curChMoves[clickPos];
-                var canMoveWhithOutAttack = chKind == ChKind.Wigman && moveCounter % 2 == 0;
-                if (!isClickAttack && isAttack && !canMoveWhithOutAttack) return;
+                if (!isClickAttack && isAttack) return;
 
                 map.board[clickPos.x, clickPos.y] = map.board[curPos.x, curPos.y];
                 map.board[curPos.x, curPos.y] = Option<Checker>.None();
@@ -260,7 +255,6 @@ namespace controller {
                                 var wrongMove = curCh.type == ChType.Checker && dir.x != xDir;
                                 switch (chKind) {
                                     case ChKind.Pool:
-                                    case ChKind.Wigman:
                                     case ChKind.Russian:
                                     case ChKind.International:
                                         wrongMove = wrongMove && !chFound;
@@ -300,11 +294,7 @@ namespace controller {
                     selected = Option<Vector2Int>.None();
                     sentenced.Clear();
                     allCheckerMoves = null;
-                    if (chKind != ChKind.Wigman || (moveCounter) % 2 != 0) {
-                        whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
-                    }
-
-                    moveCounter++;
+                    whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
                 }
             }
         }
@@ -321,10 +311,9 @@ namespace controller {
                 Debug.LogError("ListIsNull");
                 return;
             }
-            var canMoveWhithOutAttack = chKind == ChKind.Wigman && moveCounter % 2 == 0;
             var boardPos = boardInfo.boardTransform.transform.position;
             foreach (var pos in moves) {
-                if (attack && pos.Value || !attack && !pos.Value || canMoveWhithOutAttack) {
+                if (attack && pos.Value || !attack && !pos.Value) {
                     var spawnWorldPos = ConvertToWorldPoint(pos.Key);
                     var parent = storageHighlightCells.transform;
                     if (res.highlightCell == null) {
@@ -419,7 +408,6 @@ namespace controller {
             }
 
             allCheckerMoves = null;
-            moveCounter = 0;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
 
@@ -435,13 +423,11 @@ namespace controller {
             Load(path);
         }
 
-        public bool Save(string path) {
-            if (path == "") {
-                path = Path.Combine(Application.persistentDataPath, Guid.NewGuid() + ".save");
-            }
+        public string Save() {
+            var path = Path.Combine(Application.persistentDataPath, Guid.NewGuid() + ".save");
 
             if (map.board == null) {
-                return false;
+                return null;
             }
 
             var rows = new List<List<string>>();
@@ -452,7 +438,7 @@ namespace controller {
                     if (map.board[i, j].IsSome()) {
                         var checker = map.board[i, j].Peel();
                         int typeNum = (int)checker.color + (int)checker.type * 2;
-                        cellInf = Char.Parse(typeNum.ToString());
+                        cellInf = (char)(48 + typeNum);
                     }
                     rows[i].Add(cellInf.ToString());
                 }
@@ -468,11 +454,54 @@ namespace controller {
             } catch (Exception err) {
                 onUnsuccessfulSaving?.Invoke();
                 Debug.LogError(err.ToString());
-                return false;
+                return null;
             }
             this.enabled = true;
 
-            return true;
+            return path;
+        }
+
+        public SaveInfo GetSaveInfo(string filePath) {
+            if (filePath == null) {
+                Debug.LogError("NoPath");
+            }
+            var saveInfo = new SaveInfo();
+            var parseRes = CSV.Parse(File.ReadAllText(filePath));
+
+            saveInfo.fileName = filePath;
+            saveInfo.saveDate = File.GetLastWriteTime(filePath);
+
+            saveInfo.board = new Option<Checker>[10, 10];
+            if (parseRes.rows.Count < 10) {
+                saveInfo.board = new Option<Checker>[8, 8];
+            }
+            for (int i = 0; i < parseRes.rows.Count; i++) {
+                if (parseRes.rows[i][0] == "WhoseMove") {
+                    if (int.TryParse(parseRes.rows[i][1], out int res)) {
+                        saveInfo.whoseMove = (ChColor)res;
+                    }
+                }
+                if (parseRes.rows[i][2] == "ChKind") {
+                    if (int.TryParse(parseRes.rows[i][3], out int res)) {
+                        saveInfo.checkerKind = (ChKind)res;
+                    }
+                    break;
+                }
+
+                for (int j = 0; j < parseRes.rows[i].Count; j++) {
+                    if (int.TryParse(parseRes.rows[i][j], out int res)) {
+                        var color = ChColor.White;
+                        var type = ChType.Checker;
+                        if (res % 2 != 0) color = ChColor.Black;
+                        if (res > 1) type = ChType.King;
+
+                        var checker = new Checker { type = type, color = color };
+                        saveInfo.board[i,j] = Option<Checker>.Some(checker);
+                    }
+                }
+            }
+
+            return saveInfo;
         }
 
         public List<SaveInfo> GetSavesInfo() {
@@ -486,42 +515,7 @@ namespace controller {
             }
 
             foreach (string fileName in allfiles) {
-                var saveInfo = new SaveInfo();
-                var parseRes = CSV.Parse(File.ReadAllText(fileName));
-
-                saveInfo.fileName = fileName;
-                saveInfo.saveDate = File.GetLastWriteTime(fileName);
-
-                saveInfo.board = new Option<Checker>[10, 10];
-                if (parseRes.rows.Count < 10) {
-                    saveInfo.board = new Option<Checker>[8, 8];
-                }
-                for (int i = 0; i < parseRes.rows.Count; i++) {
-                    if (parseRes.rows[i][0] == "WhoseMove") {
-                        if (int.TryParse(parseRes.rows[i][1], out int res)) {
-                            saveInfo.whoseMove = (ChColor)res;
-                        }
-                    }
-                    if (parseRes.rows[i][2] == "ChKind") {
-                        if (int.TryParse(parseRes.rows[i][3], out int res)) {
-                            saveInfo.checkerKind = (ChKind)res;
-                        }
-                        break;
-                    }
-
-                    for (int j = 0; j < parseRes.rows[i].Count; j++) {
-                        if (int.TryParse(parseRes.rows[i][j], out int res)) {
-                            var color = ChColor.White;
-                            var type = ChType.Checker;
-                            if (res % 2 != 0) color = ChColor.Black;
-                            if (res > 1) type = ChType.King;
-
-                            var checker = new Checker { type = type, color = color };
-                            saveInfo.board[i,j] = Option<Checker>.Some(checker);
-                        }
-                    }
-                }
-                saveInfos.Add(saveInfo);
+                saveInfos.Add(GetSaveInfo(fileName));
             }
 
             return saveInfos;
