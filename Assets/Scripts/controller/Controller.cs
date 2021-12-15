@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,6 +5,7 @@ using System.IO;
 using option;
 using UnityEngine.Events;
 using UnityEditor;
+using ai;
 
 namespace controller {
     public enum ChKind {
@@ -184,6 +184,12 @@ namespace controller {
                 if (checkerOpt.Peel().color != whoseMove) return;
 
                 selected = Option<Vector2Int>.Some(clickPos);
+                AIController.GetWeightsMatrix(
+                    (Option<Checker>[,])map.board.Clone(),
+                    whoseMove,
+                    chKind,
+                    new List<Vector2Int>()
+                );
                 HighlightCells(allCheckerMoves[clickPos], isAttack);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();

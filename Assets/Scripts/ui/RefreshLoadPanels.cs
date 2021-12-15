@@ -105,9 +105,11 @@ namespace ui {
                 if (i == start) loadNum = 0;
 
                 if (lastPage != countOfPage && i == lastPage - 2 || start > 0 && i == start + 1) {
-                    curBut.image.sprite = res.spaceBetweenButtons.sprite;
-                    curBut.text.text = "";
-                    continue;
+                    if (curBut.toggleImageRes != null) {
+                        curBut.toggleImageRes.Change();
+                        curBut.text.text = "";
+                        continue;
+                    }
                 }
 
                 curBut.button.onClick.AddListener(() => {
@@ -124,6 +126,8 @@ namespace ui {
                     }
                 }
             }
+            pagePointers.left.interactable = curPage != 0;
+            pagePointers.right.interactable = curPage + 1 != countOfPage;
         }
 
         public void TurnPage(int dir) {

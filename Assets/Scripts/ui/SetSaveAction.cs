@@ -19,10 +19,11 @@ namespace ui {
                 return;
             }
 
-            if (saveBut == null) {
-                Debug.LogError("NoBut");
+            if (loadPanels == null) {
+                Debug.LogError("NoLoadPanels");
                 return;
             }
+
             saveBut.onClick.AddListener(() => {
                     var savePath = controller.Save();
                     if (savePath != null) {
