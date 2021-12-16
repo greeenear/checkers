@@ -153,6 +153,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   activeImage: {fileID: 6140446588502582337}
   newImage: {fileID: 990186502877734100, guid: ffcc8cdba7b57ca40b55a30faa91d660, type: 3}
+  imageStorage:
+  - {fileID: 6140446588502582337}
+  - {fileID: 990186502877734100, guid: ffcc8cdba7b57ca40b55a30faa91d660, type: 3}
 --- !u!1 &5013176423337431866
 GameObject:
   m_ObjectHideFlags: 0

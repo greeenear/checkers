@@ -2,35 +2,13 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
+using checkers;
 using option;
 using UnityEngine.Events;
 using UnityEditor;
 using ai;
 
 namespace controller {
-    public enum ChKind {
-        Russian,
-        English,
-        Pool,
-        International
-    }
-
-    public enum ChType {
-        Checker,
-        King
-    }
-
-    public enum ChColor {
-        White,
-        Black,
-        Count
-    }
-
-    public struct Checker {
-        public ChType type;
-        public ChColor color;
-    }
-
     public struct Map {
         public Option<Checker>[,] board;
         public GameObject[,] obj;
@@ -184,12 +162,15 @@ namespace controller {
                 if (checkerOpt.Peel().color != whoseMove) return;
 
                 selected = Option<Vector2Int>.Some(clickPos);
-                AIController.GetWeightsMatrix(
-                    (Option<Checker>[,])map.board.Clone(),
-                    whoseMove,
-                    chKind,
-                    new List<Vector2Int>()
-                );
+                var a = Movement.GetCheckersMoves((Option<Checker>[,])map.board.Clone(), whoseMove, chKind);
+                a = Movement.AnalyseCheckerMoves(a);
+
+                foreach (var b in a) {
+                    Debug.Log(b.Key + "-------------------------------------------");
+                    foreach (var el in b.Value) {
+                        Debug.Log(el.cellPos + " isAttck" + el.isAttack);
+                    }
+                }
                 HighlightCells(allCheckerMoves[clickPos], isAttack);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
@@ -429,11 +410,11 @@ namespace controller {
             Load(path);
         }
 
-        public string Save() {
+        public void Save() {
             var path = Path.Combine(Application.persistentDataPath, Guid.NewGuid() + ".save");
 
             if (map.board == null) {
-                return null;
+                return;
             }
 
             var rows = new List<List<string>>();
@@ -460,11 +441,9 @@ namespace controller {
             } catch (Exception err) {
                 onUnsuccessfulSaving?.Invoke();
                 Debug.LogError(err.ToString());
-                return null;
+                return;
             }
             this.enabled = true;
-
-            return path;
         }
 
         public SaveInfo GetSaveInfo(string filePath) {

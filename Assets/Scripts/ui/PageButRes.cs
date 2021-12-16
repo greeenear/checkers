@@ -6,6 +6,6 @@ namespace ui {
         public Text text;
         public Button button;
         public Image image;
-        public ToggleImage toggleImageRes;
+        public RingImageChanger toggleImageRes;
     }
 }

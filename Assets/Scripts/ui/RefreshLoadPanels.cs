@@ -1,5 +1,5 @@
-using System;
 using UnityEngine;
+using checkers;
 using controller;
 using UnityEngine.UI;
 using System.Collections.Generic;
@@ -25,14 +25,12 @@ namespace ui {
     }
 
     public class RefreshLoadPanels : MonoBehaviour {
-        public Action<int> onChangeSavesCount;
-
         public PageShowInfo pageShowInfo;
         public PagePointers pagePointers;
         public Controller gmController;
         public Button openMenu;
         public LoadPanels loadPanelsData;
-        public List<SaveInfo> saves;
+        public SaveStrorage savesStor;
 
         public GameObject pageList;
         public UiResources res;
@@ -43,10 +41,6 @@ namespace ui {
 
         private void Awake() {
             boardsImageRef = new Dictionary<int, List<BoardImageRes>>();
-        }
-
-        private void OnEnable() {
-            saves = gmController.GetSavesInfo();
         }
 
         public void RefreshPagesBut() {
@@ -74,10 +68,10 @@ namespace ui {
             }
 
             int saveCount = loadPanelsData.storage.transform.childCount;
-            if (saves == null) return;
+            if (savesStor == null) return;
 
-            var countOfPage = saves.Count / saveCount;
-            if (saves.Count % saveCount != 0) countOfPage++;
+            var countOfPage = savesStor.saves.Count / saveCount;
+            if (savesStor.saves.Count % saveCount != 0) countOfPage++;
 
             var leftPageRadius = pageShowInfo.leftPageRadius;
             if (countOfPage - curPage < pageShowInfo.maxVisiblePage - leftPageRadius) {
@@ -131,7 +125,7 @@ namespace ui {
         }
 
         public void TurnPage(int dir) {
-            if (curPage + dir < 0 || curPage + dir > saves.Count) {
+            if (curPage + dir < 0 || curPage + dir > savesStor.saves.Count) {
                 Debug.LogError("IndexOutOfRange");
                 return;
             }
@@ -156,12 +150,12 @@ namespace ui {
                 return;
             }
 
-            if (saves == null || saves.Count == 0) return;
+            if (savesStor.saves == null || savesStor.saves.Count == 0) return;
 
             var sizePanel = loadPanelsData.panel.sizeDelta.y;
             var countSavesInPanel = (int)(loadPanelsData.storage.sizeDelta.y / sizePanel);
 
-            saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
+            savesStor.saves.Sort((f1, f2) => f2.saveDate.CompareTo(f1.saveDate));
 
 
             var startSave = curPage * countSavesInPanel;
@@ -169,7 +163,7 @@ namespace ui {
             for (int i = 0; i < countSavesInPanel; i++) {
                 var curPanel = loadPanelsData.loadPanels[i];
                 int curIndex = i + startSave;
-                if (curIndex >= saves.Count) {
+                if (curIndex >= savesStor.saves.Count) {
                     if (i == 0) {
                         curPage = curPage - 1;
                         RefreshPagesBut();
@@ -186,7 +180,7 @@ namespace ui {
             for (int i = 0; i < howMatchSavesShow; i++) {
                 var curPanel = loadPanelsData.loadPanels[i];
                 int curIndex = i + startSave;
-                var curSave = saves[curIndex];
+                var curSave = savesStor.saves[curIndex];
                 var fileName = curSave.fileName;
                 if (noLoadBut) {
                     Debug.LogError("NoLoad");
@@ -212,8 +206,8 @@ namespace ui {
                                 Debug.LogError("cant delete");
                                 return;
                             }
-                            saves.Remove(curSave);
-                            onChangeSavesCount?.Invoke(saves.Count);
+                            savesStor.saves.Remove(curSave);
+                            savesStor.onChangeSavesCount?.Invoke(savesStor.saves.Count);
                             RefreshPagesBut();
                             FillPage();
                         }
@@ -225,7 +219,7 @@ namespace ui {
                 } else {
                     curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
                     curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
-                    if (curSave.whoseMove == controller.ChColor.Black) {
+                    if (curSave.whoseMove == ChColor.Black) {
                         curPanel.whoseMove.color = Color.grey;
                     }
                 }

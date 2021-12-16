@@ -2,11 +2,11 @@ using UnityEngine;
 
 namespace ui {
     public class CloseLoadMenu : MonoBehaviour {
-        public RefreshLoadPanels loadMenu;
+        public SaveStrorage saves;
         public Canvas loadMenuCanvas;
 
         private void Awake() {
-            loadMenu.onChangeSavesCount += CheckNeedMenuCLose;
+            saves.onChangeSavesCount += CheckNeedMenuCLose;
         }
 
         public void CheckNeedMenuCLose(int saveCount) {
