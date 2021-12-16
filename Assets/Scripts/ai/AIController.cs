@@ -1,4 +1,4 @@
-using controller;
+using checkers;
 using UnityEngine;
 using option;
 using System.Collections.Generic;
@@ -70,7 +70,7 @@ namespace ai {
             Vector2Int pos,
             ChKind kind,
             List<Vector2Int> mark,
-            int startWeight
+            int curWeigth
         ) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
@@ -117,8 +117,8 @@ namespace ai {
                                 if (chFound == true) {
                                     mark.Add(next - dir);
                                     board[next.x, next.y] = board[pos.x, pos.y];
-                                    path.Add(PathCell.Mk(next, startWeight + 1));
-                                    var start = startWeight + 1;
+                                    path.Add(PathCell.Mk(next, curWeigth + 1));
+                                    var start = curWeigth + 1;
                                     path.AddRange(GetChMoveWeigth(board, next, kind, mark, start));
                                 } else {
                                     path.Add(PathCell.Mk(next, 0));
