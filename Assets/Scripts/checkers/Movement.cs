@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using controller;
 using option;
 
 namespace checkers {
@@ -61,9 +60,7 @@ namespace checkers {
             var size = new Vector2Int(board.GetLength(1), board.GetLength(0));
             for (int i = -1; i <= 1; i++) {
                 for (int j = -1; j <= 1; j++) {
-                    if (i == 0 || j ==0) {
-                        continue;
-                    }
+                    if (i == 0 || j == 0) continue;
 
                     var dir = new Vector2Int(i, j);
                     var chFound = false;
@@ -138,7 +135,7 @@ namespace checkers {
             return allCheckersMoves;
         }
 
-        public static Dictionary<Vector2Int, List<MoveInfo>> AnalyseCheckerMoves(
+        public static Dictionary<Vector2Int, List<MoveInfo>> GetAnalysedCheckerMoves(
             Dictionary<Vector2Int,List<MoveInfo>> paths
         ) {
             if (paths == null) {
@@ -147,38 +144,56 @@ namespace checkers {
             }
 
             var isNeedAttack = false;
-            var newMoves = new Dictionary<Vector2Int, List<MoveInfo>>();
+            var newPaths = new Dictionary<Vector2Int, List<MoveInfo>>();
+            var newMoves = new List<MoveInfo>();
             foreach (var path in paths) {
                 foreach (var cell in path.Value) {
-                    if (cell.isAttack) {
-                        isNeedAttack = true;
-                    }
+                    if (cell.isAttack) isNeedAttack = true;
 
-                    if (isNeedAttack && cell.isAttack) {
-                        //newMoves.Add(path.Key, );//do something
-                    }
+                    if (isNeedAttack && cell.isAttack) newMoves.Add(cell);
+                }
+
+                if (newMoves.Count != 0) {
+                    newPaths.Add(path.Key, newMoves);
+                    newMoves = new List<MoveInfo>();
                 }
             }
 
             if (isNeedAttack) {
-                return newMoves;
-            } else {
-                return newMoves = paths;
+                paths = newPaths;
             }
+
+            return paths;
         }
 
-        public static void Move(Option<Checker>[,] board, MoveInfo path, Vector2Int pos) {
+        public static ChColor ChangeMove(ChColor whoseMove) {
+            return (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
+        }
+
+        public static void Move(
+            Option<Checker>[,] board,
+            Vector2Int start,
+            Vector2Int end,
+            List<Vector2Int> sentenced
+        ) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
                 return;
             }
 
-            var chOpt = board[pos.x, pos.y];
+            var chOpt = board[start.x, start.y];
             if (chOpt.IsNone()) return;
             var ch = chOpt.Peel();
 
-            board[path.cellPos.x, path.cellPos.y] = Option<Checker>.Some(ch);
-            board[pos.x, pos.y] = Option<Checker>.None();
+            board[end.x, end.y] = Option<Checker>.Some(ch);
+            board[start.x, start.y] = Option<Checker>.None();
+            var dir = end - start;
+            var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
+            for (var next = start + nDir; next != end; next += nDir) {
+                if (board[next.x, next.y].IsSome()) {
+                    sentenced.Add(next);
+                }
+            }
         }
 
         private static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {

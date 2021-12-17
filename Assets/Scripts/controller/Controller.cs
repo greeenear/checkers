@@ -162,15 +162,6 @@ namespace controller {
                 if (checkerOpt.Peel().color != whoseMove) return;
 
                 selected = Option<Vector2Int>.Some(clickPos);
-                var a = Movement.GetCheckersMoves((Option<Checker>[,])map.board.Clone(), whoseMove, chKind);
-                a = Movement.AnalyseCheckerMoves(a);
-
-                foreach (var b in a) {
-                    Debug.Log(b.Key + "-------------------------------------------");
-                    foreach (var el in b.Value) {
-                        Debug.Log(el.cellPos + " isAttck" + el.isAttack);
-                    }
-                }
                 HighlightCells(allCheckerMoves[clickPos], isAttack);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
