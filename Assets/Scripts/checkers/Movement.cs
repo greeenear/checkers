@@ -69,7 +69,9 @@ namespace checkers {
                         if (nextOpt.IsSome()) {
                             var nextColor = nextOpt.Peel().color;
                             var isSentenced = markeds.Contains(next);
-                            if (isSentenced || chFound || nextColor == ch.color) break;
+                            if (isSentenced || chFound || nextColor == ch.color) {
+                                break;
+                            }
                             chFound = true;
                         } else {
                             var wrongMove = ch.type == ChType.Checker && dir.x != xDir;
@@ -80,14 +82,14 @@ namespace checkers {
                                     wrongMove = wrongMove && !chFound;
                                     break;
                             }
-
                             if (!wrongMove) {
+                                moves.Add(MoveInfo.Mk(next, chFound));
                                 if (chFound == true) {
                                     markeds.Add(next - dir);
-                                    board[next.x, next.y] = board[pos.x, pos.y];
+                                    board[next.x, next.y] = Option<Checker>.Some(board[pos.x, pos.y].Peel());
+                                    board[pos.x, pos.y] = Option<Checker>.None();
                                     moves.AddRange(GetCheckerMoves(board, next, kind, markeds));
                                 }
-                                moves.Add(MoveInfo.Mk(next, chFound));
                             }
                             if (ch.type == ChType.Checker || kind == ChKind.English) {
                                 break;
@@ -96,7 +98,7 @@ namespace checkers {
                     }
                 }
             }
-
+            markeds.Clear();
             return moves;
         }
 

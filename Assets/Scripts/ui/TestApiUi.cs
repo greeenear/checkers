@@ -22,7 +22,7 @@ namespace ui {
             moveBut.onClick.AddListener(
                 () => {
                     if (test.SetPos(input.text.ToString())) {
-                        test.CheckInputVector();
+                        test.CheckInputPoint();
                     }
                     input.text = "";
                 }

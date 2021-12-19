@@ -24,7 +24,7 @@ namespace checkers {
             ShowBoard(board);
         }
 
-        public void CheckInputVector() {
+        public void CheckInputPoint() {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
                 return;
@@ -66,8 +66,13 @@ namespace checkers {
                 sel.selectedChecker = curPos;
                 moves = Movement.GetCheckersMoves(board, whoseMove, kind);
                 moves = Movement.GetAnalysedCheckerMoves(moves);
-                ClearConsole();
+                //ClearConsole();
                 ShowBoard(board);
+                foreach (var a in moves) {
+                    foreach (var b in a.Value) {
+                        Debug.Log(b.cellPos + " ");
+                    }
+                }
                 Debug.Log("Selected " + curPos);
                 return;
             } else {
@@ -143,9 +148,12 @@ namespace checkers {
             //         }
             //     }
             // }
-            board[5, 0] = Option<Checker>.Some(new Checker { color = ChColor.White});
-            board[4, 1] = Option<Checker>.Some(new Checker { color = ChColor.Black});
-            board[2, 3] = Option<Checker>.Some(new Checker { color = ChColor.Black});
+            board[5, 3] = Option<Checker>.Some(new Checker { color = ChColor.White});
+            board[4, 4] = Option<Checker>.Some(new Checker { color = ChColor.Black});
+            board[4, 2] = Option<Checker>.Some(new Checker { color = ChColor.Black});
+            board[2, 2] = Option<Checker>.Some(new Checker { color = ChColor.Black});
+            board[2, 4] = Option<Checker>.Some(new Checker { color = ChColor.Black});
+            board[2, 6] = Option<Checker>.Some(new Checker { color = ChColor.Black});
 
         }
 
