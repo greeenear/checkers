@@ -69,11 +69,6 @@ namespace checkers {
                 moves = Movement.GetAnalysedCheckerMoves(moves);
                 ClearConsole();
                 ShowBoard(board);
-                foreach (var a in moves) {
-                    foreach (var b in a.Value) {
-                        Debug.Log(b.move.from + " " + b.move.to);
-                    }
-                }
                 Debug.Log("Selected " + curPos);
                 return;
             } else {
