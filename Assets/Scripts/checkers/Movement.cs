@@ -27,11 +27,20 @@ namespace checkers {
     }
 
     public struct MoveInfo {
-        public Vector2Int cellPos;
+        public Move move;
         public bool isAttack;
 
-        public static MoveInfo Mk(Vector2Int cellPos, bool isAttack) {
-            return new MoveInfo {cellPos = cellPos, isAttack = isAttack };
+        public static MoveInfo Mk(Move move, bool isAttack) {
+            return new MoveInfo {move = move, isAttack = isAttack };
+        }
+    }
+
+    public struct Move {
+        public Vector2Int from;
+        public Vector2Int to;
+
+        public static Move Mk(Vector2Int from, Vector2Int to) {
+            return new Move { from = from, to = to };
         }
     }
 
@@ -40,7 +49,7 @@ namespace checkers {
             Option<Checker>[,] board,
             Vector2Int pos,
             ChKind kind,
-            List<Vector2Int> markeds
+            HashSet<Vector2Int> markeds
         ) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
@@ -83,10 +92,11 @@ namespace checkers {
                                     break;
                             }
                             if (!wrongMove) {
-                                moves.Add(MoveInfo.Mk(next, chFound));
+                                moves.Add(MoveInfo.Mk(checkers.Move.Mk(pos, next), chFound));
+                                markeds.Add(pos);
                                 if (chFound == true) {
                                     markeds.Add(next - dir);
-                                    board[next.x, next.y] = Option<Checker>.Some(board[pos.x, pos.y].Peel());
+                                    board[next.x, next.y] = Option<Checker>.Some(ch);
                                     board[pos.x, pos.y] = Option<Checker>.None();
                                     moves.AddRange(GetCheckerMoves(board, next, kind, markeds));
                                 }
@@ -122,19 +132,23 @@ namespace checkers {
                     if (ch.color != color) continue;
 
                     var pos = new Vector2Int(i, j);
-                    var boardClone = (Option<Checker>[,])board.Clone();// убрать
+                    var boardClone = (Option<Checker>[,])board.Clone();
                     allCheckersMoves.Add(
                         pos, GetCheckerMoves(
                             boardClone,
                             pos,
                             kind,
-                            new List<Vector2Int>()
+                            new HashSet<Vector2Int>()
                         )
                     );
                 }
             }
 
             return allCheckersMoves;
+        }
+
+        public static void GetCheckerPaths() {
+
         }
 
         public static Dictionary<Vector2Int, List<MoveInfo>> GetAnalysedCheckerMoves(
@@ -174,8 +188,7 @@ namespace checkers {
 
         public static void Move(
             Option<Checker>[,] board,
-            Vector2Int start,
-            Vector2Int end,
+            Move move,
             List<Vector2Int> sentenced
         ) {
             if (board == null) {
@@ -183,15 +196,15 @@ namespace checkers {
                 return;
             }
 
-            var chOpt = board[start.x, start.y];
+            var chOpt = board[move.from.x, move.from.y];
             if (chOpt.IsNone()) return;
             var ch = chOpt.Peel();
 
-            board[end.x, end.y] = Option<Checker>.Some(ch);
-            board[start.x, start.y] = Option<Checker>.None();
-            var dir = end - start;
+            board[move.to.x, move.to.y] = Option<Checker>.Some(ch);
+            board[move.from.x, move.from.y] = Option<Checker>.None();
+            var dir = move.to - move.from;
             var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
-            for (var next = start + nDir; next != end; next += nDir) {
+            for (var next = move.from + nDir; next != move.to; next += nDir) {
                 if (board[next.x, next.y].IsSome()) {
                     sentenced.Add(next);
                 }

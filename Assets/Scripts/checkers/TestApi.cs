@@ -38,11 +38,11 @@ namespace checkers {
                 sel.selectedPos = curPos;
                 if (moves.ContainsKey(sel.selectedChecker.Value)) {
                     foreach(var move in moves[sel.selectedChecker.Value]) {
-                        if (move.cellPos == sel.selectedPos) {
+                        if (move.move.to == sel.selectedPos) {
+                            var newMove = Move.Mk(sel.selectedChecker.Value, sel.selectedPos.Value);
                             Movement.Move(
                                 board,
-                                sel.selectedChecker.Value,
-                                sel.selectedPos.Value,
+                                newMove,
                                 sentenced
                             );
 
@@ -54,6 +54,7 @@ namespace checkers {
                             ShowBoard(board);
                             sel.selectedChecker = null;
                             whoseMove = Movement.ChangeMove(whoseMove);
+                            break;
                         }
                     }
                 }
@@ -66,11 +67,11 @@ namespace checkers {
                 sel.selectedChecker = curPos;
                 moves = Movement.GetCheckersMoves(board, whoseMove, kind);
                 moves = Movement.GetAnalysedCheckerMoves(moves);
-                //ClearConsole();
+                ClearConsole();
                 ShowBoard(board);
                 foreach (var a in moves) {
                     foreach (var b in a.Value) {
-                        Debug.Log(b.cellPos + " ");
+                        Debug.Log(b.move.from + " " + b.move.to);
                     }
                 }
                 Debug.Log("Selected " + curPos);
@@ -134,27 +135,20 @@ namespace checkers {
                 return;
             }
             var color = ChColor.Black;
-            // for (int i = 0; i < board.GetLength(1); i++) {
-            //     for (int j = 0; j < board.GetLength(0); j = j + 2) {
-            //         if (i == 3 || i == 4) {
-            //             color = ChColor.White;
-            //             break;
-            //         }
+            for (int i = 0; i < board.GetLength(1); i++) {
+                for (int j = 0; j < board.GetLength(0); j = j + 2) {
+                    if (i == 3 || i == 4) {
+                        color = ChColor.White;
+                        break;
+                    }
 
-            //         if (i % 2 == 0) {
-            //             board[i, j + 1] = Option<Checker>.Some(new Checker { color = color});
-            //         } else {
-            //             board[i, j] = Option<Checker>.Some(new Checker { color = color });
-            //         }
-            //     }
-            // }
-            board[5, 3] = Option<Checker>.Some(new Checker { color = ChColor.White});
-            board[4, 4] = Option<Checker>.Some(new Checker { color = ChColor.Black});
-            board[4, 2] = Option<Checker>.Some(new Checker { color = ChColor.Black});
-            board[2, 2] = Option<Checker>.Some(new Checker { color = ChColor.Black});
-            board[2, 4] = Option<Checker>.Some(new Checker { color = ChColor.Black});
-            board[2, 6] = Option<Checker>.Some(new Checker { color = ChColor.Black});
-
+                    if (i % 2 == 0) {
+                        board[i, j + 1] = Option<Checker>.Some(new Checker { color = color});
+                    } else {
+                        board[i, j] = Option<Checker>.Some(new Checker { color = color });
+                    }
+                }
+            }
         }
 
         public void ShowBoard(Option<Checker>[,] board) {
@@ -170,7 +164,7 @@ namespace checkers {
                     char cellInf = '*';
                     if (sel.selectedChecker.HasValue) {
                         foreach (var cell in moves[sel.selectedChecker.Value]) {
-                            if (cell.cellPos == new Vector2Int(i,j)) cellInf = '#';
+                            if (cell.move.to == new Vector2Int(i,j)) cellInf = '#';
                         }
                     }
                     if (board[i, j].IsSome()) {
