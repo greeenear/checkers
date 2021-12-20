@@ -19,14 +19,14 @@ namespace ui {
                 return;
             }
 
-            moveBut.onClick.AddListener(
-                () => {
-                    if (test.SetPos(input.text.ToString())) {
-                        test.CheckInputPoint();
-                    }
-                    input.text = "";
-                }
-            );
+            // moveBut.onClick.AddListener(
+            //     () => {
+            //         if (test.SetPos(input.text.ToString())) {
+            //             test.CheckInputPoint();
+            //         }
+            //         input.text = "";
+            //     }
+            // );
         }
     }
 }

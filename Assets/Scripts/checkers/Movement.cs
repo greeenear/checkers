@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using System.Collections.Generic;
 using UnityEngine;
 using option;
@@ -26,59 +27,95 @@ namespace checkers {
         public ChColor color;
     }
 
-    public struct MoveInfo {
-        public Move move;
+    public struct GraphEdge {
+        public Vector2Int start;
+        public Vector2Int end;
         public bool isAttack;
 
-        public static MoveInfo Mk(Move move, bool isAttack) {
-            return new MoveInfo {move = move, isAttack = isAttack };
+        public static GraphEdge Mk(Vector2Int Start, Vector2Int End, bool isAttack) {
+            return new GraphEdge { start = Start, end = End, isAttack = isAttack };
         }
     }
 
-    public struct Move {
-        public Vector2Int from;
-        public Vector2Int to;
+    public struct Node {
+        public CellInfo cell;
+        public List<Node> child;
 
-        public static Move Mk(Vector2Int from, Vector2Int to) {
-            return new Move { from = from, to = to };
+        public static Node Mk(CellInfo cell, List<Node> child) {
+            return new Node { cell = cell, child = child };
+        }
+    }
+
+    public struct CellInfo {
+        public Vector2Int pos;
+        public bool isAttack;
+        
+        public static CellInfo Mk(Vector2Int pos, bool isAttack) {
+            return new CellInfo { pos = pos, isAttack = isAttack };
         }
     }
 
     public static class Movement {
-        public static List<MoveInfo> GetCheckerMoves(
+        public static List<GraphEdge> GetMovesTree(
             Option<Checker>[,] board,
             Vector2Int pos,
-            ChKind kind,
-            HashSet<Vector2Int> markeds
+            ChKind kind
         ) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
                 return null;
             }
+            var boardClone = (Option<Checker>[,])board.Clone();
 
             var chOpt = board[pos.x, pos.y];
             if (chOpt.IsNone()) return null;
             var ch = chOpt.Peel();
+            var mark = new HashSet<Vector2Int>();
+            var node = new Node();
+            node.cell.pos = pos;
+            var a = CalcNodes(board, pos, kind, ch, mark, node);
+
+            return new List<GraphEdge>();
+        }
+
+        private static Node CalcNodes(
+            Option<Checker>[,] board,
+            Vector2Int pos,
+            ChKind kind,
+            Checker ch,
+            HashSet<Vector2Int> marked,
+            Node node
+        ) {
+            if (node.child == null) {
+                node.child = new List<Node>();
+            }
+
+            if (board == null) {
+                Debug.LogError("BoardIsNull");
+                return new Node();
+            }
 
             var xDir = 1;
             if (ch.color == ChColor.White) {
                 xDir = -1;
             }
 
-            var moves = new List<MoveInfo>();
-            var size = new Vector2Int(board.GetLength(1), board.GetLength(0));
             for (int i = -1; i <= 1; i++) {
                 for (int j = -1; j <= 1; j++) {
                     if (i == 0 || j == 0) continue;
 
                     var dir = new Vector2Int(i, j);
                     var chFound = false;
+                    var size = new Vector2Int(board.GetLength(1), board.GetLength(0));
                     for (var next = pos + dir; IsOnBoard(size, next); next += dir) {
                         var nextOpt = board[next.x, next.y];
                         if (nextOpt.IsSome()) {
                             var nextColor = nextOpt.Peel().color;
-                            var isSentenced = markeds.Contains(next);
-                            if (isSentenced || chFound || nextColor == ch.color) {
+                            bool isMarked = false;
+                            if (marked.Contains(next)) {
+                                isMarked = true;
+                            }
+                            if (isMarked || chFound || nextColor == ch.color) {
                                 break;
                             }
                             chFound = true;
@@ -91,14 +128,17 @@ namespace checkers {
                                     wrongMove = wrongMove && !chFound;
                                     break;
                             }
+
                             if (!wrongMove) {
-                                moves.Add(MoveInfo.Mk(checkers.Move.Mk(pos, next), chFound));
-                                markeds.Add(pos);
                                 if (chFound == true) {
-                                    markeds.Add(next - dir);
-                                    board[next.x, next.y] = Option<Checker>.Some(ch);
-                                    board[pos.x, pos.y] = Option<Checker>.None();
-                                    moves.AddRange(GetCheckerMoves(board, next, kind, markeds));
+                                    marked.Add(next - dir);
+                                    var nextCell = CellInfo.Mk(next, true);
+                                    var newNode = Node.Mk(nextCell, new List<Node>());
+                                    node.child.Add(newNode);
+                                    CalcNodes(board, next, kind, ch, marked, newNode);
+                                } else if (marked.Count == 0) {
+                                    var nextCell = CellInfo.Mk(next, false);
+                                    node.child.Add(Node.Mk(nextCell, new List<Node>()));
                                 }
                             }
                             if (ch.type == ChType.Checker || kind == ChKind.English) {
@@ -108,107 +148,37 @@ namespace checkers {
                     }
                 }
             }
-            markeds.Clear();
-            return moves;
+            marked.Clear();
+            return node;
         }
 
-        public static Dictionary<Vector2Int, List<MoveInfo>> GetCheckersMoves(
-            Option<Checker>[,] board,
-            ChColor color,
-            ChKind kind
-        ) {
-            if (board == null) {
-                Debug.LogError("BoardIsNull");
-                return null;
+        public static List<List<Vector2Int>> GeneratePaths(Node node, List<Vector2Int> path) {
+            var paths = new List<List<Vector2Int>>();
+            path.Add(node.cell.pos);
+            foreach (var childNode in node.child) {
+                paths.AddRange(GeneratePaths(childNode, path));
+            }
+            if (node.child.Count == 0) {
+                var newPath = new List<Vector2Int>(path);
+                paths.Add(newPath);
             }
 
-            var allCheckersMoves = new Dictionary<Vector2Int, List<MoveInfo>>();
-            for (int i = 0; i < board.GetLength(1); i++) {
-                for (int j = 0; j < board.GetLength(0); j++) {
-                    var chOpt = board[i, j];
-                    if (chOpt.IsNone()) continue;
-                    var ch = chOpt.Peel();
-
-                    if (ch.color != color) continue;
-
-                    var pos = new Vector2Int(i, j);
-                    var boardClone = (Option<Checker>[,])board.Clone();
-                    allCheckersMoves.Add(
-                        pos, GetCheckerMoves(
-                            boardClone,
-                            pos,
-                            kind,
-                            new HashSet<Vector2Int>()
-                        )
-                    );
-                }
-            }
-
-            return allCheckersMoves;
-        }
-
-        public static void GetCheckerPaths() {
-
-        }
-
-        public static Dictionary<Vector2Int, List<MoveInfo>> GetAnalysedCheckerMoves(
-            Dictionary<Vector2Int,List<MoveInfo>> paths
-        ) {
-            if (paths == null) {
-                Debug.LogError("NoMovesDictionary");
-                return null;
-            }
-
-            var isNeedAttack = false;
-            var newPaths = new Dictionary<Vector2Int, List<MoveInfo>>();
-            var newMoves = new List<MoveInfo>();
-            foreach (var path in paths) {
-                foreach (var cell in path.Value) {
-                    if (cell.isAttack) isNeedAttack = true;
-
-                    if (isNeedAttack && cell.isAttack) newMoves.Add(cell);
-                }
-
-                if (newMoves.Count != 0) {
-                    newPaths.Add(path.Key, newMoves);
-                    newMoves = new List<MoveInfo>();
-                }
-            }
-
-            if (isNeedAttack) {
-                paths = newPaths;
-            }
-
+            path.RemoveAt(path.Count - 1);
             return paths;
         }
 
-        public static ChColor ChangeMove(ChColor whoseMove) {
-            return (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
+        public static void GetMoveFromPath() {
+
         }
 
-        public static void Move(
-            Option<Checker>[,] board,
-            Move move,
-            List<Vector2Int> sentenced
-        ) {
+        public static void Move(Option<Checker>[,] board, Vector2Int from, Vector2Int to) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
                 return;
             }
 
-            var chOpt = board[move.from.x, move.from.y];
-            if (chOpt.IsNone()) return;
-            var ch = chOpt.Peel();
-
-            board[move.to.x, move.to.y] = Option<Checker>.Some(ch);
-            board[move.from.x, move.from.y] = Option<Checker>.None();
-            var dir = move.to - move.from;
-            var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
-            for (var next = move.from + nDir; next != move.to; next += nDir) {
-                if (board[next.x, next.y].IsSome()) {
-                    sentenced.Add(next);
-                }
-            }
+            board[to.x, to.y] = board[from.x, from.y];
+            board[from.x, from.y] = Option<Checker>.None();
         }
 
         private static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {
@@ -217,5 +187,6 @@ namespace checkers {
             }
             return true;
         }
+
     }
 }
