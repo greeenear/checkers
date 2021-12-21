@@ -1,4 +1,3 @@
-using System.Security.Cryptography.X509Certificates;
 using System.Collections.Generic;
 using UnityEngine;
 using option;
@@ -55,27 +54,84 @@ namespace checkers {
         }
     }
 
-    public static class Movement {
-        public static List<GraphEdge> GetMovesTree(
+    public static class Checkers {
+        public static Node GetMovesTree(
             Option<Checker>[,] board,
             Vector2Int pos,
             ChKind kind
         ) {
+            var node = new Node();
             if (board == null) {
                 Debug.LogError("BoardIsNull");
-                return null;
+                return node;
             }
-            var boardClone = (Option<Checker>[,])board.Clone();
 
             var chOpt = board[pos.x, pos.y];
-            if (chOpt.IsNone()) return null;
+            if (chOpt.IsNone()) return node;
             var ch = chOpt.Peel();
-            var mark = new HashSet<Vector2Int>();
-            var node = new Node();
             node.cell.pos = pos;
-            var a = CalcNodes(board, pos, kind, ch, mark, node);
+            var tree = CalcNodes(board, pos, kind, ch, new HashSet<Vector2Int>(), node);
 
-            return new List<GraphEdge>();
+            return tree;
+        }
+
+        public static Node GetNodeFromTree(Node tree, Vector2Int pos) {
+            foreach (var child in tree.child) {
+                if (child.cell.pos == pos) {
+                    return child;
+                } else {
+                    GetNodeFromTree(child, pos);
+                }
+            }
+
+            return new Node();
+        }
+
+        public static bool CheckNeedAttack(Node tree) {
+            foreach (var child in tree.child) {
+                if (child.cell.isAttack) return true;
+                CheckNeedAttack(child);
+            }
+
+            return false;
+        }
+
+        public static Node GetAttackingTree(Node tree) {
+            for (int i = 0; i < tree.child.Count; i++) {
+                if (!tree.child[i].cell.isAttack) {
+                    tree.child.Remove(tree.child[i]);
+                    i--;
+                    continue;
+                }
+                GetAttackingTree(tree.child[i]);
+            }
+
+            return tree;
+        }
+
+        public static void Move(Option<Checker>[,] board, Vector2Int from, Vector2Int to) {
+            if (board == null) {
+                Debug.LogError("BoardIsNull");
+                return;
+            }
+
+            var chOpt = board[from.x, from.y];
+            if (chOpt.IsNone()) return;
+            var ch = chOpt.Peel();
+
+            board[to.x, to.y] = Option<Checker>.Some(ch);
+            board[from.x, from.y] = Option<Checker>.None();
+        }
+
+        public static void RemoveChecker(Option<Checker>[,] board, Vector2Int pos) {
+            if (board == null) {
+                Debug.LogError("BoardIsNull");
+                return;
+            }
+
+            if (IsOnBoard(new Vector2Int(board.GetLength(0), board.GetLength(1)), pos)) {
+                board[pos.x, pos.y] = Option<Checker>.None();
+            }
         }
 
         private static Node CalcNodes(
@@ -148,37 +204,9 @@ namespace checkers {
                     }
                 }
             }
+
             marked.Clear();
             return node;
-        }
-
-        public static List<List<Vector2Int>> GeneratePaths(Node node, List<Vector2Int> path) {
-            var paths = new List<List<Vector2Int>>();
-            path.Add(node.cell.pos);
-            foreach (var childNode in node.child) {
-                paths.AddRange(GeneratePaths(childNode, path));
-            }
-            if (node.child.Count == 0) {
-                var newPath = new List<Vector2Int>(path);
-                paths.Add(newPath);
-            }
-
-            path.RemoveAt(path.Count - 1);
-            return paths;
-        }
-
-        public static void GetMoveFromPath() {
-
-        }
-
-        public static void Move(Option<Checker>[,] board, Vector2Int from, Vector2Int to) {
-            if (board == null) {
-                Debug.LogError("BoardIsNull");
-                return;
-            }
-
-            board[to.x, to.y] = board[from.x, from.y];
-            board[from.x, from.y] = Option<Checker>.None();
         }
 
         private static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {
