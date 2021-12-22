@@ -304,6 +304,13 @@ namespace controller {
             if (!Input.GetMouseButtonDown(0)) return;
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) return;
+            var b =  new Option<CellInfo>[20,20];
+            Checkers.CalcNodes2(map.board, new Vector2Int(4,6), chKind, map.board[4,6].Peel(), 0,b, new Vector2Int());
+            foreach (var a in b) {
+                if (a.IsSome()) {
+                    Debug.Log(a.Peel().pos + " " + a.Peel().isAttack);
+                }
+            }
             Checkers.GetMovesTree(map.board, new Vector2Int(4, 5), chKind);
 
             var clickPos = ConvertToBoardPoint(hit.point);

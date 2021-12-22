@@ -26,16 +26,6 @@ namespace checkers {
         public ChColor color;
     }
 
-    public struct GraphEdge {
-        public Vector2Int start;
-        public Vector2Int end;
-        public bool isAttack;
-
-        public static GraphEdge Mk(Vector2Int Start, Vector2Int End, bool isAttack) {
-            return new GraphEdge { start = Start, end = End, isAttack = isAttack };
-        }
-    }
-
     public struct Node {
         public CellInfo cell;
         public List<Node> child;
@@ -217,6 +207,79 @@ namespace checkers {
 
             marked.Clear();
             return node;
+        }
+
+        public static Option<CellInfo>[,] CalcNodes2(//переименовать
+            Option<Checker>[,] board,
+            Vector2Int pos,
+            ChKind kind,
+            Checker ch,
+            int a,
+            Option<CellInfo>[,] matrix,//переименовать
+            Vector2Int badDir
+        ) {
+            if (board == null) {
+                Debug.LogError("BoardIsNull");
+                return null;
+            }
+
+            var xDir = 1;
+            if (ch.color == ChColor.White) {
+                xDir = -1;
+            }
+
+            for (int i = -1; i <= 1; i++) {
+                for (int j = -1; j <= 1; j++) {
+                    if (i == 0 || j == 0) continue;
+
+                    var count = 0;
+                    var dir = new Vector2Int(i, j);
+                    var chFound = false;
+                    var size = new Vector2Int(board.GetLength(1), board.GetLength(0));
+                    for (var next = pos + dir; IsOnBoard(size, next); next += dir) {
+                        var nextOpt = board[next.x, next.y];
+                        if (nextOpt.IsSome()) {
+                            var nextColor = nextOpt.Peel().color;
+                            bool isMarked = false;//новое имя
+                            if (dir == -badDir) isMarked = true;
+
+                            if (isMarked || chFound || nextColor == ch.color) {
+                                break;
+                            }
+                            chFound = true;
+                        } else {
+                            var wrongMove = ch.type == ChType.Checker && dir.x != xDir;
+                            switch (kind) {
+                                case ChKind.Pool:
+                                case ChKind.Russian:
+                                case ChKind.International:
+                                    wrongMove = wrongMove && !chFound;
+                                    break;
+                            }
+
+                            if (!wrongMove) {
+                                if (chFound == true) {
+                                    var nextCell = CellInfo.Mk(next, true);
+                                    Debug.Log(nextCell.pos + "=");
+                                    matrix[a, a + count] = Option<CellInfo>.Some(nextCell);
+                                    count++;
+                                    CalcNodes2(board, next, kind, ch, a = a + count, matrix, dir);
+                                } else {
+                                    var nextCell = CellInfo.Mk(next, false);
+                                    Debug.Log(nextCell.pos + "-");
+                                    count++;
+                                    matrix[a, a + count] = Option<CellInfo>.Some(nextCell);
+                                }
+                            }
+                            if (ch.type == ChType.Checker || kind == ChKind.English) {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return matrix;
         }
 
         private static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {
