@@ -308,7 +308,7 @@ namespace controller {
 
             var clickPos = ConvertToBoardPoint(hit.point);
             var checkerOpt = map.board[clickPos.x, clickPos.y];
-            DestroyHighlightCells(storageHighlightCells.transform);
+            if (!secondMove) DestroyHighlightCells(storageHighlightCells.transform);
 
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove && !secondMove) {
                 if (!allCheckersTrees.ContainsKey(clickPos)) return;
@@ -328,21 +328,14 @@ namespace controller {
                 if (Checkers.CheckNeedAttack(chTree)) {
                     chTree = Checkers.GetAttackingTree(chTree);
                 }
-                var nextCells = Checkers.GetNodeFromTree(chTree, clickPos);
-                // if (nextCells.child == null && !secondMove) {
-                //     return;
-                // }
-                // foreach (var c in nextCells.child) {
-                //     if (c.cell.pos == clickPos) {
-                //         canMove = true;
-                //     }
-                // }
+                var nextCells = Checkers.GetNodeFromTree(chTree, lPos);
+
+                if (!nextCells.child.Contains(Checkers.GetNodeFromTree(chTree, clickPos))) return;
 
                 Checkers.Move(map.board, lPos, clickPos);
                 var worldPos = ConvertToWorldPoint(clickPos);
                 map.obj[lPos.x, lPos.y].transform.position = worldPos;
                 map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
-                secondMove = true;
 
                 var dir = clickPos - lPos;
                 var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
@@ -352,6 +345,7 @@ namespace controller {
                     }
                 }
 
+                nextCells = Checkers.GetNodeFromTree(chTree, clickPos);
                 if (nextCells.child == null || nextCells.child.Count == 0) {
                     secondMove = false;
                     whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
@@ -362,9 +356,11 @@ namespace controller {
                         Checkers.RemoveChecker(map.board, sent);
                     }
                     sentenced.Clear();
+                    DestroyHighlightCells(storageHighlightCells.transform);
                     return;
                 }
 
+                secondMove = true;
                 HighlightCells(nextCells);
                 lastPos = Option<Vector2Int>.Some(clickPos);
             }

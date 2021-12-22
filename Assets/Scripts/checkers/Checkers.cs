@@ -76,15 +76,25 @@ namespace checkers {
         }
 
         public static Node GetNodeFromTree(Node tree, Vector2Int pos) {
+            if (tree.cell.pos == pos) return tree;
+            if (tree.child.Count == 0) return new Node();
+
             foreach (var child in tree.child) {
                 if (child.cell.pos == pos) {
                     return child;
                 } else {
-                    GetNodeFromTree(child, pos);
+                    tree = GetNodeFromTree(child, pos);
                 }
             }
 
-            return new Node();
+            return tree;
+        }
+
+        public static void ShowTree(Node tree, Vector2Int pos) {
+            foreach (var child in tree.child) {
+                Debug.Log(child.cell.pos);
+                ShowTree(child, pos);
+            }
         }
 
         public static bool CheckNeedAttack(Node tree) {
