@@ -34,7 +34,7 @@ namespace controller {
         private ChKind chKind;
 
         private Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
-        private Dictionary<Vector2Int, Node> allCheckersTrees;
+        private Dictionary<Vector2Int, Option<CellInfo>[,]> allCheckersMatrix;
         private HashSet<Vector2Int> sentenced;
         private Option<Vector2Int> selected;
         private Option<Vector2Int> lastPos;
@@ -287,16 +287,18 @@ namespace controller {
                 return;
             }
 
-            if (allCheckersTrees == null) {
-                allCheckersTrees = new Dictionary<Vector2Int, Node>();
+            if (allCheckersMatrix == null) {
+                allCheckersMatrix = new Dictionary<Vector2Int, Option<CellInfo>[,]>();
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
                         var cellOpt = map.board[i, j];
                         if (cellOpt.IsNone()) continue;
                         var curCh = cellOpt.Peel();
                         var pos = new Vector2Int(i, j);
+                        var matrix = new Option<CellInfo>[15,15];
 
-                        allCheckersTrees.Add(pos, Checkers.GetMovesTree(map.board, pos, chKind));
+                        matrix = Checkers.GetAdjacencyMatrtix(map.board, pos, chKind, matrix);
+                        allCheckersMatrix.Add(pos, matrix);
                     }
                 }
             }
@@ -304,86 +306,95 @@ namespace controller {
             if (!Input.GetMouseButtonDown(0)) return;
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) return;
-            var b =  new Option<CellInfo>[20,20];
-            Checkers.CalcNodes2(map.board, new Vector2Int(4,6), chKind, map.board[4,6].Peel(), 0,b, new Vector2Int());
-            foreach (var a in b) {
-                if (a.IsSome()) {
-                    Debug.Log(a.Peel().pos + " " + a.Peel().isAttack);
-                }
-            }
-            Checkers.GetMovesTree(map.board, new Vector2Int(4, 5), chKind);
 
             var clickPos = ConvertToBoardPoint(hit.point);
             var checkerOpt = map.board[clickPos.x, clickPos.y];
             if (!secondMove) DestroyHighlightCells(storageHighlightCells.transform);
 
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove && !secondMove) {
-                if (!allCheckersTrees.ContainsKey(clickPos)) return;
+                if (!allCheckersMatrix.ContainsKey(clickPos)) return;
                 selected = Option<Vector2Int>.Some(clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
-                var chTree = allCheckersTrees[clickPos];
-                if (Checkers.CheckNeedAttack(chTree)) {
-                    chTree = Checkers.GetAttackingTree(chTree);
-                }
-                HighlightCells(chTree);
+                var chMatrix = allCheckersMatrix[clickPos];
+                HighlightCells(chMatrix, clickPos);
 
             } else if (selected.IsSome()) {
-                var curPos = selected.Peel();
-                var lPos = lastPos.Peel();
+                // var curPos = selected.Peel();
+                // var lPos = lastPos.Peel();
 
-                var chTree = allCheckersTrees[curPos];
-                if (Checkers.CheckNeedAttack(chTree)) {
-                    chTree = Checkers.GetAttackingTree(chTree);
-                }
-                var nextCells = Checkers.GetNodeFromTree(chTree, lPos);
+                // var chTree = allCheckersMatrix[curPos];
+                // var nextCells = Checkers.GetNodeFromTree(chTree, lPos);
 
-                if (!nextCells.child.Contains(Checkers.GetNodeFromTree(chTree, clickPos))) return;
+                // if (!nextCells.child.Contains(Checkers.GetNodeFromTree(chTree, clickPos))) return;
 
-                Checkers.Move(map.board, lPos, clickPos);
-                var worldPos = ConvertToWorldPoint(clickPos);
-                map.obj[lPos.x, lPos.y].transform.position = worldPos;
-                map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
+                // Checkers.Move(map.board, lPos, clickPos);
+                // var worldPos = ConvertToWorldPoint(clickPos);
+                // map.obj[lPos.x, lPos.y].transform.position = worldPos;
+                // map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
 
-                var dir = clickPos - lPos;
-                var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
-                for (var next = lPos + nDir; next != clickPos; next += nDir) {
-                    if (map.board[next.x, next.y].IsSome()) {
-                        sentenced.Add(next);
-                    }
-                }
+                // var dir = clickPos - lPos;
+                // var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
+                // for (var next = lPos + nDir; next != clickPos; next += nDir) {
+                //     if (map.board[next.x, next.y].IsSome()) {
+                //         sentenced.Add(next);
+                //     }
+                // }
 
-                nextCells = Checkers.GetNodeFromTree(chTree, clickPos);
-                if (nextCells.child == null || nextCells.child.Count == 0) {
-                    secondMove = false;
-                    whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
-                    allCheckersTrees = null;
-                    selected = Option<Vector2Int>.None();
-                    foreach (var sent in sentenced) {
-                        Destroy(map.obj[sent.x, sent.y]);
-                        Checkers.RemoveChecker(map.board, sent);
-                    }
-                    sentenced.Clear();
-                    DestroyHighlightCells(storageHighlightCells.transform);
-                    return;
-                }
+                // nextCells = Checkers.GetNodeFromTree(chTree, clickPos);
+                // if (nextCells.child == null || nextCells.child.Count == 0) {
+                //     secondMove = false;
+                //     whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
+                //     allCheckersTrees = null;
+                //     selected = Option<Vector2Int>.None();
+                //     foreach (var sent in sentenced) {
+                //         Destroy(map.obj[sent.x, sent.y]);
+                //         Checkers.RemoveChecker(map.board, sent);
+                //     }
+                //     sentenced.Clear();
+                //     DestroyHighlightCells(storageHighlightCells.transform);
+                //     return;
+                // }
 
-                secondMove = true;
-                HighlightCells(nextCells);
-                lastPos = Option<Vector2Int>.Some(clickPos);
+                // secondMove = true;
+                // HighlightCells(nextCells);
+                // lastPos = Option<Vector2Int>.Some(clickPos);
             }
         }
 
-        private void HighlightCells(Node chPos) {
-            if (chPos.child == null) {
-                Debug.LogError("ListIsNull");
+        private void HighlightCells(Option<CellInfo>[,] chMatrix, Vector2Int targetPos) {
+            if (chMatrix == null) {
+                Debug.LogError("MatrixIsNull");
                 return;
             }
-            var boardPos = boardInfo.boardTransform.transform.position;
-            foreach (var pos in chPos.child) {
-                var spawnWorldPos = ConvertToWorldPoint(pos.cell.pos);
-                var parent = storageHighlightCells.transform;
 
-                Instantiate(res.highlightCell, spawnWorldPos, Quaternion.identity, parent);
+            int lineNum = 0;
+            for (int i = 0; i < chMatrix.GetLength(1); i++) {
+                for (int j = 0; j < chMatrix.GetLength(0); j++) {
+                    var posOpt = chMatrix[i, j];
+                    if (posOpt.IsNone()) continue;
+                    var pos = posOpt.Peel();
+
+                    if (pos.pos == targetPos) {
+                        lineNum = j;
+                        break;
+                    }
+                }
+            }
+
+            for (int k = 0; k < chMatrix.GetLength(1); k++) {
+                if (chMatrix[lineNum, k].IsSome()) {
+                    var cellPos = chMatrix[lineNum, k].Peel().pos;
+                    var boardPos = boardInfo.boardTransform.transform.position;
+                    var spawnWorldPos = ConvertToWorldPoint(cellPos);
+                    var parent = storageHighlightCells.transform;
+
+                    Instantiate(
+                        res.highlightCell,
+                        spawnWorldPos,
+                        Quaternion.identity,
+                        parent
+                    );
+                }
             }
         }
 
