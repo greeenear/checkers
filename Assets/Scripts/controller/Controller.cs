@@ -319,26 +319,40 @@ namespace controller {
                 HighlightCells(chMatrix, clickPos);
 
             } else if (selected.IsSome()) {
-                // var curPos = selected.Peel();
-                // var lPos = lastPos.Peel();
+                var curPos = selected.Peel();
+                var lPos = lastPos.Peel();
 
-                // var chTree = allCheckersMatrix[curPos];
+                var matrix = allCheckersMatrix[curPos];
+                var nextCellsLine = Checkers.GetNextCellsIndex(matrix, lPos);
                 // var nextCells = Checkers.GetNodeFromTree(chTree, lPos);
 
-                // if (!nextCells.child.Contains(Checkers.GetNodeFromTree(chTree, clickPos))) return;
+                var wrongPos = true;
+                for (int i = 0; i < matrix.GetLength(0); i++) {
+                    if (matrix[nextCellsLine, i].IsSome()) {
+                        if (matrix[nextCellsLine, i].Peel().pos == clickPos) {
+                            wrongPos = false;
+                            break;
+                        }
+                    }
+                }
 
-                // Checkers.Move(map.board, lPos, clickPos);
-                // var worldPos = ConvertToWorldPoint(clickPos);
-                // map.obj[lPos.x, lPos.y].transform.position = worldPos;
-                // map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
+                if (wrongPos) return;
 
-                // var dir = clickPos - lPos;
-                // var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
-                // for (var next = lPos + nDir; next != clickPos; next += nDir) {
-                //     if (map.board[next.x, next.y].IsSome()) {
-                //         sentenced.Add(next);
-                //     }
-                // }
+                Checkers.Move(map.board, lPos, clickPos);
+                var worldPos = ConvertToWorldPoint(clickPos);
+                map.obj[lPos.x, lPos.y].transform.position = worldPos;
+                map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
+
+                allCheckersMatrix = null;
+
+                var dir = clickPos - lPos;
+                var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
+                for (var next = lPos + nDir; next != clickPos; next += nDir) {
+                    if (map.board[next.x, next.y].IsSome()) {
+                        sentenced.Add(next);
+                    }
+                }
+                whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
 
                 // nextCells = Checkers.GetNodeFromTree(chTree, clickPos);
                 // if (nextCells.child == null || nextCells.child.Count == 0) {
@@ -352,6 +366,7 @@ namespace controller {
                 //     }
                 //     sentenced.Clear();
                 //     DestroyHighlightCells(storageHighlightCells.transform);
+                //     whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
                 //     return;
                 // }
 
@@ -366,24 +381,10 @@ namespace controller {
                 Debug.LogError("MatrixIsNull");
                 return;
             }
-
-            int lineNum = 0;
-            for (int i = 0; i < chMatrix.GetLength(1); i++) {
-                for (int j = 0; j < chMatrix.GetLength(0); j++) {
-                    var posOpt = chMatrix[i, j];
-                    if (posOpt.IsNone()) continue;
-                    var pos = posOpt.Peel();
-
-                    if (pos.pos == targetPos) {
-                        lineNum = j;
-                        break;
-                    }
-                }
-            }
-
+            var nextCellsLine = Checkers.GetNextCellsIndex(chMatrix, targetPos);
             for (int k = 0; k < chMatrix.GetLength(1); k++) {
-                if (chMatrix[lineNum, k].IsSome()) {
-                    var cellPos = chMatrix[lineNum, k].Peel().pos;
+                if (chMatrix[nextCellsLine, k].IsSome()) {
+                    var cellPos = chMatrix[nextCellsLine, k].Peel().pos;
                     var boardPos = boardInfo.boardTransform.transform.position;
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
                     var parent = storageHighlightCells.transform;

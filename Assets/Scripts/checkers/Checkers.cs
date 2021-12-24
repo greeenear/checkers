@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using option;
 
@@ -53,6 +52,21 @@ namespace checkers {
             FillAdjacencyMatrtix(board, pos, kind, ch, Vector2Int.zero, matrix, Vector2Int.zero);
 
             return matrix;
+        }
+
+        public static int GetNextCellsIndex(Option<CellInfo>[,] matrix, Vector2Int targetPos) {
+            for (int i = 0; i < matrix.GetLength(1); i++) {
+                for (int j = 0; j < matrix.GetLength(0); j++) {
+                    var posOpt = matrix[i, j];
+                    if (posOpt.IsNone()) continue;
+                    var pos = posOpt.Peel();
+
+                    if (pos.pos == targetPos) {
+                        return j;
+                    }
+                }
+            }
+            return 0;
         }
 
         public static void Move(Option<Checker>[,] board, Vector2Int from, Vector2Int to) {
