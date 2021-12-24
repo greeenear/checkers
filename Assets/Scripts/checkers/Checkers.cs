@@ -25,21 +25,12 @@ namespace checkers {
         public ChColor color;
     }
 
-    public struct CellInfo {
-        public Vector2Int pos;
-        public bool isAttack;
-        
-        public static CellInfo Mk(Vector2Int pos, bool isAttack) {
-            return new CellInfo { pos = pos, isAttack = isAttack };
-        }
-    }
-
     public static class Checkers {
-        public static Option<CellInfo>[,] GetAdjacencyMatrtix(
+        public static Option<Vector2Int>[,] GetPossiblePaths(
             Option<Checker>[,] board,
             Vector2Int pos,
             ChKind kind,
-            Option<CellInfo>[,] matrix
+            Option<Vector2Int>[,] matrix
         ) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
@@ -49,19 +40,24 @@ namespace checkers {
             var chOpt = board[pos.x, pos.y];
             if (chOpt.IsNone()) return matrix;
             var ch = chOpt.Peel();
-            FillAdjacencyMatrtix(board, pos, kind, ch, Vector2Int.zero, matrix, Vector2Int.zero);
+            var nodes = new Vector2Int[15];
+            GetPossibleSubPath(board, pos, kind, ch, Vector2Int.zero, matrix, nodes, Vector2Int.zero, false);
+            Debug.Log(pos);
+            foreach (var a in nodes) {
+                Debug.Log(a);
+            }
 
             return matrix;
         }
 
-        public static int GetNextCellsIndex(Option<CellInfo>[,] matrix, Vector2Int targetPos) {
+        public static int GetNextCellsIndex(Option<Vector2Int>[,] matrix, Vector2Int targetPos) {
             for (int i = 0; i < matrix.GetLength(1); i++) {
                 for (int j = 0; j < matrix.GetLength(0); j++) {
                     var posOpt = matrix[i, j];
                     if (posOpt.IsNone()) continue;
                     var pos = posOpt.Peel();
 
-                    if (pos.pos == targetPos) {
+                    if (pos == targetPos) {
                         return j;
                     }
                 }
@@ -69,35 +65,23 @@ namespace checkers {
             return 0;
         }
 
-        public static void Move(Option<Checker>[,] board, Vector2Int from, Vector2Int to) {
-            if (board == null) {
-                Debug.LogError("BoardIsNull");
-                return;
-            }
-
-            var chOpt = board[from.x, from.y];
-            if (chOpt.IsNone()) return;
-            var ch = chOpt.Peel();
-
-            board[to.x, to.y] = Option<Checker>.Some(ch);
-            board[from.x, from.y] = Option<Checker>.None();
-        }
-
-        private static void FillAdjacencyMatrtix(
+        private static void GetPossibleSubPath(
             Option<Checker>[,] board,
             Vector2Int pos,
             ChKind kind,
             Checker ch,
             Vector2Int index,
-            Option<CellInfo>[,] matrix,
-            Vector2Int badDir
+            Option<Vector2Int>[,] matrix,
+            Vector2Int [] nodes,
+            Vector2Int badDir,
+            bool needAttack
         ) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
                 return;
             }
+            bool wasUsualMove = false;
 
-            var needAttack = false;
             var xDir = 1;
             if (ch.color == ChColor.White) {
                 xDir = -1;
@@ -132,29 +116,24 @@ namespace checkers {
                             if (!wrongMove) {
                                 index.y++;
                                 if (chFound == true) {
+                                    if (wasUsualMove) {
+                                        for (int k = 0; k < matrix.GetLength(0); k++) {
+                                            matrix[0,k] = Option<Vector2Int>.None();
+                                        }
+                                    }
                                     needAttack = true;
-                                    var nextCell = CellInfo.Mk(next, true);
-                                    matrix[index.x, index.y] = Option<CellInfo>.Some(nextCell);
+                                    matrix[index.x, index.y] = Option<Vector2Int>.Some(next);
+                                    nodes[index.y] = next;
                                     var ind = new Vector2Int(index.y, index.y);
-                                    FillAdjacencyMatrtix(board, next, kind, ch, ind, matrix, dir);
-                                } else {
-                                    var nextCell = CellInfo.Mk(next, false);
-                                    matrix[index.x, index.y] = Option<CellInfo>.Some(nextCell);
+                                    GetPossibleSubPath(board, next, kind, ch, ind, matrix, nodes, dir, needAttack);
+                                } else if (!needAttack) {
+                                    wasUsualMove = true;
+                                    matrix[index.x, index.y] = Option<Vector2Int>.Some(next);
                                 }
                             }
                             if (ch.type == ChType.Checker || kind == ChKind.English) {
                                 break;
                             }
-                        }
-                    }
-                }
-            }
-
-            if (index.x == 0 && needAttack) {
-                for (int i = 0; i < matrix.GetLength(1); i++) {
-                    for (int j = 0; j < matrix.GetLength(0); j++) {
-                        if (matrix[i,j].IsSome() && !matrix[i,j].Peel().isAttack) {
-                            matrix[i,j] = Option<CellInfo>.None();
                         }
                     }
                 }
