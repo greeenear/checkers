@@ -34,7 +34,7 @@ namespace controller {
         private ChKind chKind;
 
         private Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
-        private Dictionary<Vector2Int, Option<CellInfo>[,]> allCheckersMatrix;
+        private Dictionary<Vector2Int, Option<Vector2Int>[,]> allCheckersMatrix;
         private HashSet<Vector2Int> sentenced;
         private Option<Vector2Int> selected;
         private Option<Vector2Int> lastPos;
@@ -288,16 +288,18 @@ namespace controller {
             }
 
             if (allCheckersMatrix == null) {
-                allCheckersMatrix = new Dictionary<Vector2Int, Option<CellInfo>[,]>();
+                allCheckersMatrix = new Dictionary<Vector2Int, Option<Vector2Int>[,]>();
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
                         var cellOpt = map.board[i, j];
                         if (cellOpt.IsNone()) continue;
                         var curCh = cellOpt.Peel();
                         var pos = new Vector2Int(i, j);
-                        var matrix = new Option<CellInfo>[15,15];
+                        var matrix = new Option<Vector2Int>[15,15];
+                        if (i == 4 && j == 6) {
 
-                        matrix = Checkers.GetAdjacencyMatrtix(map.board, pos, chKind, matrix);
+                        matrix = Checkers.GetPossiblePaths(map.board, pos, chKind, matrix);
+                        }
                         allCheckersMatrix.Add(pos, matrix);
                     }
                 }
@@ -329,7 +331,7 @@ namespace controller {
                 var wrongPos = true;
                 for (int i = 0; i < matrix.GetLength(0); i++) {
                     if (matrix[nextCellsLine, i].IsSome()) {
-                        if (matrix[nextCellsLine, i].Peel().pos == clickPos) {
+                        if (matrix[nextCellsLine, i].Peel() == clickPos) {
                             wrongPos = false;
                             break;
                         }
@@ -338,7 +340,8 @@ namespace controller {
 
                 if (wrongPos) return;
 
-                Checkers.Move(map.board, lPos, clickPos);
+                map.board[clickPos.x, clickPos.y] = map.board[lPos.x, lPos.y];
+                map.board[lPos.x, lPos.y] = Option<Checker>.None();
                 var worldPos = ConvertToWorldPoint(clickPos);
                 map.obj[lPos.x, lPos.y].transform.position = worldPos;
                 map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
@@ -352,6 +355,7 @@ namespace controller {
                         sentenced.Add(next);
                     }
                 }
+                selected = Option<Vector2Int>.None();
                 whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
 
                 // nextCells = Checkers.GetNodeFromTree(chTree, clickPos);
@@ -376,7 +380,7 @@ namespace controller {
             }
         }
 
-        private void HighlightCells(Option<CellInfo>[,] chMatrix, Vector2Int targetPos) {
+        private void HighlightCells(Option<Vector2Int>[,] chMatrix, Vector2Int targetPos) {
             if (chMatrix == null) {
                 Debug.LogError("MatrixIsNull");
                 return;
@@ -384,7 +388,7 @@ namespace controller {
             var nextCellsLine = Checkers.GetNextCellsIndex(chMatrix, targetPos);
             for (int k = 0; k < chMatrix.GetLength(1); k++) {
                 if (chMatrix[nextCellsLine, k].IsSome()) {
-                    var cellPos = chMatrix[nextCellsLine, k].Peel().pos;
+                    var cellPos = chMatrix[nextCellsLine, k].Peel();
                     var boardPos = boardInfo.boardTransform.transform.position;
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
                     var parent = storageHighlightCells.transform;
