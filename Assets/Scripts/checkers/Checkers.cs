@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using option;
@@ -22,12 +23,19 @@ namespace checkers {
     }
 
     public struct ChLocation {
-
+        public Option<Checker>[,] board;
+        public Vector2Int pos;
     }
 
     public struct Buffer {
         public int [,] matrix;
         public Vector2Int [] nodes;
+    }
+
+    public struct MatrixInfo {
+        public Vector2Int index;
+        public bool needAttack;
+        public int markerType;
     }
 
     public struct Checker {
@@ -36,70 +44,73 @@ namespace checkers {
     }
 
     public static class Checkers {
-        public static int[,] GetPossiblePaths(
-            Option<Checker>[,] board,
-            Vector2Int pos,
+        public static int? GetPossiblePaths(
+            ChLocation loc,
             ChKind kind,
             Buffer buf
         ) {
-            if (board == null) {
+            if (loc.board == null) {
                 Debug.LogError("BoardIsNull");
-                return buf.matrix;
+                return null;
             }
 
-            var chOpt = board[pos.x, pos.y];
-            if (chOpt.IsNone()) return buf.matrix;
+            var chOpt = loc.board[loc.pos.x, loc.pos.y];
+            if (chOpt.IsNone()) return null;
             var ch = chOpt.Peel();
-            var nodes = new Vector2Int[15];
-            int refi = 1;
-            GetPossibleSubPath(board, pos, kind, ch, Vector2Int.zero, buf, false, ref refi, 1);
+            var matrixInfo = new MatrixInfo {
+                index = Vector2Int.zero,
+                needAttack = false,
+                markerType = 1
+            };
+            buf.nodes[0] = loc.pos;
 
-            var str = "";
-            foreach (var a in nodes) {
-                str += a.ToString() + "   ";
+            int startSize = 1;
+            var mSize = GetPossibleSubPath(loc, kind, ch, buf, matrixInfo, ref startSize);
+
+            if (!mSize.HasValue) {
+                Debug.LogError("badSize");
             }
-            Debug.Log(str);
 
-            return buf.matrix;
+            return mSize;
         }
 
-        // public static int GetNextCellsIndex(int[,] matrix, Vector2Int targetPos) {
-        //     for (int i = 0; i < matrix.GetLength(1); i++) {
-        //         for (int j = 0; j < matrix.GetLength(0); j++) {
-        //             var posOpt = matrix[i, j];
-        //             if (posOpt.IsNone()) continue;
-        //             var pos = posOpt.Peel();
+        public static void ShowMatrix(Buffer buf) {
+            var nodes = "";
+            foreach (var a in buf.nodes) {
+                nodes += a.ToString() + "   ";
+            }
 
-        //             if (pos == targetPos) {
-        //                 return j;
-        //             }
-        //         }
+            Debug.Log(nodes);
+            var matrix = "";
+            for (int i = 0; i < buf.matrix.GetLength(1); i++) {
+                matrix = "";
+                for (int j = 0; j < buf.matrix.GetLength(0); j++) {
+                    matrix += "        " + buf.matrix[i,j].ToString();
+                }
+                Debug.Log(matrix);
+            }
+        }
+
+        // public static List<List<Vector2Int>> GetAllPaths(
+        //     Buffer buf,
+        //     int mSize,
+        //     List<Vector2Int> path,
+        //     List<List<Vector2Int>> paths
+        // ) {
+        //     for (int i = 0; i < mSize; i++) {
+                
         //     }
-        //     return 0;
         // }
 
-        public static void ShowMatrix(int[,] matrix) {
-            for (int i = 0; i < matrix.GetLength(1); i++) {
-                string a = "";
-                for (int j = 0; j < matrix.GetLength(0); j++) {
-                    a += "        " + matrix[i,j].ToString();
-                }
-                Debug.Log(a);
-            }
-        }
-
-        private static int GetPossibleSubPath(//убрать индекс
-            Option<Checker>[,] board,
-            Vector2Int pos,
+        private static int? GetPossibleSubPath(
+            ChLocation loc,
             ChKind kind,
             Checker ch,
-            Vector2Int index,
             Buffer buf,
-            bool needAttack,
-            ref int n,
-            int marked
+            MatrixInfo mInfo,
+            ref int mSize
         ) {
-            if (board == null) {
+            if (loc.board == null) {
                 Debug.LogError("BoardIsNull");
                 return 0;
             }
@@ -116,16 +127,16 @@ namespace checkers {
 
                     var dir = new Vector2Int(i, j);
                     var chFound = false;
-                    var size = new Vector2Int(board.GetLength(1), board.GetLength(0));
-                    for (var next = pos + dir; IsOnBoard(size, next); next += dir) {
-                        var nextOpt = board[next.x, next.y];
+                    var size = new Vector2Int(loc.board.GetLength(1), loc.board.GetLength(0));
+                    for (var next = loc.pos + dir; IsOnBoard(size, next); next += dir) {
+                        var nextOpt = loc.board[next.x, next.y];
                         if (nextOpt.IsSome()) {
                             var nextColor = nextOpt.Peel().color;
                             bool isBadDir = false;
-                            for (int k = 0; k < n; k++) {
+                            for (int k = 0; k < mSize; k++) {
                                 if (buf.nodes[k] == next + dir) {
-                                    for (int l = 0; l < n; l++) {
-                                        if (buf.matrix[k, l] == marked) isBadDir = true;
+                                    for (int l = 0; l < mSize; l++) {
+                                        if (buf.matrix[k, l] == mInfo.markerType) isBadDir = true;
                                     }
                                 }
                             }
@@ -147,33 +158,48 @@ namespace checkers {
                             if (!wrongMove) {
                                 if (chFound == true) {
                                     if (wasUsualMove) {
-                                        for (int k = 0; k < n; k++) {
+                                        for (int k = 0; k < mSize; k++) {
                                             buf.matrix[0,k] = 0;
                                         }
                                         wasUsualMove = false;
                                     }
-                                    needAttack = true;
-                                    index.y = n;
-                                    n++;
-                                    for (int k = 0; k < n; k++) {
+
+                                    mInfo.needAttack = true;
+                                    mInfo.index.y = mSize;
+                                    mSize++;
+
+                                    for (int k = 0; k < mSize; k++) {
                                         if (buf.nodes[k] == next) {
-                                            index.y = k;
-                                            n--;
+                                            mInfo.index.y = k;
+                                            mSize--;
                                             break;
                                         }
                                     }
-                                    buf.matrix[index.x, index.y] = marked;
-                                    buf.nodes[index.y] = next;
-                                    var ind = new Vector2Int(index.y, 0);
-                                    GetPossibleSubPath(board, next, kind, ch, ind, buf, needAttack, ref n, marked);
-                                } else if (!needAttack) {
+
+                                    buf.matrix[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
+                                    buf.nodes[mInfo.index.y] = next;
+                                    var oldInd = mInfo.index;
+                                    var oldPos = loc.pos;
+
+                                    var newInd = new Vector2Int(mInfo.index.y, 0);
+                                    loc.pos = next;
+                                    mInfo.index = newInd;
+
+                                    GetPossibleSubPath(loc, kind, ch, buf, mInfo, ref mSize);
+                                    mInfo.index = oldInd;
+                                    loc.pos = oldPos;
+                                } else if (!mInfo.needAttack) {
                                     wasUsualMove = true;
-                                    buf.matrix[index.x, index.y] = marked;
+                                    mInfo.index.y = mSize;
+                                    buf.nodes[mInfo.index.y] = next;
+                                    buf.matrix[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
+                                    mSize++;
                                 }
                             }
-                            if (index.x == 0) {
-                                marked++;
+                            if (mInfo.index.x == 0) {
+                                mInfo.markerType++;
                             }
+
                             if (ch.type == ChType.Checker || kind == ChKind.English) {
                                 break;
                             }
@@ -181,7 +207,7 @@ namespace checkers {
                     }
                 }
             }
-            return n;
+            return mSize;
         }
 
         private static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {

@@ -34,7 +34,7 @@ namespace controller {
         private ChKind chKind;
 
         private Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
-        private Dictionary<Vector2Int, int[,]> allCheckersMatrix;
+        private Dictionary<Vector2Int, checkers.Buffer> allCheckersMatrix;
         private HashSet<Vector2Int> sentenced;
         private Option<Vector2Int> selected;
         private Option<Vector2Int> lastPos;
@@ -288,21 +288,24 @@ namespace controller {
             }
 
             if (allCheckersMatrix == null) {
-                allCheckersMatrix = new Dictionary<Vector2Int, int[,]>();
+                allCheckersMatrix = new Dictionary<Vector2Int, checkers.Buffer>();
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
                         var cellOpt = map.board[i, j];
                         if (cellOpt.IsNone()) continue;
                         var curCh = cellOpt.Peel();
+
                         var pos = new Vector2Int(i, j);
                         var matrix = new int[15,15];
                         var nodes = new Vector2Int[15];
                         var buffer = new checkers.Buffer { matrix = matrix, nodes = nodes };
-                        if (i == 4 && j == 4) {
-                            matrix = Checkers.GetPossiblePaths(map.board, pos, chKind, buffer);
-                            Checkers.ShowMatrix(matrix);
+                        var loc = new ChLocation { board = map.board, pos = pos };
+                        var mSize = Checkers.GetPossiblePaths(loc, chKind, buffer);
+                        if (!mSize.HasValue) {
+                            Debug.LogError("BadSize");
+                            return;
                         }
-                        allCheckersMatrix.Add(pos, matrix);
+                        allCheckersMatrix.Add(pos, buffer);
                     }
                 }
             }
@@ -315,7 +318,7 @@ namespace controller {
             var checkerOpt = map.board[clickPos.x, clickPos.y];
             if (!secondMove) DestroyHighlightCells(storageHighlightCells.transform);
 
-            if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove && !secondMove) {
+            if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove) {
                 if (!allCheckersMatrix.ContainsKey(clickPos)) return;
                 selected = Option<Vector2Int>.Some(clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
@@ -326,7 +329,8 @@ namespace controller {
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
 
-                var matrix = allCheckersMatrix[curPos];
+                var buf = allCheckersMatrix[curPos];
+                Checkers.ShowMatrix(buf);
                 //var nextCellsLine = Checkers.GetNextCellsIndex(matrix, lPos);
                 // var nextCells = Checkers.GetNodeFromTree(chTree, lPos);
 
