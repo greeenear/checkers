@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using UnityEngine;
 using option;
 
@@ -20,65 +21,87 @@ namespace checkers {
         Count
     }
 
+    public struct ChLocation {
+
+    }
+
+    public struct Buffer {
+        public int [,] matrix;
+        public Vector2Int [] nodes;
+    }
+
     public struct Checker {
         public ChType type;
         public ChColor color;
     }
 
     public static class Checkers {
-        public static Option<Vector2Int>[,] GetPossiblePaths(
+        public static int[,] GetPossiblePaths(
             Option<Checker>[,] board,
             Vector2Int pos,
             ChKind kind,
-            Option<Vector2Int>[,] matrix
+            Buffer buf
         ) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
-                return matrix;
+                return buf.matrix;
             }
 
             var chOpt = board[pos.x, pos.y];
-            if (chOpt.IsNone()) return matrix;
+            if (chOpt.IsNone()) return buf.matrix;
             var ch = chOpt.Peel();
             var nodes = new Vector2Int[15];
-            GetPossibleSubPath(board, pos, kind, ch, Vector2Int.zero, matrix, nodes, Vector2Int.zero, false);
-            Debug.Log(pos);
+            int refi = 1;
+            GetPossibleSubPath(board, pos, kind, ch, Vector2Int.zero, buf, false, ref refi, 1);
+
+            var str = "";
             foreach (var a in nodes) {
+                str += a.ToString() + "   ";
+            }
+            Debug.Log(str);
+
+            return buf.matrix;
+        }
+
+        // public static int GetNextCellsIndex(int[,] matrix, Vector2Int targetPos) {
+        //     for (int i = 0; i < matrix.GetLength(1); i++) {
+        //         for (int j = 0; j < matrix.GetLength(0); j++) {
+        //             var posOpt = matrix[i, j];
+        //             if (posOpt.IsNone()) continue;
+        //             var pos = posOpt.Peel();
+
+        //             if (pos == targetPos) {
+        //                 return j;
+        //             }
+        //         }
+        //     }
+        //     return 0;
+        // }
+
+        public static void ShowMatrix(int[,] matrix) {
+            for (int i = 0; i < matrix.GetLength(1); i++) {
+                string a = "";
+                for (int j = 0; j < matrix.GetLength(0); j++) {
+                    a += "        " + matrix[i,j].ToString();
+                }
                 Debug.Log(a);
             }
-
-            return matrix;
         }
 
-        public static int GetNextCellsIndex(Option<Vector2Int>[,] matrix, Vector2Int targetPos) {
-            for (int i = 0; i < matrix.GetLength(1); i++) {
-                for (int j = 0; j < matrix.GetLength(0); j++) {
-                    var posOpt = matrix[i, j];
-                    if (posOpt.IsNone()) continue;
-                    var pos = posOpt.Peel();
-
-                    if (pos == targetPos) {
-                        return j;
-                    }
-                }
-            }
-            return 0;
-        }
-
-        private static void GetPossibleSubPath(
+        private static int GetPossibleSubPath(//убрать индекс
             Option<Checker>[,] board,
             Vector2Int pos,
             ChKind kind,
             Checker ch,
             Vector2Int index,
-            Option<Vector2Int>[,] matrix,
-            Vector2Int [] nodes,
-            Vector2Int badDir,
-            bool needAttack
+            Buffer buf,
+            bool needAttack,
+            ref int n,
+            int marked
         ) {
             if (board == null) {
                 Debug.LogError("BoardIsNull");
-                return;
+                return 0;
             }
             bool wasUsualMove = false;
 
@@ -98,8 +121,16 @@ namespace checkers {
                         var nextOpt = board[next.x, next.y];
                         if (nextOpt.IsSome()) {
                             var nextColor = nextOpt.Peel().color;
+                            bool isBadDir = false;
+                            for (int k = 0; k < n; k++) {
+                                if (buf.nodes[k] == next + dir) {
+                                    for (int l = 0; l < n; l++) {
+                                        if (buf.matrix[k, l] == marked) isBadDir = true;
+                                    }
+                                }
+                            }
 
-                            if (dir == -badDir || chFound || nextColor == ch.color) {
+                            if (isBadDir || chFound || nextColor == ch.color) {
                                 break;
                             }
                             chFound = true;
@@ -114,22 +145,34 @@ namespace checkers {
                             }
 
                             if (!wrongMove) {
-                                index.y++;
                                 if (chFound == true) {
                                     if (wasUsualMove) {
-                                        for (int k = 0; k < matrix.GetLength(0); k++) {
-                                            matrix[0,k] = Option<Vector2Int>.None();
+                                        for (int k = 0; k < n; k++) {
+                                            buf.matrix[0,k] = 0;
                                         }
+                                        wasUsualMove = false;
                                     }
                                     needAttack = true;
-                                    matrix[index.x, index.y] = Option<Vector2Int>.Some(next);
-                                    nodes[index.y] = next;
-                                    var ind = new Vector2Int(index.y, index.y);
-                                    GetPossibleSubPath(board, next, kind, ch, ind, matrix, nodes, dir, needAttack);
+                                    index.y = n;
+                                    n++;
+                                    for (int k = 0; k < n; k++) {
+                                        if (buf.nodes[k] == next) {
+                                            index.y = k;
+                                            n--;
+                                            break;
+                                        }
+                                    }
+                                    buf.matrix[index.x, index.y] = marked;
+                                    buf.nodes[index.y] = next;
+                                    var ind = new Vector2Int(index.y, 0);
+                                    GetPossibleSubPath(board, next, kind, ch, ind, buf, needAttack, ref n, marked);
                                 } else if (!needAttack) {
                                     wasUsualMove = true;
-                                    matrix[index.x, index.y] = Option<Vector2Int>.Some(next);
+                                    buf.matrix[index.x, index.y] = marked;
                                 }
+                            }
+                            if (index.x == 0) {
+                                marked++;
                             }
                             if (ch.type == ChType.Checker || kind == ChKind.English) {
                                 break;
@@ -138,7 +181,7 @@ namespace checkers {
                     }
                 }
             }
-            return;
+            return n;
         }
 
         private static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {
@@ -147,6 +190,5 @@ namespace checkers {
             }
             return true;
         }
-
     }
 }
