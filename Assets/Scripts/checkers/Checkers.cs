@@ -44,19 +44,20 @@ namespace checkers {
     }
 
     public static class Checkers {
-        public static int? GetPossiblePaths(
+        public static int GetPossiblePaths(
             ChLocation loc,
             ChKind kind,
             Buffer buf
         ) {
             if (loc.board == null) {
                 Debug.LogError("BoardIsNull");
-                return null;
+                return -1;
             }
 
             var chOpt = loc.board[loc.pos.x, loc.pos.y];
-            if (chOpt.IsNone()) return null;
+            if (chOpt.IsNone()) return -1;
             var ch = chOpt.Peel();
+            loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.None();
             var matrixInfo = new MatrixInfo {
                 index = Vector2Int.zero,
                 needAttack = false,
@@ -64,10 +65,10 @@ namespace checkers {
             };
             buf.cells[0] = loc.pos;
 
-            int startSize = 1;
-            var mSize = GetPossibleSubPath(loc, kind, ch, buf, matrixInfo, startSize);
+            var cellSize = GetPossibleSubPath(loc, kind, ch, buf, matrixInfo);
+            loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(ch);
 
-            return mSize;
+            return cellSize;
         }
 
         public static void ShowMatrix(Buffer buf) {
@@ -89,21 +90,28 @@ namespace checkers {
 
         public static List<List<Vector2Int>> GetAllPaths(
             Buffer buf,
-            int mSize,
             List<Vector2Int> path,
             List<List<Vector2Int>> paths,
             int index,
             int marker
         ) {
-            for (int i = 0; i < mSize; i++) {
+            var isLastCell = true;
+            for (int i = 0; i < buf.cellCount; i++) {
                 if (buf.conect[index, i] != 0 && buf.conect[index, i] == marker) {
-                    Debug.Log(buf.conect[index, i]);
                     path.Add(buf.cells[i]);
-                    paths.AddRange(GetAllPaths(buf, mSize, path, paths, i, marker));
-                    marker++;
+                    if (i == 0) break;
+                    isLastCell = false;
+                    GetAllPaths(buf, path, paths, i, marker);
+                    if (index == 0) {
+                        marker++;
+                        path.Clear();
+                    }
                 }
             }
-            paths.Add(path);
+
+            if (isLastCell) paths.Add(new List<Vector2Int>(path));
+            if (path.Count != 0) path.RemoveAt(path.Count - 1);
+
             return paths;
         }
 
@@ -112,8 +120,7 @@ namespace checkers {
             ChKind kind,
             Checker ch,
             Buffer buf,
-            MatrixInfo mInfo,
-            int mSize
+            MatrixInfo mInfo
         ) {
             if (loc.board == null) {
                 Debug.LogError("BoardIsNull");
@@ -138,11 +145,22 @@ namespace checkers {
                         if (nextOpt.IsSome()) {
                             var nextColor = nextOpt.Peel().color;
                             bool isBadDir = false;
-                            for (int k = 0; k < mSize; k++) {
-                                if (buf.cells[k] == next + dir) {
-                                    for (int l = 0; l < mSize; l++) {
-                                        if (buf.conect[k, l] == mInfo.markerType) isBadDir = true;
+                            for (int k = 0; k < buf.cellCount; k++) {
+                                for (var newNext = next + dir; IsOnBoard(size, newNext); newNext += dir) {
+                                    if (loc.board[newNext.x, newNext.y].IsSome()) break;
+                                    if (buf.cells[k] == newNext) {
+                                        for (int l = 0; l < buf.cellCount; l++) {
+                                            if (buf.conect[k, l] == mInfo.markerType) isBadDir = true;
+                                        }
                                     }
+                                    if (k == 0) {
+                                        isBadDir = false;
+                                        if (buf.conect[0, mInfo.index.x] == mInfo.markerType) {
+                                            isBadDir = true;
+                                        }
+                                    }
+
+
                                 }
                             }
 
@@ -163,20 +181,20 @@ namespace checkers {
                             if (!wrongMove) {
                                 if (chFound == true) {
                                     if (wasUsualMove) {
-                                        for (int k = 0; k < mSize; k++) {
+                                        for (int k = 0; k < buf.cellCount; k++) {
                                             buf.conect[0,k] = 0;
                                         }
                                         wasUsualMove = false;
                                     }
 
                                     mInfo.needAttack = true;
-                                    mInfo.index.y = mSize;
-                                    mSize++;
+                                    mInfo.index.y = buf.cellCount;
+                                    buf.cellCount++;
 
-                                    for (int k = 0; k < mSize; k++) {
+                                    for (int k = 0; k < buf.cellCount; k++) {
                                         if (buf.cells[k] == next) {
                                             mInfo.index.y = k;
-                                            mSize--;
+                                            buf.cellCount--;
                                             break;
                                         }
                                     }
@@ -187,22 +205,27 @@ namespace checkers {
                                     var oldPos = loc.pos;
 
                                     var newInd = new Vector2Int(mInfo.index.y, 0);
+                                    if (next == buf.cells[0]) break;
+                                    if (buf.conect[next.x, next.y] != 0) break;
                                     loc.pos = next;
                                     mInfo.index = newInd;
 
-                                    mSize = GetPossibleSubPath(loc, kind, ch, buf, mInfo, mSize);
+                                    buf.cellCount = GetPossibleSubPath(loc, kind, ch, buf, mInfo);
                                     mInfo.index = oldInd;
                                     loc.pos = oldPos;
+                                    if (mInfo.index.x == 0) {
+                                        mInfo.markerType++;
+                                    }
                                 } else if (!mInfo.needAttack) {
                                     wasUsualMove = true;
-                                    mInfo.index.y = mSize;
+                                    mInfo.index.y = buf.cellCount;
                                     buf.cells[mInfo.index.y] = next;
                                     buf.conect[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
-                                    mSize++;
+                                    buf.cellCount++;
+                                    if (mInfo.index.x == 0) {
+                                        mInfo.markerType++;
+                                    }
                                 }
-                            }
-                            if (mInfo.index.x == 0) {
-                                mInfo.markerType++;
                             }
 
                             if (ch.type == ChType.Checker || kind == ChKind.English) {
@@ -212,7 +235,7 @@ namespace checkers {
                     }
                 }
             }
-            return mSize;
+            return buf.cellCount;
         }
 
         private static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {

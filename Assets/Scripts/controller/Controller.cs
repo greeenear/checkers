@@ -301,11 +301,11 @@ namespace controller {
                         var buffer = new checkers.Buffer {
                             conect = matrix,
                             cells = nodes,
-                            cellCount = 0
+                            cellCount = 1
                         };
 
                         var loc = new ChLocation { board = map.board, pos = pos };
-                        var mSize = Checkers.GetPossiblePaths(loc, chKind, buffer);
+                        buffer.cellCount = Checkers.GetPossiblePaths(loc, chKind, buffer);
                         allCheckersMatrix.Add(pos, buffer);
                     }
                 }
@@ -332,14 +332,15 @@ namespace controller {
 
                 var buf = allCheckersMatrix[curPos];
                 Checkers.ShowMatrix(buf);
-                // var allpaths = Checkers.GetAllPaths(buf, 10, new List<Vector2Int>(), new List<List<Vector2Int>>(), 0, 1);
-                // foreach (var path in allpaths) {
-                //     foreach (var pos in path) {
-                //         Debug.Log(pos);
-                //     }
-                //     Debug.Log("=================");
-                // }
-                //var nextCellsLine = Checkers.GetNextCellsIndex(matrix, lPos);
+                var allpaths = Checkers.GetAllPaths(buf, new List<Vector2Int>(), new List<List<Vector2Int>>(), 0, 1);
+                Debug.Log(allpaths.Count);
+                foreach (var path in allpaths) {
+                    foreach (var pos in path) {
+                        Debug.Log(pos);
+                    }
+                    Debug.Log("=================");
+                }
+                // var nextCellsLine = Checkers.GetNextCellsIndex(matrix, lPos);
                 // var nextCells = Checkers.GetNodeFromTree(chTree, lPos);
 
                 var wrongPos = true;
