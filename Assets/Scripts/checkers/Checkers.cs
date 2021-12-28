@@ -91,16 +91,25 @@ namespace checkers {
             }
         }
 
-        // public static List<List<Vector2Int>> GetAllPaths(
-        //     Buffer buf,
-        //     int mSize,
-        //     List<Vector2Int> path,
-        //     List<List<Vector2Int>> paths
-        // ) {
-        //     for (int i = 0; i < mSize; i++) {
-                
-        //     }
-        // }
+        public static List<List<Vector2Int>> GetAllPaths(
+            Buffer buf,
+            int mSize,
+            List<Vector2Int> path,
+            List<List<Vector2Int>> paths,
+            int index,
+            int marker
+        ) {
+            for (int i = 0; i < mSize; i++) {
+                if (buf.matrix[index, i] != 0 && buf.matrix[index, i] == marker) {
+                    Debug.Log(buf.matrix[index, i]);
+                    path.Add(buf.nodes[i]);
+                    paths.AddRange(GetAllPaths(buf, mSize, path, paths, i, marker));
+                    marker++;
+                }
+            }
+            paths.Add(path);
+            return paths;
+        }
 
         private static int? GetPossibleSubPath(
             ChLocation loc,

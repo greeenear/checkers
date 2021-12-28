@@ -330,7 +330,14 @@ namespace controller {
                 var lPos = lastPos.Peel();
 
                 var buf = allCheckersMatrix[curPos];
-                Checkers.ShowMatrix(buf);
+                //Checkers.ShowMatrix(buf);
+                var allpaths = Checkers.GetAllPaths(buf, 10, new List<Vector2Int>(), new List<List<Vector2Int>>(), 0, 1);
+                foreach (var path in allpaths) {
+                    foreach (var pos in path) {
+                        Debug.Log(pos);
+                    }
+                    Debug.Log("=================");
+                }
                 //var nextCellsLine = Checkers.GetNextCellsIndex(matrix, lPos);
                 // var nextCells = Checkers.GetNodeFromTree(chTree, lPos);
 
