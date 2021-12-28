@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using UnityEngine;
 using option;
 
@@ -28,8 +27,9 @@ namespace checkers {
     }
 
     public struct Buffer {
-        public int [,] matrix;
-        public Vector2Int [] nodes;
+        public int [,] conect;
+        public Vector2Int [] cells;
+        public int cellCount;
     }
 
     public struct MatrixInfo {
@@ -62,30 +62,26 @@ namespace checkers {
                 needAttack = false,
                 markerType = 1
             };
-            buf.nodes[0] = loc.pos;
+            buf.cells[0] = loc.pos;
 
             int startSize = 1;
-            var mSize = GetPossibleSubPath(loc, kind, ch, buf, matrixInfo, ref startSize);
-
-            if (!mSize.HasValue) {
-                Debug.LogError("badSize");
-            }
+            var mSize = GetPossibleSubPath(loc, kind, ch, buf, matrixInfo, startSize);
 
             return mSize;
         }
 
         public static void ShowMatrix(Buffer buf) {
             var nodes = "";
-            foreach (var a in buf.nodes) {
+            foreach (var a in buf.cells) {
                 nodes += a.ToString() + "   ";
             }
 
             Debug.Log(nodes);
             var matrix = "";
-            for (int i = 0; i < buf.matrix.GetLength(1); i++) {
+            for (int i = 0; i < buf.conect.GetLength(1); i++) {
                 matrix = "";
-                for (int j = 0; j < buf.matrix.GetLength(0); j++) {
-                    matrix += "        " + buf.matrix[i,j].ToString();
+                for (int j = 0; j < buf.conect.GetLength(0); j++) {
+                    matrix += "        " + buf.conect[i,j].ToString();
                 }
                 Debug.Log(matrix);
             }
@@ -100,9 +96,9 @@ namespace checkers {
             int marker
         ) {
             for (int i = 0; i < mSize; i++) {
-                if (buf.matrix[index, i] != 0 && buf.matrix[index, i] == marker) {
-                    Debug.Log(buf.matrix[index, i]);
-                    path.Add(buf.nodes[i]);
+                if (buf.conect[index, i] != 0 && buf.conect[index, i] == marker) {
+                    Debug.Log(buf.conect[index, i]);
+                    path.Add(buf.cells[i]);
                     paths.AddRange(GetAllPaths(buf, mSize, path, paths, i, marker));
                     marker++;
                 }
@@ -111,13 +107,13 @@ namespace checkers {
             return paths;
         }
 
-        private static int? GetPossibleSubPath(
+        private static int GetPossibleSubPath(
             ChLocation loc,
             ChKind kind,
             Checker ch,
             Buffer buf,
             MatrixInfo mInfo,
-            ref int mSize
+            int mSize
         ) {
             if (loc.board == null) {
                 Debug.LogError("BoardIsNull");
@@ -143,9 +139,9 @@ namespace checkers {
                             var nextColor = nextOpt.Peel().color;
                             bool isBadDir = false;
                             for (int k = 0; k < mSize; k++) {
-                                if (buf.nodes[k] == next + dir) {
+                                if (buf.cells[k] == next + dir) {
                                     for (int l = 0; l < mSize; l++) {
-                                        if (buf.matrix[k, l] == mInfo.markerType) isBadDir = true;
+                                        if (buf.conect[k, l] == mInfo.markerType) isBadDir = true;
                                     }
                                 }
                             }
@@ -168,7 +164,7 @@ namespace checkers {
                                 if (chFound == true) {
                                     if (wasUsualMove) {
                                         for (int k = 0; k < mSize; k++) {
-                                            buf.matrix[0,k] = 0;
+                                            buf.conect[0,k] = 0;
                                         }
                                         wasUsualMove = false;
                                     }
@@ -178,15 +174,15 @@ namespace checkers {
                                     mSize++;
 
                                     for (int k = 0; k < mSize; k++) {
-                                        if (buf.nodes[k] == next) {
+                                        if (buf.cells[k] == next) {
                                             mInfo.index.y = k;
                                             mSize--;
                                             break;
                                         }
                                     }
 
-                                    buf.matrix[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
-                                    buf.nodes[mInfo.index.y] = next;
+                                    buf.conect[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
+                                    buf.cells[mInfo.index.y] = next;
                                     var oldInd = mInfo.index;
                                     var oldPos = loc.pos;
 
@@ -194,14 +190,14 @@ namespace checkers {
                                     loc.pos = next;
                                     mInfo.index = newInd;
 
-                                    GetPossibleSubPath(loc, kind, ch, buf, mInfo, ref mSize);
+                                    mSize = GetPossibleSubPath(loc, kind, ch, buf, mInfo, mSize);
                                     mInfo.index = oldInd;
                                     loc.pos = oldPos;
                                 } else if (!mInfo.needAttack) {
                                     wasUsualMove = true;
                                     mInfo.index.y = mSize;
-                                    buf.nodes[mInfo.index.y] = next;
-                                    buf.matrix[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
+                                    buf.cells[mInfo.index.y] = next;
+                                    buf.conect[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
                                     mSize++;
                                 }
                             }

@@ -298,13 +298,14 @@ namespace controller {
                         var pos = new Vector2Int(i, j);
                         var matrix = new int[15,15];
                         var nodes = new Vector2Int[15];
-                        var buffer = new checkers.Buffer { matrix = matrix, nodes = nodes };
+                        var buffer = new checkers.Buffer {
+                            conect = matrix,
+                            cells = nodes,
+                            cellCount = 0
+                        };
+
                         var loc = new ChLocation { board = map.board, pos = pos };
                         var mSize = Checkers.GetPossiblePaths(loc, chKind, buffer);
-                        if (!mSize.HasValue) {
-                            Debug.LogError("BadSize");
-                            return;
-                        }
                         allCheckersMatrix.Add(pos, buffer);
                     }
                 }
@@ -330,14 +331,14 @@ namespace controller {
                 var lPos = lastPos.Peel();
 
                 var buf = allCheckersMatrix[curPos];
-                //Checkers.ShowMatrix(buf);
-                var allpaths = Checkers.GetAllPaths(buf, 10, new List<Vector2Int>(), new List<List<Vector2Int>>(), 0, 1);
-                foreach (var path in allpaths) {
-                    foreach (var pos in path) {
-                        Debug.Log(pos);
-                    }
-                    Debug.Log("=================");
-                }
+                Checkers.ShowMatrix(buf);
+                // var allpaths = Checkers.GetAllPaths(buf, 10, new List<Vector2Int>(), new List<List<Vector2Int>>(), 0, 1);
+                // foreach (var path in allpaths) {
+                //     foreach (var pos in path) {
+                //         Debug.Log(pos);
+                //     }
+                //     Debug.Log("=================");
+                // }
                 //var nextCellsLine = Checkers.GetNextCellsIndex(matrix, lPos);
                 // var nextCells = Checkers.GetNodeFromTree(chTree, lPos);
 
