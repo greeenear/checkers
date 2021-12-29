@@ -146,21 +146,22 @@ namespace checkers {
                             var nextColor = nextOpt.Peel().color;
                             bool isBadDir = false;
                             for (int k = 0; k < buf.cellCount; k++) {
-                                for (var newNext = next + dir; IsOnBoard(size, newNext); newNext += dir) {
-                                    if (loc.board[newNext.x, newNext.y].IsSome()) break;
-                                    if (buf.cells[k] == newNext) {
+                                for (var cell = next + dir; IsOnBoard(size, cell); cell += dir) {
+                                    if (loc.board[cell.x, cell.y].IsSome()) break;
+                                    if (buf.cells[k] == cell) {
                                         for (int l = 0; l < buf.cellCount; l++) {
-                                            if (buf.conect[k, l] == mInfo.markerType) isBadDir = true;
+                                            if (buf.conect[k, l] == mInfo.markerType) {
+                                                isBadDir = true;
+                                            }
+                                        }
+
+                                        if (k == 0) {
+                                            isBadDir = false;
+                                            if (buf.conect[0, mInfo.index.x] == mInfo.markerType) {
+                                                isBadDir = true;
+                                            }
                                         }
                                     }
-                                    if (k == 0) {
-                                        isBadDir = false;
-                                        if (buf.conect[0, mInfo.index.x] == mInfo.markerType) {
-                                            isBadDir = true;
-                                        }
-                                    }
-
-
                                 }
                             }
 
@@ -214,7 +215,17 @@ namespace checkers {
                                     mInfo.index = oldInd;
                                     loc.pos = oldPos;
                                     if (mInfo.index.x == 0) {
-                                        mInfo.markerType++;
+                                        bool changeMarker = false;
+                                        for (int k = 0; k < buf.cellCount; k++) {
+                                            if (buf.cells[k] == next - dir) {
+                                                changeMarker = true;
+                                                break;
+                                            }
+                                        }
+
+                                        if (changeMarker || ch.type == ChType.Checker) {
+                                            mInfo.markerType++;
+                                        }
                                     }
                                 } else if (!mInfo.needAttack) {
                                     wasUsualMove = true;
@@ -223,7 +234,14 @@ namespace checkers {
                                     buf.conect[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
                                     buf.cellCount++;
                                     if (mInfo.index.x == 0) {
-                                        mInfo.markerType++;
+                                        bool changeMarker = false;
+                                        for (int k = 0; k < buf.cellCount; k++) {
+                                            if (buf.cells[k] == next - dir) {
+                                                changeMarker = true;
+                                                break;
+                                            }
+                                        }
+                                        if (changeMarker) mInfo.markerType++;
                                     }
                                 }
                             }
