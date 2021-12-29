@@ -689,19 +689,21 @@ namespace controller {
             }
         }
 
-        private bool IsNeedAttack(Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> checkers) {
-            foreach (var ch in checkers) {
-                if (HasAttack(ch.Value) && map.board[ch.Key.x, ch.Key.y].IsSome()) {
-                    if (map.board[ch.Key.x, ch.Key.y].Peel().color == whoseMove) return true;
-                }
+        private bool IsNeedAttack(Dictionary<Vector2Int, checkers.Buffer> checkersMoves) {
+            foreach (var moves in checkersMoves) {
+                if (HasAttack(moves.Value)) return true;
             }
 
             return false;
         }
 
-        private bool HasAttack(Dictionary<Vector2Int, bool> moves) {
-            foreach (var move in moves) {
-                if (move.Value ) return true;
+        private bool HasAttack(checkers.Buffer movesInfo) {
+            for (int i = 0; i < movesInfo.cellCount; i++) {
+                if (movesInfo.conect[0, i] != 0) {
+                    if (Mathf.Abs((movesInfo.cells[i].x - movesInfo.cells[0].x)) > 1) {
+                        return true;
+                    }
+                }
             }
 
             return false;
