@@ -34,7 +34,7 @@ namespace controller {
         private ChKind chKind;
 
         private Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
-        private Dictionary<Vector2Int, checkers.Buffer> allCheckersMatrix;
+        private Dictionary<Vector2Int, (PossibleGraph, int)> allCheckersMatrix;
         private HashSet<Vector2Int> sentenced;
         private Option<Vector2Int> selected;
         private Option<Vector2Int> lastPos;
@@ -288,7 +288,7 @@ namespace controller {
             }
 
             if (allCheckersMatrix == null) {
-                allCheckersMatrix = new Dictionary<Vector2Int, checkers.Buffer>();
+                allCheckersMatrix = new Dictionary<Vector2Int, (PossibleGraph, int)>();
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
                         var cellOpt = map.board[i, j];
@@ -296,17 +296,16 @@ namespace controller {
                         var curCh = cellOpt.Peel();
 
                         var pos = new Vector2Int(i, j);
-                        var matrix = new int[15,15];
-                        var nodes = new Vector2Int[15];
-                        var buffer = new checkers.Buffer {
-                            conect = matrix,
-                            cells = nodes,
-                            cellCount = 1
+                        var matrix = new int[20,20];
+                        var nodes = new Vector2Int[20];
+                        var buffer = new checkers.PossibleGraph {
+                            connect = matrix,
+                            cells = nodes
                         };
 
                         var loc = new ChLocation { board = map.board, pos = pos };
-                        buffer.cellCount = Checkers.GetPossiblePaths(loc, chKind, buffer);
-                        allCheckersMatrix.Add(pos, buffer);
+                        var count = Checkers.GetPossiblePaths(loc, chKind, buffer);
+                        allCheckersMatrix.Add(pos, (buffer, count));
                     }
                 }
             }
@@ -325,24 +324,25 @@ namespace controller {
                 selected = Option<Vector2Int>.Some(clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
                 var buf = allCheckersMatrix[clickPos];
-                if (needAttack && !HasAttack(buf)) {
+                if (needAttack && !HasAttack(buf.Item1, buf.Item2)) {
                     selected = Option<Vector2Int>.None();
                     return;
                 }
 
-                HighlightCells(buf, clickPos);
+                HighlightCells(buf.Item1, clickPos);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
 
                 var buf = allCheckersMatrix[curPos];
 
-                var curPosInd = Array.IndexOf<Vector2Int>(buf.cells, lPos);
+                var curPosInd = Array.IndexOf<Vector2Int>(buf.Item1.cells, lPos);
                 if (curPosInd == -1) return;
 
                 var isBadPos = true;
-                for (int i = 0; i < buf.cellCount; i++) {
-                    if (buf.conect[curPosInd, i] != 0 && buf.cells[i] == clickPos) {
+                var count = buf.Item2;
+                for (int i = 0; i < count; i++) {
+                    if (buf.Item1.connect[curPosInd, i] != 0 && buf.Item1.cells[i] == clickPos) {
                         isBadPos = false;
                     }
                 }
@@ -360,10 +360,10 @@ namespace controller {
                     if (map.board[next.x, next.y].IsSome()) sentenced.Add(next);
                 }
 
-                curPosInd = Array.IndexOf<Vector2Int>(buf.cells, clickPos);
+                curPosInd = Array.IndexOf<Vector2Int>(buf.Item1.cells, clickPos);
                 var nextMove = false;
-                for (int i = 0; i < buf.cellCount; i++) {
-                    if (buf.conect[curPosInd, i] != 0) {
+                for (int i = 0; i < buf.Item2; i++) {
+                    if (buf.Item1.connect[curPosInd, i] != 0) {
                         nextMove = true;
                     }
                 }
@@ -383,15 +383,15 @@ namespace controller {
 
                 secondMove = true;
                 DestroyHighlightCells(storageHighlightCells.transform);
-                HighlightCells(buf, clickPos);
+                HighlightCells(buf.Item1, clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
             }
         }
 
-        private void HighlightCells(checkers.Buffer buffer, Vector2Int targetPos) {
+        private void HighlightCells(checkers.PossibleGraph buffer, Vector2Int targetPos) {
             var index = Array.IndexOf<Vector2Int>(buffer.cells, targetPos);
-            for (int k = 0; k < buffer.conect.GetLength(1); k++) {
-                if (buffer.conect[index, k] != 0) {
+            for (int k = 0; k < buffer.connect.GetLength(1); k++) {
+                if (buffer.connect[index, k] != 0) {
                     var cellPos = buffer.cells[k];
                     var boardPos = boardInfo.boardTransform.transform.position;
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
@@ -689,17 +689,19 @@ namespace controller {
             }
         }
 
-        private bool IsNeedAttack(Dictionary<Vector2Int, checkers.Buffer> checkersMoves) {
+        private bool IsNeedAttack(Dictionary<Vector2Int, (PossibleGraph, int)> checkersMoves) {
             foreach (var moves in checkersMoves) {
-                if (HasAttack(moves.Value)) return true;
+                var graph = moves.Value.Item1;
+                var count = moves.Value.Item2;
+                if (HasAttack(graph, count)) return true;
             }
 
             return false;
         }
 
-        private bool HasAttack(checkers.Buffer movesInfo) {
-            for (int i = 0; i < movesInfo.cellCount; i++) {
-                if (movesInfo.conect[0, i] != 0) {
+        private bool HasAttack(checkers.PossibleGraph movesInfo, int count) {
+            for (int i = 0; i < count; i++) {
+                if (movesInfo.connect[0, i] != 0) {
                     if (Mathf.Abs((movesInfo.cells[i].x - movesInfo.cells[0].x)) > 1) {
                         return true;
                     }

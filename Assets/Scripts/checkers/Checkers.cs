@@ -26,10 +26,9 @@ namespace checkers {
         public Vector2Int pos;
     }
 
-    public struct Buffer {
-        public int [,] conect;
-        public Vector2Int [] cells;
-        public int cellCount;
+    public struct PossibleGraph {
+        public int[,] connect;
+        public Vector2Int[] cells;
     }
 
     public struct MatrixInfo {
@@ -44,20 +43,31 @@ namespace checkers {
     }
 
     public static class Checkers {
-        public static int GetPossiblePaths(
-            ChLocation loc,
-            ChKind kind,
-            Buffer buf
-        ) {
-            if (loc.board == null) {
-                Debug.LogError("BoardIsNull");
+        public static int GetPossiblePaths(ChLocation loc, ChKind kind, PossibleGraph buf) {
+            if (loc.board == null || buf.cells == null || buf.connect == null) {
+                Debug.LogError("BadParams");
                 return -1;
+            }
+            var bordSize = new Vector2Int(loc.board.GetLength(1),loc.board.GetLength(1));
+            if (!IsOnBoard(bordSize, loc.pos)) {
+                Debug.LogError("BadPos");
+                return -1;
+            }
+
+            if (loc.pos == new Vector2Int(5,2)) {
+                for (int i = -1; i <= 1; i++) {
+                    for (int j = -1; j <= 1; j++) {
+                        if (i == 0 || j == 0) continue;
+                        var dir = new Vector2Int(i, j);
+                        var newVector = GetLastPos(loc, dir);
+                        Debug.Log(newVector);
+                    }
+                }
             }
 
             var chOpt = loc.board[loc.pos.x, loc.pos.y];
             if (chOpt.IsNone()) return -1;
             var ch = chOpt.Peel();
-            loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.None();
             var matrixInfo = new MatrixInfo {
                 index = Vector2Int.zero,
                 needAttack = false,
@@ -65,67 +75,60 @@ namespace checkers {
             };
             buf.cells[0] = loc.pos;
 
-            var cellSize = GetPossibleSubPath(loc, kind, ch, buf, matrixInfo);
-            loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(ch);
+            var cellSize = GetPossibleSubPath(loc, kind, ch, buf, matrixInfo, 1);
 
             return cellSize;
         }
 
-        public static void ShowMatrix(Buffer buf) {
-            var nodes = "";
-            foreach (var a in buf.cells) {
-                nodes += a.ToString() + "   ";
+
+        private static Vector2Int GetLastPos(ChLocation loc, Vector2Int dir) {
+            var lastPos = new Vector2Int(-1, -1);
+            if (loc.board == null) {
+                Debug.LogError("BoardIsNull");
+                return lastPos;
             }
 
-            Debug.Log(nodes);
-            var matrix = "";
-            for (int i = 0; i < buf.conect.GetLength(1); i++) {
-                matrix = "";
-                for (int j = 0; j < buf.conect.GetLength(0); j++) {
-                    matrix += "        " + buf.conect[i,j].ToString();
-                }
-                Debug.Log(matrix);
+            var size = new Vector2Int(loc.board.GetLength(1), loc.board.GetLength(0));
+            if (!IsOnBoard(size, loc.pos)) {
+                Debug.LogError("BadPos");
+                return lastPos;
             }
+
+            var chOpt = loc.board[loc.pos.x, loc.pos.y];
+            if (chOpt.IsNone()) return lastPos;
+            var ch = chOpt.Peel();
+
+            for (var next = loc.pos + dir; IsOnBoard(size, next); next += dir) {
+                lastPos = next;
+                if (loc.board[next.x, next.y].IsSome()) {
+                    break;
+                }
+            }
+
+            return lastPos;
         }
 
-        public static List<List<Vector2Int>> GetAllPaths(
-            Buffer buf,
-            List<Vector2Int> path,
-            List<List<Vector2Int>> paths,
-            int index,
-            int marker
-        ) {
-            var isLastCell = true;
-            for (int i = 0; i < buf.cellCount; i++) {
-                if (buf.conect[index, i] != 0 && buf.conect[index, i] == marker) {
-                    path.Add(buf.cells[i]);
-                    if (i == 0) break;
-                    isLastCell = false;
-                    GetAllPaths(buf, path, paths, i, marker);
-                    if (index == 0) {
-                        marker++;
-                        path.Clear();
-                    }
-                }
+        private static bool StopCondition(Checker ch, ChKind kind) {
+            if (ch.type == ChType.Checker || kind == ChKind.English) {
+                return true;
             }
 
-            if (isLastCell) paths.Add(new List<Vector2Int>(path));
-            if (path.Count != 0) path.RemoveAt(path.Count - 1);
-
-            return paths;
+            return false;
         }
 
         private static int GetPossibleSubPath(
             ChLocation loc,
             ChKind kind,
             Checker ch,
-            Buffer buf,
-            MatrixInfo mInfo
+            PossibleGraph buf,
+            MatrixInfo mInfo,
+            int count
         ) {
-            if (loc.board == null) {
-                Debug.LogError("BoardIsNull");
+            if (loc.board == null || buf.cells == null || buf.connect == null) {
+                Debug.LogError("BadParams");
                 return 0;
             }
+
             bool wasUsualMove = false;
 
             var xDir = 1;
@@ -145,19 +148,19 @@ namespace checkers {
                         if (nextOpt.IsSome()) {
                             var nextColor = nextOpt.Peel().color;
                             bool isBadDir = false;
-                            for (int k = 0; k < buf.cellCount; k++) {
+                            for (int k = 0; k < count; k++) {
                                 for (var cell = next + dir; IsOnBoard(size, cell); cell += dir) {
                                     if (loc.board[cell.x, cell.y].IsSome()) break;
                                     if (buf.cells[k] == cell) {
-                                        for (int l = 0; l < buf.cellCount; l++) {
-                                            if (buf.conect[k, l] == mInfo.markerType) {
+                                        for (int l = 0; l < count; l++) {
+                                            if (buf.connect[k, l] == mInfo.markerType) {
                                                 isBadDir = true;
                                             }
                                         }
 
                                         if (k == 0) {
                                             isBadDir = false;
-                                            if (buf.conect[0, mInfo.index.x] == mInfo.markerType) {
+                                            if (buf.connect[0, mInfo.index.x] == mInfo.markerType) {
                                                 isBadDir = true;
                                             }
                                         }
@@ -182,41 +185,41 @@ namespace checkers {
                             if (!wrongMove) {
                                 if (chFound == true) {
                                     if (wasUsualMove) {
-                                        for (int k = 0; k < buf.cellCount; k++) {
-                                            buf.conect[0,k] = 0;
+                                        for (int k = 0; k < count; k++) {
+                                            buf.connect[0,k] = 0;
                                         }
                                         wasUsualMove = false;
                                     }
 
                                     mInfo.needAttack = true;
-                                    mInfo.index.y = buf.cellCount;
-                                    buf.cellCount++;
+                                    mInfo.index.y = count;
+                                    count++;
 
-                                    for (int k = 0; k < buf.cellCount; k++) {
+                                    for (int k = 0; k < count; k++) {
                                         if (buf.cells[k] == next) {
                                             mInfo.index.y = k;
-                                            buf.cellCount--;
+                                            count--;
                                             break;
                                         }
                                     }
 
-                                    buf.conect[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
+                                    buf.connect[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
                                     buf.cells[mInfo.index.y] = next;
                                     var oldInd = mInfo.index;
                                     var oldPos = loc.pos;
 
                                     var newInd = new Vector2Int(mInfo.index.y, 0);
                                     if (next == buf.cells[0]) break;
-                                    if (buf.conect[next.x, next.y] != 0) break;
+                                    if (buf.connect[next.x, next.y] != 0) break;
                                     loc.pos = next;
                                     mInfo.index = newInd;
 
-                                    buf.cellCount = GetPossibleSubPath(loc, kind, ch, buf, mInfo);
+                                    count = GetPossibleSubPath(loc, kind, ch, buf, mInfo, count);
                                     mInfo.index = oldInd;
                                     loc.pos = oldPos;
                                     if (mInfo.index.x == 0) {
                                         bool changeMarker = false;
-                                        for (int k = 0; k < buf.cellCount; k++) {
+                                        for (int k = 0; k < count; k++) {
                                             if (buf.cells[k] == next - dir) {
                                                 changeMarker = true;
                                                 break;
@@ -229,13 +232,13 @@ namespace checkers {
                                     }
                                 } else if (!mInfo.needAttack) {
                                     wasUsualMove = true;
-                                    mInfo.index.y = buf.cellCount;
+                                    mInfo.index.y = count;
                                     buf.cells[mInfo.index.y] = next;
-                                    buf.conect[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
-                                    buf.cellCount++;
+                                    buf.connect[mInfo.index.x, mInfo.index.y] = mInfo.markerType;
+                                    count++;
                                     if (mInfo.index.x == 0) {
                                         bool changeMarker = false;
-                                        for (int k = 0; k < buf.cellCount; k++) {
+                                        for (int k = 0; k < count; k++) {
                                             if (buf.cells[k] == next - dir) {
                                                 changeMarker = true;
                                                 break;
@@ -253,7 +256,62 @@ namespace checkers {
                     }
                 }
             }
-            return buf.cellCount;
+            return count;
+        }
+
+        public static void ShowMatrix(PossibleGraph buf) {
+            if (buf.cells == null || buf.connect == null) {
+                Debug.LogError("BadParams");
+                return;
+            }
+
+            var nodes = "";
+            foreach (var a in buf.cells) {
+                nodes += a.ToString() + "   ";
+            }
+
+            Debug.Log(nodes);
+            var matrix = "";
+            for (int i = 0; i < buf.connect.GetLength(1); i++) {
+                matrix = "";
+                for (int j = 0; j < buf.connect.GetLength(0); j++) {
+                    matrix += "        " + buf.connect[i,j].ToString();
+                }
+                Debug.Log(matrix);
+            }
+        }
+
+        public static List<List<Vector2Int>> GetAllPaths(
+            PossibleGraph buf,
+            List<Vector2Int> path,
+            List<List<Vector2Int>> paths,
+            int index,
+            int marker,
+            int cellCount
+        ) {
+            if (buf.cells == null || buf.connect == null || path == null || paths == null) {
+                Debug.Log("BadParams");
+                return null;
+            }
+
+            var isLastCell = true;
+            for (int i = 0; i < cellCount; i++) {
+                if (buf.connect[index, i] != 0 && buf.connect[index, i] == marker) {
+                    path.Add(buf.cells[i]);
+                    if (i == 0) break;
+                    isLastCell = false;
+                    GetAllPaths(buf, path, paths, i, marker, cellCount);
+                    if (index == 0) {
+                        marker++;
+                        path.Clear();
+                    }
+                }
+            }
+
+            if (isLastCell) paths.Add(new List<Vector2Int>(path));
+            if (path.Count != 0) path.RemoveAt(path.Count - 1);
+
+            return paths;
         }
 
         private static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {
