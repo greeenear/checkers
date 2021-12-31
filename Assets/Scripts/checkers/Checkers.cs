@@ -48,26 +48,46 @@ namespace checkers {
                 Debug.LogError("BadParams");
                 return -1;
             }
-            var bordSize = new Vector2Int(loc.board.GetLength(1),loc.board.GetLength(1));
-            if (!IsOnBoard(bordSize, loc.pos)) {
+            var boardSize = new Vector2Int(loc.board.GetLength(1),loc.board.GetLength(1));
+            if (!IsOnBoard(boardSize, loc.pos)) {
                 Debug.LogError("BadPos");
                 return -1;
             }
 
-            if (loc.pos == new Vector2Int(5,2)) {
-                for (int i = -1; i <= 1; i++) {
-                    for (int j = -1; j <= 1; j++) {
-                        if (i == 0 || j == 0) continue;
-                        var dir = new Vector2Int(i, j);
-                        var newVector = GetLastPos(loc, dir);
-                        Debug.Log(newVector);
-                    }
-                }
-            }
 
             var chOpt = loc.board[loc.pos.x, loc.pos.y];
             if (chOpt.IsNone()) return -1;
             var ch = chOpt.Peel();
+
+            var needAttack = false;
+            if (loc.pos == new Vector2Int(5,4)) {
+                for (int i = -1; i <= 1; i++) {
+                    if (needAttack) break;
+                    for (int j = -1; j <= 1; j++) {
+                        var dir = new Vector2Int(i, j);
+                        var length = GetLengthEmptyLine(loc, dir);
+                        var fixLength = GetFixedLength(length, kind, ch);
+
+                        var lastPos = loc.pos + dir * fixLength;
+                        if (loc.board[lastPos.x, lastPos.y].IsSome()) {
+                            var nextPos = loc.pos + dir * (length + 1);
+                            if (!IsOnBoard(boardSize, nextPos)) continue;
+
+                            if (loc.board[nextPos.x, nextPos.y].IsNone()) {
+                                needAttack = true;
+                                break;
+                            }
+                            //add move
+                        }
+                    }
+                }
+                if (needAttack) {
+                    GetAttackMoves(loc,kind,ch, Vector2Int.zero);
+                }
+            }
+
+
+
             var matrixInfo = new MatrixInfo {
                 index = Vector2Int.zero,
                 needAttack = false,
@@ -80,40 +100,63 @@ namespace checkers {
             return cellSize;
         }
 
+        private static void GetAttackMoves(ChLocation loc, ChKind kind, Checker ch, Vector2Int d) {
+            for (int i = -1; i <= 1; i++) {
+                for (int j = -1; j <= 1; j++) {
+                    if (i == 0 || j == 0) continue;
 
-        private static Vector2Int GetLastPos(ChLocation loc, Vector2Int dir) {
+                    var dir = new Vector2Int(i, j);
+                    if (dir == -d) continue;
+                    var length = GetLengthEmptyLine(loc, dir);
+                    var fixLength = GetFixedLength(length, kind, ch);
+                    if (fixLength != length) continue;
+        
+                    var boardSize = new Vector2Int(loc.board.GetLength(1), loc.board.GetLength(1));
+                    var newPos = loc.pos + dir * (length + 1);
+                    if (!IsOnBoard(boardSize, newPos)) continue;
+
+                    if (loc.board[newPos.x, newPos.y].IsSome()) continue;
+                    var oldPos = loc.pos;
+                    loc.pos = newPos;
+                    //add attackMove
+                    GetAttackMoves(loc, kind, ch, dir);
+                    loc.pos = oldPos;
+                }
+            }
+        }
+
+        private static int GetLengthEmptyLine(ChLocation loc, Vector2Int dir) {
             var lastPos = new Vector2Int(-1, -1);
             if (loc.board == null) {
                 Debug.LogError("BoardIsNull");
-                return lastPos;
+                return 0;
             }
 
             var size = new Vector2Int(loc.board.GetLength(1), loc.board.GetLength(0));
             if (!IsOnBoard(size, loc.pos)) {
                 Debug.LogError("BadPos");
-                return lastPos;
+                return 0;
             }
 
-            var chOpt = loc.board[loc.pos.x, loc.pos.y];
-            if (chOpt.IsNone()) return lastPos;
-            var ch = chOpt.Peel();
-
+            int length = 0;
             for (var next = loc.pos + dir; IsOnBoard(size, next); next += dir) {
+                length++;
                 lastPos = next;
                 if (loc.board[next.x, next.y].IsSome()) {
                     break;
                 }
             }
 
-            return lastPos;
+            return length;
         }
 
-        private static bool StopCondition(Checker ch, ChKind kind) {
+        private static int GetFixedLength(int length, ChKind kind, Checker ch) {
+            if (length == 0) return 0;
             if (ch.type == ChType.Checker || kind == ChKind.English) {
-                return true;
+                return 1;
             }
 
-            return false;
+            return length;
         }
 
         private static int GetPossibleSubPath(
