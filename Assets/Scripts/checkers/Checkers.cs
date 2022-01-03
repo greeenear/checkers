@@ -48,7 +48,7 @@ namespace checkers {
                 Debug.LogError("BadParams");
                 return -1;
             }
-            var boardSize = new Vector2Int(loc.board.GetLength(1),loc.board.GetLength(1));
+            var boardSize = new Vector2Int(loc.board.GetLength(1), loc.board.GetLength(1));
             if (!IsOnBoard(boardSize, loc.pos)) {
                 Debug.LogError("BadPos");
                 return -1;
@@ -62,28 +62,33 @@ namespace checkers {
             var needAttack = false;
             int marks = 1;
             int cellCount = 1;
-            if (loc.pos == new Vector2Int(5,4)) {
+            if (loc.pos == new Vector2Int(5, 4)) {
                 for (int i = -1; i <= 1; i++) {
                     if (needAttack) break;
                     for (int j = -1; j <= 1; j++) {
                         if (i == 0 || j == 0) continue;
 
                         var dir = new Vector2Int(i, j);
-                        var length = GetLengthEmptyLine(loc, dir);
-                        var fixLength = GetFixedLength(length, kind, ch);
+                        var length = GetMaxEmpty(loc, dir);
+                        if (length == -1) {
+                            Debug.LogError("BadLength");
+                            return -1;
+                        }
+                        var max = length;
+                        if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
+                        length = Mathf.Clamp(length, 0, max);
 
-                        var lastPos = loc.pos + dir * fixLength;
+                        var lastPos = loc.pos + dir * length;
                         if (loc.board[lastPos.x, lastPos.y].IsSome()) {
-                            var nextPos = loc.pos + dir * (length + 2);
+                            var nextPos = loc.pos + dir * (length + 1);
                             if (!IsOnBoard(boardSize, nextPos)) continue;
-
                             if (loc.board[nextPos.x, nextPos.y].IsNone()) {
                                 needAttack = true;
                                 break;
                             }
                         }
 
-                        for (int k = 0; k < fixLength; k++) {
+                        for (int k = 0; k < length; k++) {
                             graph.cells[cellCount] = loc.pos + dir * (k + 1);
                             graph.connect[0, cellCount] = marks;
                             cellCount++;
@@ -129,9 +134,16 @@ namespace checkers {
                     var dir = new Vector2Int(i, j);
 
                     int curColum = cellCount;
-                    var length = GetLengthEmptyLine(loc, dir);
-                    var fixLength = GetFixedLength(length, kind, ch);
-                    if (fixLength != length) continue;
+                    var length = GetMaxEmpty(loc, dir);
+                    if (length == -1) {
+                        Debug.LogError("BadLength");
+                        return -1;
+                    }
+                    var max = length;
+                    if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
+                    max = Mathf.Clamp(length, 0, max);
+
+                    if (max != length) continue;
         
                     var boardSize = new Vector2Int(loc.board.GetLength(1), loc.board.GetLength(1));
                     var newPos = loc.pos + dir * (length + 1);
@@ -157,7 +169,7 @@ namespace checkers {
                         }
                     }
 
-                    for (int k = 0; k < fixLength; k++) {
+                    for (int k = 0; k < max; k++) {
                         graph.cells[curColum] = newPos + dir * k;
                         graph.connect[startRow - 1, curColum] = marks;
                         cellCount++;
@@ -176,39 +188,23 @@ namespace checkers {
             return cellCount;
         }
 
-        private static int GetLengthEmptyLine(ChLocation loc, Vector2Int dir) {
+        private static int GetMaxEmpty(ChLocation loc, Vector2Int dir) {
             if (loc.board == null) {
                 Debug.LogError("BoardIsNull");
-                return 0;
+                return -1;
             }
-
-            var lastPos = new Vector2Int(-1, -1);
 
             var size = new Vector2Int(loc.board.GetLength(1), loc.board.GetLength(0));
             if (!IsOnBoard(size, loc.pos)) {
                 Debug.LogError("BadPos");
-                return 0;
+                return -1;
             }
 
-            int length = 0;
-            for (var next = loc.pos + dir; IsOnBoard(size, next); next += dir) {
-                length++;
-                lastPos = next;
-                if (loc.board[next.x, next.y].IsSome()) {
-                    break;
-                }
-            }
+            int len = 0;
+            var pos = loc.pos + dir;
+            for (var p = pos; IsOnBoard(size, p) && loc.board[p.x, p.y].IsNone(); p += dir, ++len);
 
-            return length;
-        }
-
-        private static int GetFixedLength(int length, ChKind kind, Checker ch) {
-            if (length == 0) return 0;
-            if (ch.type == ChType.Checker || kind == ChKind.English) {
-                return 1;
-            }
-
-            return length;
+            return len + 1;
         }
 
         private static int GetPossibleSubPath(
