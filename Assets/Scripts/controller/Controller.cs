@@ -37,6 +37,7 @@ namespace controller {
         private Dictionary<Vector2Int, (PossibleGraph, int)> allCheckersMatrix;
         private HashSet<Vector2Int> sentenced;
         private Option<Vector2Int> selected;
+        private int curMark;
         private Option<Vector2Int> lastPos;
         private bool secondMove;
 
@@ -332,7 +333,7 @@ namespace controller {
                     return;
                 }
 
-                Checkers.ShowMatrix(buf.Item1);
+                //Checkers.ShowMatrix(buf.Item1);
                 HighlightCells(buf.Item1, clickPos);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
@@ -345,8 +346,10 @@ namespace controller {
 
                 var isBadPos = true;
                 var count = buf.Item2;
+                var graph = buf.Item1;
                 for (int i = 0; i < count; i++) {
-                    if (buf.Item1.connect[curPosInd, i] != 0 && buf.Item1.cells[i] == clickPos) {
+                    if (graph.connect[curPosInd, i] != 0 && graph.cells[i] == clickPos) {
+                        curMark = graph.marks[i];
                         isBadPos = false;
                     }
                 }
@@ -392,11 +395,12 @@ namespace controller {
             }
         }
 
-        private void HighlightCells(checkers.PossibleGraph buffer, Vector2Int targetPos) {
-            var index = Array.IndexOf<Vector2Int>(buffer.cells, targetPos);
-            for (int k = 0; k < buffer.connect.GetLength(1); k++) {
-                if (buffer.connect[index, k] != 0) {
-                    var cellPos = buffer.cells[k];
+        private void HighlightCells(checkers.PossibleGraph graph, Vector2Int targetPos) {
+            var index = Array.IndexOf<Vector2Int>(graph.cells, targetPos);
+            for (int k = 0; k < graph.connect.GetLength(1); k++) {
+                Debug.Log(graph.marks[k] + " " + curMark);
+                if (graph.connect[index, k] != 0 && (graph.marks[k] == curMark || curMark == 0)) {
+                    var cellPos = graph.cells[k];
                     var boardPos = boardInfo.boardTransform.transform.position;
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
                     var parent = storageHighlightCells.transform;
