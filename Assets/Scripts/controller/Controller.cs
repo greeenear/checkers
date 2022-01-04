@@ -298,9 +298,12 @@ namespace controller {
                         var pos = new Vector2Int(i, j);
                         var matrix = new int[20,20];
                         var nodes = new Vector2Int[20];
+                        var marks = new int[20];
+
                         var buffer = new checkers.PossibleGraph {
                             connect = matrix,
-                            cells = nodes
+                            cells = nodes,
+                            marks = marks
                         };
 
                         var loc = new ChLocation { board = map.board, pos = pos };
@@ -329,6 +332,7 @@ namespace controller {
                     return;
                 }
 
+                Checkers.ShowMatrix(buf.Item1);
                 HighlightCells(buf.Item1, clickPos);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
@@ -489,7 +493,7 @@ namespace controller {
                 return false;
             }
 
-            allCheckerMoves = null;
+            allCheckersMatrix = null;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
 
