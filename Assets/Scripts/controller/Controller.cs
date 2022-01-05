@@ -333,7 +333,6 @@ namespace controller {
                     return;
                 }
 
-                //Checkers.ShowMatrix(buf.Item1);
                 HighlightCells(buf.Item1, clickPos);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
@@ -347,10 +346,14 @@ namespace controller {
                 var isBadPos = true;
                 var count = buf.Item2;
                 var graph = buf.Item1;
+
                 for (int i = 0; i < count; i++) {
                     if (graph.connect[curPosInd, i] != 0 && graph.cells[i] == clickPos) {
                         curMark = graph.marks[i];
-                        isBadPos = false;
+                        if ((graph.marks[i] & curMark) == curMark) {
+                            graph.marks[i] -= curMark;
+                            isBadPos = false;
+                        }
                     }
                 }
                 if (isBadPos) return;
@@ -385,6 +388,7 @@ namespace controller {
                     sentenced.Clear();
                     DestroyHighlightCells(storageHighlightCells.transform);
                     whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
+                    curMark = 0;
                     return;
                 }
 
@@ -398,8 +402,7 @@ namespace controller {
         private void HighlightCells(checkers.PossibleGraph graph, Vector2Int targetPos) {
             var index = Array.IndexOf<Vector2Int>(graph.cells, targetPos);
             for (int k = 0; k < graph.connect.GetLength(1); k++) {
-                Debug.Log(graph.marks[k] + " " + curMark);
-                if (graph.connect[index, k] != 0 && (graph.marks[k] == curMark || curMark == 0)) {
+                if (graph.connect[index, k] != 0 && ((graph.marks[k] & curMark) == curMark || curMark == 0)) {
                     var cellPos = graph.cells[k];
                     var boardPos = boardInfo.boardTransform.transform.position;
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
@@ -711,7 +714,11 @@ namespace controller {
             for (int i = 0; i < count; i++) {
                 if (movesInfo.connect[0, i] != 0) {
                     if (Mathf.Abs((movesInfo.cells[i].x - movesInfo.cells[0].x)) > 1) {
-                        return true;
+                        var d = movesInfo.cells[i] - movesInfo.cells[0];
+                        var nDir = new Vector2Int(d.x / Mathf.Abs(d.x), d.y / Mathf.Abs(d.y));
+                        for (var j = movesInfo.cells[0]; i < movesInfo.cells[i].x; j += nDir) {
+                            if (map.board[j.x, j.y].IsSome()) return true;
+                        }
                     }
                 }
             }
