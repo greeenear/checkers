@@ -351,7 +351,7 @@ namespace controller {
 
                 for (int i = 0; i < count; i++) {
                     if (graph.connect[curPosInd, i] != 0 && graph.cells[i] == clickPos) {
-                        curMark = 1;
+                        curMark = graph.marks[i];
                         if ((graph.marks[i] & curMark) == curMark) {
                             graph.marks[i] -= curMark;
                             isBadPos = false;

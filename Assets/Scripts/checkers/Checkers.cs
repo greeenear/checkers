@@ -45,6 +45,7 @@ namespace checkers {
 
     public static class Checkers {
         public static int GetPossiblePaths(ChLocation loc, ChKind kind, PossibleGraph graph) {
+            if (loc.pos != new Vector2Int(4,4)) return -1;
             if (loc.board == null || graph.cells == null || graph.connect == null) {
                 Debug.LogError("BadParams");
                 return -1;
@@ -129,6 +130,7 @@ namespace checkers {
                 cellCount = GetAttackPaths(loc, kind, ch, graph, 1, marks, 1);
             }
             loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(ch);
+            ShowMatrix(graph);
             return cellCount;
         }
 
@@ -171,11 +173,30 @@ namespace checkers {
 
                     var nextPos = GetCellByIndex(loc.board, loc.pos + dir * (length + 2));
                     if (nextPos == new Vector2Int(-1, -1)) continue;
+                    Debug.Log(loc.pos + " " + nextPos);
 
                     var badDir = false;
                     for (int k = 0; k < cellCount; k++) {
+                        //Debug.Log(graph.marks[1]);
+                        if (graph.cells[k] == nextPos) {
+                            for (int l = 0; l < cellCount; l++) {
+                                if (loc.pos == new Vector2Int(2,6)) {
+                                }
+                                //Debug.Log(graph.connect[k, l] + " " + (graph.marks[k] & marks));
+                                if (graph.connect[k, l] != 0 && graph.cells[l] == loc.pos && (graph.marks[l] & marks) == marks) {
+                                   // Debug.Log(l);
+                                    //ShowMatrix(graph);
+                                    badDir = true;
+                                }
+                            }
+                            //ShowMatrix(graph);
+                            //Debug.Log(loc.pos + " " + nextPos + " " + (graph.marks[k] & marks) + " " + k);
+                            if (graph.connect[k, curColum] != 0) Debug.Log("+");
+                        }
+
+
                         if (graph.cells[k] == nextPos && (graph.marks[k] & marks) == marks) {
-                            badDir = true;
+                            //badDir = true;
                         }
                     }
 
@@ -195,7 +216,7 @@ namespace checkers {
                         }
                         graph.cells[curColum] = nextPos + dir * k;
                         graph.marks[curColum] += marks;
-                        graph.connect[startRow - 1, curColum] = 1;
+                        graph.connect[startRow - 1, curColum] = marks;
                         cellCount++;
                         for (int l = 0; l <= cellCount; l++) {
                             graph.connect[l, cellCount] = 0;
