@@ -334,6 +334,7 @@ namespace controller {
                 }
 
                 HighlightCells(buf.Item1, clickPos);
+                //Checkers.ShowMatrix(buf.Item1);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
@@ -346,10 +347,11 @@ namespace controller {
                 var isBadPos = true;
                 var count = buf.Item2;
                 var graph = buf.Item1;
+                            //Checkers.ShowMatrix(graph);
 
                 for (int i = 0; i < count; i++) {
                     if (graph.connect[curPosInd, i] != 0 && graph.cells[i] == clickPos) {
-                        curMark = graph.marks[i];
+                        curMark = 1;
                         if ((graph.marks[i] & curMark) == curMark) {
                             graph.marks[i] -= curMark;
                             isBadPos = false;
@@ -374,7 +376,7 @@ namespace controller {
                 var nextMove = false;
                 for (int i = 0; i < buf.Item2; i++) {
                     if (buf.Item1.connect[curPosInd, i] != 0) {
-                        nextMove = true;
+                        if ((buf.Item1.marks[i] & curMark) == curMark) nextMove = true;
                     }
                 }
                 if (!nextMove) {

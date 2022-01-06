@@ -60,6 +60,7 @@ namespace checkers {
                 Debug.LogError("BadBufferSize");
                 return -1;
             }
+            
 
             graph.cells[0] = loc.pos;
             graph.connect[0, 0] = 0;
@@ -75,6 +76,7 @@ namespace checkers {
             var needAttack = false;
             int marks = 1;
             int cellCount = 1;
+            loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.None();
 
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
                 for (int j = -1; j <= 1 && (ch.type != ChType.Checker || i == xDir); j += 2) {
@@ -126,6 +128,7 @@ namespace checkers {
                 cellCount = 1;
                 cellCount = GetAttackPaths(loc, kind, ch, graph, 1, marks, 1);
             }
+            loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(ch);
             return cellCount;
         }
 
@@ -245,6 +248,12 @@ namespace checkers {
             if (IsOnBoard(boardSize, index)) cell = index;
 
             return cell;
+        }
+
+        private static void GetAllPaths(PossibleGraph graph, int cellCount, List<Vector2Int> path) {
+            for (int i = 0; i < cellCount; i++) {
+                path.Add(graph.cells[i]);
+            }
         }
 
         public static void ShowMatrix(PossibleGraph graph) {
