@@ -35,6 +35,7 @@ namespace controller {
 
         private Dictionary<Vector2Int, Dictionary<Vector2Int, bool>> allCheckerMoves;
         private Dictionary<Vector2Int, (PossibleGraph, int)> allCheckersMatrix;
+        private List<PossibleGraph> possibleGraphs = new List<PossibleGraph>();
         private HashSet<Vector2Int> sentenced;
         private Option<Vector2Int> selected;
         private int curMark;
@@ -60,6 +61,15 @@ namespace controller {
             map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
+
+            for (int i = 0; i < 40; i++) {
+                var graph = new PossibleGraph {
+                    connect = new int[20, 20],
+                    cells = new Vector2Int[20],
+                    marks = new int[20]
+                };
+                possibleGraphs.Add(graph);
+            }
         }
 
         // private void Update() {
@@ -290,6 +300,7 @@ namespace controller {
 
             if (allCheckersMatrix == null) {
                 allCheckersMatrix = new Dictionary<Vector2Int, (PossibleGraph, int)>();
+                int counter = 0;
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
                         var cellOpt = map.board[i, j];
@@ -297,19 +308,13 @@ namespace controller {
                         var curCh = cellOpt.Peel();
 
                         var pos = new Vector2Int(i, j);
-                        var matrix = new int[20,20];
-                        var nodes = new Vector2Int[20];
-                        var marks = new int[20];
-
-                        var buffer = new checkers.PossibleGraph {
-                            connect = matrix,
-                            cells = nodes,
-                            marks = marks
-                        };
 
                         var loc = new ChLocation { board = map.board, pos = pos };
+                        var buffer = possibleGraphs[counter];
+                        Array.Clear(buffer.marks, 0, buffer.marks.Length);
                         var count = Checkers.GetPossiblePaths(loc, chKind, buffer);
                         allCheckersMatrix.Add(pos, (buffer, count));
+                        counter++;
                     }
                 }
             }
@@ -334,11 +339,10 @@ namespace controller {
                 }
 
                 HighlightCells(buf.Item1, clickPos);
-                //Checkers.ShowMatrix(buf.Item1);
+                Checkers.ShowMatrix(buf.Item1);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
-
                 var buf = allCheckersMatrix[curPos];
 
                 var curPosInd = Array.IndexOf<Vector2Int>(buf.Item1.cells, lPos);
@@ -347,7 +351,6 @@ namespace controller {
                 var isBadPos = true;
                 var count = buf.Item2;
                 var graph = buf.Item1;
-                            //Checkers.ShowMatrix(graph);
 
                 for (int i = 0; i < count; i++) {
                     if (graph.connect[curPosInd, i] != 0 && graph.cells[i] == clickPos) {
@@ -370,6 +373,19 @@ namespace controller {
                 var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
                 for (var next = lPos + nDir; next != clickPos; next += nDir) {
                     if (map.board[next.x, next.y].IsSome()) sentenced.Add(next);
+                }
+
+                var edgeBoard = 0;
+                var chOpt = map.board[clickPos.x, clickPos.y];
+                if (chOpt.IsSome() && chOpt.Peel().color == ChColor.Black) {
+                    edgeBoard = boardInfo.boardSize.x - 1;
+                }
+
+                if (clickPos.x == edgeBoard) {
+                    var king = new Checker { type = ChType.King, color = whoseMove };
+                    map.board[clickPos.x, clickPos.y] = Option<Checker>.Some(king);
+                    var reverse = Quaternion.Euler(180, 0, 0);
+                    map.obj[clickPos.x, clickPos.y].transform.rotation = reverse;
                 }
 
                 curPosInd = Array.IndexOf<Vector2Int>(buf.Item1.cells, clickPos);
@@ -404,18 +420,14 @@ namespace controller {
         private void HighlightCells(checkers.PossibleGraph graph, Vector2Int targetPos) {
             var index = Array.IndexOf<Vector2Int>(graph.cells, targetPos);
             for (int k = 0; k < graph.connect.GetLength(1); k++) {
-                if (graph.connect[index, k] != 0 && ((graph.marks[k] & curMark) == curMark || curMark == 0)) {
+                var goodMark = (graph.marks[k] & curMark) == curMark || curMark == 0;
+                if (graph.connect[index, k] != 0 && goodMark) {
                     var cellPos = graph.cells[k];
                     var boardPos = boardInfo.boardTransform.transform.position;
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
                     var parent = storageHighlightCells.transform;
 
-                    Instantiate(
-                        res.highlightCell,
-                        spawnWorldPos,
-                        Quaternion.identity,
-                        parent
-                    );
+                    Instantiate(res.highlightCell, spawnWorldPos, Quaternion.identity, parent);
                 }
             }
         }
@@ -706,7 +718,15 @@ namespace controller {
             foreach (var moves in checkersMoves) {
                 var graph = moves.Value.Item1;
                 var count = moves.Value.Item2;
-                if (HasAttack(graph, count)) return true;
+                if (graph.cells.GetLength(0) < 1) {
+                    Debug.Log("BadLength");
+                    return false;
+                }
+
+                var chOpt = map.board[graph.cells[0].x, graph.cells[0].y];
+                if (HasAttack(graph, count) && chOpt.IsSome() && chOpt.Peel().color == whoseMove) {
+                    return true;
+                }
             }
 
             return false;
@@ -753,4 +773,4 @@ namespace controller {
             return true;
         }
     }
-}
+} 
