@@ -32,12 +32,6 @@ namespace checkers {
         public int[] marks;
     }
 
-    public struct MatrixInfo {
-        public Vector2Int index;
-        public bool needAttack;
-        public int markerType;
-    }
-
     public struct Checker {
         public ChType type;
         public ChColor color;
@@ -45,7 +39,7 @@ namespace checkers {
 
     public static class Checkers {
         public static int GetPossiblePaths(ChLocation loc, ChKind kind, PossibleGraph graph) {
-            if (loc.pos != new Vector2Int(4,4)) return -1;
+            //if (loc.pos != new Vector2Int(7,6)) return -1;
             if (loc.board == null || graph.cells == null || graph.connect == null) {
                 Debug.LogError("BadParams");
                 return -1;
@@ -161,7 +155,7 @@ namespace checkers {
                         return -1;
                     }
                     var max = length;
-                    if (ch.type == ChType.Checker || kind == ChKind.English) max = 0;
+                    if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
                     max = Mathf.Clamp(length, 0, max);
 
                     if (max != length) continue;
@@ -173,34 +167,26 @@ namespace checkers {
 
                     var nextPos = GetCellByIndex(loc.board, loc.pos + dir * (length + 2));
                     if (nextPos == new Vector2Int(-1, -1)) continue;
-                    Debug.Log(loc.pos + " " + nextPos);
 
                     var badDir = false;
                     for (int k = 0; k < cellCount; k++) {
-                        //Debug.Log(graph.marks[1]);
                         if (graph.cells[k] == nextPos) {
                             for (int l = 0; l < cellCount; l++) {
-                                if (loc.pos == new Vector2Int(2,6)) {
-                                }
-                                //Debug.Log(graph.connect[k, l] + " " + (graph.marks[k] & marks));
-                                if (graph.connect[k, l] != 0 && graph.cells[l] == loc.pos && (graph.marks[l] & marks) == marks) {
-                                   // Debug.Log(l);
-                                    //ShowMatrix(graph);
+                                var connect = graph.connect[k, l];
+                                var isInverseMove = connect == marks && graph.cells[l] == loc.pos;
+                                if (isInverseMove || ((graph.marks[k] & marks) == marks)) {
                                     badDir = true;
                                 }
                             }
-                            //ShowMatrix(graph);
-                            //Debug.Log(loc.pos + " " + nextPos + " " + (graph.marks[k] & marks) + " " + k);
-                            if (graph.connect[k, curColum] != 0) Debug.Log("+");
                         }
 
-
-                        if (graph.cells[k] == nextPos && (graph.marks[k] & marks) == marks) {
-                            //badDir = true;
-                        }
                     }
 
                     if (loc.board[nextPos.x, nextPos.y].IsSome() || badDir) continue;
+                    length = GetMaxEmpty(new ChLocation { board = loc.board, pos = lastPos }, dir);
+                    max = length;
+                    if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
+                    max = Mathf.Clamp(length, 0, max);
 
                     for (int k = 0; k < cellCount; k++) {
                         if (graph.cells[k] == nextPos) {
@@ -209,29 +195,34 @@ namespace checkers {
                         }
                     }
 
-                    for (int k = 0; k <= max; k++) {
+                    for (int k = 0; k < max; k++) {
                         if (graph.cells.GetLength(0) < curColum) {
-                            Debug.LogError("BadBufferSize");
+                            Debug.LogError("InsufficientBufferSize");
                             return -1;
                         }
-                        graph.cells[curColum] = nextPos + dir * k;
-                        graph.marks[curColum] += marks;
-                        graph.connect[startRow - 1, curColum] = marks;
-                        cellCount++;
-                        for (int l = 0; l <= cellCount; l++) {
-                            graph.connect[l, cellCount] = 0;
-                            graph.connect[cellCount, l] = 0;
+                        try {
+                            graph.cells[curColum] = nextPos + dir * k;
+                            graph.marks[curColum] += marks;
+                            graph.connect[startRow - 1, curColum] = marks;
+                            cellCount++;
+                            for (int l = 0; l <= cellCount; l++) {
+                                graph.connect[l, cellCount] = 0;
+                                graph.connect[cellCount, l] = 0;
+                            }
+                            curColum++;
+                        } catch {
+                            ShowMatrix(graph);
                         }
-                        curColum++;
                     }
-
                     var oldPos = loc.pos;
                     loc.pos = nextPos;
                     cellCount = GetAttackPaths(loc, kind, ch, graph, cellCount, marks, curColum);
                     if (cellCount == -1) return -1;
                     loc.pos = oldPos;
 
-                    if (nextPos - 2 * dir == graph.cells[0]) marks = marks << 1;
+                    if (nextPos - 2 * dir == graph.cells[0]) {
+                        marks = marks << 1;
+                    }
                 }
             }
 
