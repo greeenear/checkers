@@ -338,7 +338,7 @@ namespace controller {
                     return;
                 }
 
-                HighlightCells(buf.Item1, clickPos);
+                HighlightCells(buf, clickPos);
                 Checkers.ShowMatrix(buf.Item1);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
@@ -412,17 +412,17 @@ namespace controller {
 
                 secondMove = true;
                 DestroyHighlightCells(storageHighlightCells.transform);
-                HighlightCells(buf.Item1, clickPos);
+                HighlightCells(buf, clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
             }
         }
 
-        private void HighlightCells(checkers.PossibleGraph graph, Vector2Int targetPos) {
-            var index = Array.IndexOf<Vector2Int>(graph.cells, targetPos);
-            for (int k = 0; k < graph.connect.GetLength(1); k++) {
-                var goodMark = (graph.marks[k] & curMark) == curMark || curMark == 0;
-                if (graph.connect[index, k] != 0 && goodMark) {
-                    var cellPos = graph.cells[k];
+        private void HighlightCells((checkers.PossibleGraph, int) graph, Vector2Int targetPos) {
+            var index = Array.IndexOf<Vector2Int>(graph.Item1.cells, targetPos);
+            for (int k = 0; k < graph.Item2; k++) {
+                var goodMark = (graph.Item1.marks[k] & curMark) == curMark || curMark == 0;
+                if (graph.Item1.connect[index, k] != 0 && goodMark) {
+                    var cellPos = graph.Item1.cells[k];
                     var boardPos = boardInfo.boardTransform.transform.position;
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
                     var parent = storageHighlightCells.transform;
