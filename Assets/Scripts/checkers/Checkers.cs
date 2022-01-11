@@ -22,10 +22,10 @@ namespace checkers {
         Count
     }
 
-    public enum CellType {
-        OutOfBoard = 1,
+    public enum CellTy {
+        Filled = 1,
         Empty = 2,
-        Filler = 4,
+        OutOfBoard = 4,
         OutOrEmpty = OutOfBoard | Empty
     }
 
@@ -46,7 +46,7 @@ namespace checkers {
     }
 
     public struct Cell {
-        public CellType type;
+        public CellTy type;
         public Checker ch;
     }
 
@@ -63,14 +63,14 @@ namespace checkers {
                 return -1;
             }
 
-            var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(1));
-            if (!IsOnBoard(boardSize, pos)) {
-                Debug.LogError("BadPos");
+            if (cells.GetLength(0) < 1 || connect.GetLength(0) < 1) {
+                Debug.LogError("BadBufferSize");
                 return -1;
             }
 
-            if (cells.GetLength(0) < 1 || connect.GetLength(0) < 1) {
-                Debug.LogError("BadBufferSize");
+            var curCell = GetCell(board, pos);
+            if ((curCell.type & CellTy.OutOrEmpty) > 0) {
+                Debug.LogError("BadPos");
                 return -1;
             }
 
@@ -105,19 +105,20 @@ namespace checkers {
                     length = Mathf.Clamp(length, 0, max);
 
                     if (ch.type != ChType.Checker && kind != ChKind.English || length != 1) {
-                        var lastPos = GetCellByIndex(board, pos + dir * (length + 1));
-                        if (lastPos == new Vector2Int(-1, -1)) lastPos = pos + dir * length;
+                        var lastPos = pos + dir * (length + 1);
+                        var lastRes = GetCell(board, lastPos);
 
-                        var lastPosOpt = board[lastPos.x, lastPos.y];
-                        if (lastPosOpt.IsSome()) {
-                            var isOpponent = lastPosOpt.Peel().color != ch.color;
-                            var nextPos = GetCellByIndex(board, pos + dir * (length + 2));
-                            if (nextPos != new Vector2Int(-1, -1)) {
-                                if (isOpponent && board[nextPos.x, nextPos.y].IsNone()) {
-                                    needAttack = true;
-                                    break;
-                                }
-                            };
+                        if ((lastRes.type & CellTy.OutOfBoard) == 0) {
+                            var nextPos = pos + dir * (length + 2);
+                            var nextRes = GetCell(board, nextPos);
+
+                            var nextIsOk = (nextRes.type & CellTy.Empty) > 0;
+                            nextIsOk = nextIsOk && (nextRes.type & CellTy.OutOfBoard) == 0;
+                            if ((lastRes.type & CellTy.Filled) > 0 && nextIsOk) {
+                                needAttack = lastRes.ch.color != ch.color;
+
+                                if (needAttack) break;
+                            }
                         }
                     }
 
@@ -137,7 +138,6 @@ namespace checkers {
             }
 
             if (needAttack) {
-                Array.Clear(marks, 0, marks.Length);
                 cellCount = GetAttackPaths(loc, kind, ch, graph, 1, 1, 1, 0);
             }
             board[pos.x, pos.y] = Option<Checker>.Some(ch);
@@ -283,6 +283,25 @@ namespace checkers {
             var cell = new Vector2Int(-1, -1);
 
             if (IsOnBoard(boardSize, index)) cell = index;
+
+            return cell;
+        }
+
+        private static Cell GetCell(Option<Checker>[,] board, Vector2Int index) {
+            var boardSize = new Vector2Int(board.GetLength(0), board.GetLength(1));
+            var cell = new Cell();
+
+            if (!IsOnBoard(boardSize, index)) cell.type = CellTy.OutOfBoard;
+
+            if (cell.type != CellTy.OutOfBoard) {
+                var chOpt = board[index.x, index.y];
+                if (chOpt.IsSome()) {
+                    cell.type = CellTy.Filled;
+                    cell.ch = chOpt.Peel();
+                } else {
+                    cell.type = CellTy.Empty;
+                }
+            }
 
             return cell;
         }
