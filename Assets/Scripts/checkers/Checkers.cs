@@ -180,14 +180,18 @@ namespace checkers {
                         continue;
                     }
 
-                    var lastPos = GetCellByIndex(board, pos + dir * (length + 1));
-                    if (lastPos == new Vector2Int(-1, -1)) continue;
+                    var lastPos = pos + dir * (length + 1);
+                    var lastRes = GetCell(board, lastPos);
+                    if ((lastRes.type & CellTy.OutOrEmpty) > 0) continue;
 
-                    var chOpt = board[lastPos.x, lastPos.y];
-                    if (chOpt.IsSome() && chOpt.Peel().color == ch.color) continue;
+                    if (lastRes.ch.color == ch.color) continue;
 
-                    var nextPos = GetCellByIndex(board, pos + dir * (length + 2));
-                    if (nextPos == new Vector2Int(-1, -1)) continue;
+                    var nextPos = pos + dir * (length + 2);
+                    var nextRes = GetCell(board, nextPos);
+                    var nextIsFilled = (nextRes.type & CellTy.Filled) > 0;
+                    if (nextIsFilled || (nextRes.type & CellTy.OutOfBoard) > 0) {
+                        continue;
+                    }
 
                     length = GetMaxEmpty(new ChLocation { board = board, pos = lastPos }, dir);
                     max = length;
@@ -271,20 +275,6 @@ namespace checkers {
             for (var p = pos; IsOnBoard(size, p) && loc.board[p.x, p.y].IsNone(); p += dir, ++len);
 
             return len;
-        }
-
-        private static Vector2Int GetCellByIndex(Option<Checker>[,] board, Vector2Int index) {
-            if (board == null) {
-                Debug.LogError("BoardIsNull");
-                return new Vector2Int(-1, -1);
-            }
-
-            var boardSize = new Vector2Int(board.GetLength(0), board.GetLength(1));
-            var cell = new Vector2Int(-1, -1);
-
-            if (IsOnBoard(boardSize, index)) cell = index;
-
-            return cell;
         }
 
         private static Cell GetCell(Option<Checker>[,] board, Vector2Int index) {
