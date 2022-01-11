@@ -228,14 +228,11 @@ namespace checkers {
                             return -1;
                         }
 
+                        ClearBuffer(graph, count);
                         cells[curCol] = nextPos + dir * k;
                         marks[curCol] += mark;
                         connect[startRow - 1, curCol] = mark;
                         count++;
-                        for (int l = 0; l <= count; l++) {
-                            connect[l, count] = 0;
-                            connect[count, l] = 0;
-                        }
 
                         curCol++;
                         var oldPos = pos;
@@ -294,6 +291,15 @@ namespace checkers {
             }
 
             return cell;
+        }
+
+        private static void ClearBuffer(PossibleGraph graph, int cellCount) {
+            for (int l = 0; l <= cellCount; l++) {
+                graph.connect[l, cellCount] = 0;
+                graph.connect[cellCount, l] = 0;
+            }
+
+            graph.marks[cellCount] = 0;
         }
 
         private static void GetAllPaths(PossibleGraph graph, int clCount, List<Vector2Int> path) {
