@@ -153,10 +153,10 @@ namespace checkers {
                         return -1;
                     }
                     var max = length;
-                    if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
-                    max = Mathf.Clamp(length, 0, max);
+                    if ((ch.type == ChType.Checker || kind == ChKind.English) && length != 0) {
+                        continue;
+                    }
 
-                    if (max != length) continue;
                     var lastPos = GetCellByIndex(loc.board, loc.pos + dir * (length + 1));
                     if (lastPos == new Vector2Int(-1, -1)) continue;
 
