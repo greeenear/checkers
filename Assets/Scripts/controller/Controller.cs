@@ -338,8 +338,7 @@ namespace controller {
                     return;
                 }
 
-                HighlightCells(buf.Item1, clickPos);
-                Checkers.ShowMatrix(buf.Item1);
+                HighlightCells(buf, clickPos);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
@@ -412,17 +411,17 @@ namespace controller {
 
                 secondMove = true;
                 DestroyHighlightCells(storageHighlightCells.transform);
-                HighlightCells(buf.Item1, clickPos);
+                HighlightCells(buf, clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
             }
         }
 
-        private void HighlightCells(checkers.PossibleGraph graph, Vector2Int targetPos) {
-            var index = Array.IndexOf<Vector2Int>(graph.cells, targetPos);
-            for (int k = 0; k < graph.connect.GetLength(1); k++) {
-                var goodMark = (graph.marks[k] & curMark) == curMark || curMark == 0;
-                if (graph.connect[index, k] != 0 && goodMark) {
-                    var cellPos = graph.cells[k];
+        private void HighlightCells((checkers.PossibleGraph, int) graph, Vector2Int targetPos) {
+            var index = Array.IndexOf<Vector2Int>(graph.Item1.cells, targetPos);
+            for (int k = 0; k < graph.Item2; k++) {
+                var goodMark = (graph.Item1.marks[k] & curMark) == curMark || curMark == 0;
+                if (graph.Item1.connect[index, k] != 0 && goodMark) {
+                    var cellPos = graph.Item1.cells[k];
                     var boardPos = boardInfo.boardTransform.transform.position;
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
                     var parent = storageHighlightCells.transform;
@@ -735,12 +734,12 @@ namespace controller {
         private bool HasAttack(checkers.PossibleGraph movesInfo, int count) {
             for (int i = 0; i < count; i++) {
                 if (movesInfo.connect[0, i] != 0) {
-                    if (Mathf.Abs((movesInfo.cells[i].x - movesInfo.cells[0].x)) > 1) {
-                        var d = movesInfo.cells[i] - movesInfo.cells[0];
-                        var nDir = new Vector2Int(d.x / Mathf.Abs(d.x), d.y / Mathf.Abs(d.y));
-                        for (var j = movesInfo.cells[0]; i < movesInfo.cells[i].x; j += nDir) {
-                            if (map.board[j.x, j.y].IsSome()) return true;
-                        }
+                    var from = movesInfo.cells[0];
+                    var to = movesInfo.cells[i];
+                    var dir = to - from;
+                    var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
+                    for (var next = from + nDir; next != to; next += nDir) {
+                        if (map.board[next.x, next.y].IsSome()) return true;
                     }
                 }
             }

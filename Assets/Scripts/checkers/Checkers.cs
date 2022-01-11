@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using option;
+using System;
 
 namespace checkers {
     public enum ChKind {
@@ -54,7 +55,6 @@ namespace checkers {
                 Debug.LogError("BadBufferSize");
                 return -1;
             }
-            
 
             graph.cells[0] = loc.pos;
             graph.connect[0, 0] = 0;
@@ -74,7 +74,6 @@ namespace checkers {
 
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
                 for (int j = -1; j <= 1 && (ch.type != ChType.Checker || i == xDir); j += 2) {
-
                     var dir = new Vector2Int(i, j);
 
                     var length = GetMaxEmpty(loc, dir);
@@ -120,7 +119,7 @@ namespace checkers {
             }
 
             if (needAttack) {
-                cellCount = 1;
+                Array.Clear(graph.marks, 0, graph.marks.Length);
                 cellCount = GetAttackPaths(loc, kind, ch, graph, 1, 1, 1, 0);
             }
             loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(ch);
@@ -143,9 +142,8 @@ namespace checkers {
             }
 
             int startRow = cCount;
-            for (int i = -1; i <= 1; i++) {
-                for (int j = -1; j <= 1; j++) {
-                    if (i == 0 || j == 0) continue;
+            for (int i = -1; i <= 1; i += 2) {
+                for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
 
                     int curCol = cCount;
@@ -203,6 +201,7 @@ namespace checkers {
                             Debug.LogError("InsufficientBufferSize");
                             return -1;
                         }
+
                         graph.cells[curCol] = nextPos + dir * k;
                         graph.marks[curCol] += marks;
                         graph.connect[startRow - 1, curCol] = marks;
