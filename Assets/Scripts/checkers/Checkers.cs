@@ -22,14 +22,21 @@ namespace checkers {
         Count
     }
 
+    public enum CellType {
+        OutOfBoard = 1,
+        Empty = 2,
+        Filler = 4,
+        OutOrEmpty = OutOfBoard | Empty
+    }
+
     public struct ChLocation {
         public Option<Checker>[,] board;
         public Vector2Int pos;
     }
 
     public struct PossibleGraph {
-        public int[,] connect;
         public Vector2Int[] cells;
+        public int[,] connect;
         public int[] marks;
     }
 
@@ -38,28 +45,39 @@ namespace checkers {
         public ChColor color;
     }
 
+    public struct Cell {
+        public CellType type;
+        public Checker ch;
+    }
+
     public static class Checkers {
         public static int GetPossiblePaths(ChLocation loc, ChKind kind, PossibleGraph graph) {
-            if (loc.board == null || graph.cells == null || graph.connect == null) {
+            var cells = graph.cells;
+            var connect = graph.connect;
+            var marks = graph.marks;
+            var board = loc.board;
+            var pos = loc.pos;
+
+            if (board == null || cells == null || connect == null) {
                 Debug.LogError("BadParams");
                 return -1;
             }
 
-            var boardSize = new Vector2Int(loc.board.GetLength(1), loc.board.GetLength(1));
-            if (!IsOnBoard(boardSize, loc.pos)) {
+            var boardSize = new Vector2Int(board.GetLength(1), board.GetLength(1));
+            if (!IsOnBoard(boardSize, pos)) {
                 Debug.LogError("BadPos");
                 return -1;
             }
 
-            if (graph.cells.GetLength(0) < 1) {
+            if (cells.GetLength(0) < 1 || connect.GetLength(0) < 1) {
                 Debug.LogError("BadBufferSize");
                 return -1;
             }
 
-            graph.cells[0] = loc.pos;
-            graph.connect[0, 0] = 0;
+            cells[0] = pos;
+            connect[0, 0] = 0;
 
-            var chOpt = loc.board[loc.pos.x, loc.pos.y];
+            var chOpt = board[pos.x, pos.y];
             if (chOpt.IsNone()) return -1;
             var ch = chOpt.Peel();
             var xDir = 1;
@@ -68,9 +86,9 @@ namespace checkers {
             }
 
             var needAttack = false;
-            var marks = 1;
+            var mark = 1;
             var cellCount = 1;
-            loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.None();
+            board[pos.x, pos.y] = Option<Checker>.None();
 
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
                 for (int j = -1; j <= 1 && (ch.type != ChType.Checker || i == xDir); j += 2) {
@@ -87,15 +105,15 @@ namespace checkers {
                     length = Mathf.Clamp(length, 0, max);
 
                     if (ch.type != ChType.Checker && kind != ChKind.English || length != 1) {
-                        var lastPos = GetCellByIndex(loc.board, loc.pos + dir * (length + 1));
-                        if (lastPos == new Vector2Int(-1, -1)) lastPos = loc.pos + dir * length;
+                        var lastPos = GetCellByIndex(board, pos + dir * (length + 1));
+                        if (lastPos == new Vector2Int(-1, -1)) lastPos = pos + dir * length;
 
-                        var lastPosOpt = loc.board[lastPos.x, lastPos.y];
+                        var lastPosOpt = board[lastPos.x, lastPos.y];
                         if (lastPosOpt.IsSome()) {
                             var isOpponent = lastPosOpt.Peel().color != ch.color;
-                            var nextPos = GetCellByIndex(loc.board, loc.pos + dir * (length + 2));
+                            var nextPos = GetCellByIndex(board, pos + dir * (length + 2));
                             if (nextPos != new Vector2Int(-1, -1)) {
-                                if (isOpponent && loc.board[nextPos.x, nextPos.y].IsNone()) {
+                                if (isOpponent && board[nextPos.x, nextPos.y].IsNone()) {
                                     needAttack = true;
                                     break;
                                 }
@@ -104,25 +122,25 @@ namespace checkers {
                     }
 
                     for (int k = 0; k < length; k++) {
-                        if (graph.cells.GetLength(0) < cellCount) {
+                        if (cells.GetLength(0) < cellCount) {
                             Debug.LogError("BadBufferSize");
                             return -1;
                         }
 
-                        graph.cells[cellCount] = loc.pos + dir * (k + 1);
-                        graph.connect[0, cellCount] = marks;
-                        graph.marks[cellCount] = graph.marks[cellCount] + marks;
+                        cells[cellCount] = pos + dir * (k + 1);
+                        connect[0, cellCount] = mark;
+                        marks[cellCount] = mark;
                         cellCount++;
                     }
-                    marks = marks << 1;
+                    mark = mark << 1;
                 }
             }
 
             if (needAttack) {
-                Array.Clear(graph.marks, 0, graph.marks.Length);
+                Array.Clear(marks, 0, marks.Length);
                 cellCount = GetAttackPaths(loc, kind, ch, graph, 1, 1, 1, 0);
             }
-            loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(ch);
+            board[pos.x, pos.y] = Option<Checker>.Some(ch);
             return cellCount;
         }
 
@@ -131,22 +149,27 @@ namespace checkers {
             ChKind kind,
             Checker ch,
             PossibleGraph graph,
-            int cCount,
-            int marks,
+            int count,
+            int mark,
             int lastColum,
             int curRow
         ) {
-            if (loc.board == null || graph.cells == null || graph.connect == null) {
+            var board = loc.board;
+            var pos = loc.pos;
+            var connect = graph.connect;
+            var cells = graph.cells;
+            var marks = graph.marks;
+            if (board == null || cells == null || connect == null) {
                 Debug.LogError("BadParams");
                 return -1;
             }
 
-            int startRow = cCount;
+            int startRow = count;
             for (int i = -1; i <= 1; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
 
-                    int curCol = cCount;
+                    int curCol = count;
                     var length = GetMaxEmpty(loc, dir);
                     if (length == -1) {
                         Debug.LogError("BadLength");
@@ -157,29 +180,28 @@ namespace checkers {
                         continue;
                     }
 
-                    var lastPos = GetCellByIndex(loc.board, loc.pos + dir * (length + 1));
+                    var lastPos = GetCellByIndex(board, pos + dir * (length + 1));
                     if (lastPos == new Vector2Int(-1, -1)) continue;
 
-                    var chOpt = loc.board[lastPos.x, lastPos.y];
+                    var chOpt = board[lastPos.x, lastPos.y];
                     if (chOpt.IsSome() && chOpt.Peel().color == ch.color) continue;
 
-                    var nextPos = GetCellByIndex(loc.board, loc.pos + dir * (length + 2));
+                    var nextPos = GetCellByIndex(board, pos + dir * (length + 2));
                     if (nextPos == new Vector2Int(-1, -1)) continue;
 
-                    length = GetMaxEmpty(new ChLocation { board = loc.board, pos = lastPos }, dir);
+                    length = GetMaxEmpty(new ChLocation { board = board, pos = lastPos }, dir);
                     max = length;
                     if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
                     max = Mathf.Clamp(length, 0, max);
 
                     var badDir = false;
                     for (int m = 0; m < max; m++) {
-                        for (int k = 0; k < cCount; k++) {
+                        for (int k = 0; k < count; k++) {
                             var curCell = nextPos + dir * m;
-                            if (graph.cells[k] == curCell) {
-                                for (int l = 0; l < cCount; l++) {
-                                    var connect = graph.connect[k, l];
-                                    var isInvMove = connect == marks && graph.cells[l] == loc.pos;
-                                    if (isInvMove || ((graph.marks[k] & marks) == marks)) {
+                            if (cells[k] == curCell) {
+                                for (int l = 0; l < count; l++) {
+                                    var isInvMove = connect[k, l] == mark && cells[l] == pos;
+                                    if (isInvMove || ((marks[k] & mark) == mark)) {
                                         badDir = true;
                                     }
                                 }
@@ -187,49 +209,49 @@ namespace checkers {
                         }
                     }
 
-                    if (loc.board[nextPos.x, nextPos.y].IsSome() || badDir) continue;
+                    if (board[nextPos.x, nextPos.y].IsSome() || badDir) continue;
 
-                    for (int k = 0; k < cCount; k++) {
-                        if (graph.cells[k] == nextPos) {
+                    for (int k = 0; k < count; k++) {
+                        if (cells[k] == nextPos) {
                             curCol = k;
                             startRow = lastColum;
                         }
                     }
 
                     for (int k = 0; k < max; k++) {
-                        if (graph.cells.GetLength(0) < curCol) {
+                        if (cells.GetLength(0) < curCol) {
                             Debug.LogError("InsufficientBufferSize");
                             return -1;
                         }
 
-                        graph.cells[curCol] = nextPos + dir * k;
-                        graph.marks[curCol] += marks;
-                        graph.connect[startRow - 1, curCol] = marks;
-                        cCount++;
-                        for (int l = 0; l <= cCount; l++) {
-                            graph.connect[l, cCount] = 0;
-                            graph.connect[cCount, l] = 0;
+                        cells[curCol] = nextPos + dir * k;
+                        marks[curCol] += mark;
+                        connect[startRow - 1, curCol] = mark;
+                        count++;
+                        for (int l = 0; l <= count; l++) {
+                            connect[l, count] = 0;
+                            connect[count, l] = 0;
                         }
 
                         curCol++;
-                        var oldPos = loc.pos;
+                        var oldPos = pos;
                         loc.pos = nextPos + dir * k;
 
                         var row = curRow + 1;
-                        cCount = GetAttackPaths(loc, kind, ch, graph, cCount, marks, curCol, row);
-                        curCol = cCount;
-                        if (cCount == -1) return -1;
+                        count = GetAttackPaths(loc, kind, ch, graph, count, mark, curCol, row);
+                        curCol = count;
+                        if (count == -1) return -1;
                         loc.pos = oldPos;
 
                     }
 
                     if (curRow == 0) {
-                        marks = marks << 1;
+                        mark = mark << 1;
                     }
                 }
             }
 
-            return cCount;
+            return count;
         }
 
         private static int GetMaxEmpty(ChLocation loc, Vector2Int dir) {
