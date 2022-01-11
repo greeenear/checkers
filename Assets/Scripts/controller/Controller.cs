@@ -306,7 +306,6 @@ namespace controller {
                         var cellOpt = map.board[i, j];
                         if (cellOpt.IsNone()) continue;
                         var curCh = cellOpt.Peel();
-
                         var pos = new Vector2Int(i, j);
 
                         var loc = new ChLocation { board = map.board, pos = pos };
@@ -316,6 +315,10 @@ namespace controller {
                         allCheckersMatrix.Add(pos, (buffer, count));
                         counter++;
                     }
+                }
+
+                if (IsGameOver()) {
+                    onGameOver?.Invoke();
                 }
             }
 
@@ -338,6 +341,7 @@ namespace controller {
                     return;
                 }
 
+                Checkers.ShowMatrix(buf.Item1);
                 HighlightCells(buf, clickPos);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
@@ -755,11 +759,11 @@ namespace controller {
         }
 
         private bool IsGameOver() {
-            if (allCheckerMoves == null) {
+            if (allCheckersMatrix == null) {
                 return false;
             }
 
-            foreach (var checker in allCheckerMoves) {
+            foreach (var checker in allCheckersMatrix) {
                 var chOpt = map.board[checker.Key.x, checker.Key.y];
                 if (chOpt.IsNone()) continue;
                 var ch = chOpt.Peel();

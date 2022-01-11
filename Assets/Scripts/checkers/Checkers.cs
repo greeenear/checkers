@@ -88,7 +88,6 @@ namespace checkers {
             var needAttack = false;
             var mark = 1;
             var cellCount = 1;
-            board[pos.x, pos.y] = Option<Checker>.None();
 
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
                 for (int j = -1; j <= 1 && (ch.type != ChType.Checker || i == xDir); j += 2) {
@@ -141,7 +140,7 @@ namespace checkers {
             if (needAttack) {
                 cellCount = GetAttackPaths(loc, kind, ch, graph, 1, 1, 1, 0);
             }
-            board[pos.x, pos.y] = Option<Checker>.Some(ch);
+
             return cellCount;
         }
 
