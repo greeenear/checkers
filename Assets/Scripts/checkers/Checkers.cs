@@ -123,7 +123,8 @@ namespace checkers {
                     }
 
                     for (int k = 0; k < length; k++) {
-                        if (cells.GetLength(0) < cellCount) {
+                        if (cells.Length < cellCount || marks.Length < cellCount 
+                        || connect.GetLength(0) < cellCount) {
                             Debug.LogError("BadBufferSize");
                             return -1;
                         }
@@ -223,8 +224,9 @@ namespace checkers {
                     }
 
                     for (int k = 0; k < max; k++) {
-                        if (cells.GetLength(0) < curCol) {
-                            Debug.LogError("InsufficientBufferSize");
+                        if (cells.Length < curCol || marks.Length < curCol
+                        || connect.GetLength(0) < curCol) {
+                            Debug.LogError("BadBufferSize");
                             return -1;
                         }
 
@@ -243,7 +245,6 @@ namespace checkers {
                         curCol = count;
                         if (count == -1) return -1;
                         loc.pos = oldPos;
-
                     }
 
                     if (curRow == 0) {
