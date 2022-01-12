@@ -160,7 +160,7 @@ namespace checkers {
             var cells = graph.cells;
             var marks = graph.marks;
 
-            if (board == null || cells == null || connect == null) {
+            if (board == null || cells == null || connect == null || marks == null) {
                 Debug.LogError("BadParams");
                 return -1;
             }
@@ -176,6 +176,7 @@ namespace checkers {
                         Debug.LogError("BadLength");
                         return -1;
                     }
+
                     var max = length;
                     if ((ch.type == ChType.Checker || kind == ChKind.English) && length != 0) {
                         continue;
@@ -195,21 +196,26 @@ namespace checkers {
                     }
 
                     length = GetMaxEmpty(new ChLocation { board = board, pos = lastPos }, dir);
+                    if (length == -1) {
+                        Debug.LogError("BadLength");
+                        return -1;
+                    }
+
                     max = length;
                     if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
                     max = Mathf.Clamp(length, 0, max);
                     if (nextPos == cells[0]) max++;
 
                     var badDir = false;
-                    for (int m = 0; m <= max; m++) {
-                        for (int k = 0; k < count; k++) {
-                            var curCell = nextPos + dir * m;
-                            if (cells[k] == curCell) {
-                                for (int l = 0; l < count; l++) {
+                    for (int k = 0; k <= max; k++) {
+                        for (int l = 0; l < count; l++) {
+                            var curCell = nextPos + dir * k;
+                            if (cells[l] == curCell) {
+                                for (int n = 0; n < count; n++) {
                                     //var isInvMove = connect[k, l] == mark && cells[l] == pos;
-                                    var isInvMove = connect[k, l] != 0 && cells[l] == pos;
-                                    isInvMove = isInvMove && (marks[l] & mark) > 0;
-                                    if (isInvMove || ((marks[k] & mark) == mark)) badDir = true;
+                                    var isInvMove = connect[l, n] != 0 && cells[n] == pos;
+                                    isInvMove = isInvMove && (marks[n] & mark) > 0;
+                                    if (isInvMove || ((marks[l] & mark) == mark)) badDir = true;
                                 }
                             }
                         }
