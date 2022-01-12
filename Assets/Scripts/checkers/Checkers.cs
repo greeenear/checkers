@@ -129,7 +129,7 @@ namespace checkers {
                         }
 
                         cells[cellCount] = pos + dir * (k + 1);
-                        connect[0, cellCount] = mark;
+                        connect[0, cellCount] = 1;
                         marks[cellCount] = mark;
                         cellCount++;
                     }
@@ -159,6 +159,7 @@ namespace checkers {
             var connect = graph.connect;
             var cells = graph.cells;
             var marks = graph.marks;
+
             if (board == null || cells == null || connect == null) {
                 Debug.LogError("BadParams");
                 return -1;
@@ -188,7 +189,7 @@ namespace checkers {
 
                     var nextPos = pos + dir * (length + 2);
                     var nextRes = GetCell(board, nextPos);
-                    var nextIsFilled = (nextRes.type & CellTy.Filled) > 0;
+                    var nextIsFilled = (nextRes.type & CellTy.Filled) > 0 && nextPos != cells[0];
                     if (nextIsFilled || (nextRes.type & CellTy.OutOfBoard) > 0) {
                         continue;
                     }
@@ -197,23 +198,24 @@ namespace checkers {
                     max = length;
                     if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
                     max = Mathf.Clamp(length, 0, max);
+                    if (nextPos == cells[0]) max++;
 
                     var badDir = false;
-                    for (int m = 0; m < max; m++) {
+                    for (int m = 0; m <= max; m++) {
                         for (int k = 0; k < count; k++) {
                             var curCell = nextPos + dir * m;
                             if (cells[k] == curCell) {
                                 for (int l = 0; l < count; l++) {
-                                    var isInvMove = connect[k, l] == mark && cells[l] == pos;
-                                    if (isInvMove || ((marks[k] & mark) == mark)) {
-                                        badDir = true;
-                                    }
+                                    //var isInvMove = connect[k, l] == mark && cells[l] == pos;
+                                    var isInvMove = connect[k, l] != 0 && cells[l] == pos;
+                                    isInvMove = isInvMove && (marks[l] & mark) > 0;
+                                    if (isInvMove || ((marks[k] & mark) == mark)) badDir = true;
                                 }
                             }
                         }
                     }
 
-                    if (board[nextPos.x, nextPos.y].IsSome() || badDir) continue;
+                    if (badDir) continue;
 
                     for (int k = 0; k < count; k++) {
                         if (cells[k] == nextPos) {
@@ -300,12 +302,6 @@ namespace checkers {
             }
 
             graph.marks[cellCount] = 0;
-        }
-
-        private static void GetAllPaths(PossibleGraph graph, int clCount, List<Vector2Int> path) {
-            for (int i = 0; i < clCount; i++) {
-                path.Add(graph.cells[i]);
-            }
         }
 
         public static void ShowMatrix(PossibleGraph graph) {
