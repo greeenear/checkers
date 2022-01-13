@@ -63,9 +63,9 @@ namespace controller {
 
             for (int i = 0; i < 40; i++) {
                 var graph = new PossibleGraph {
-                    connect = new int[10, 10],
-                    cells = new Vector2Int[10],
-                    marks = new int[10]
+                    connect = new int[15, 15],
+                    cells = new Vector2Int[15],
+                    marks = new int[15]
                 };
                 possibleGraphs.Add(graph);
             }
