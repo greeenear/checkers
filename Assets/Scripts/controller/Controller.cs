@@ -374,6 +374,7 @@ namespace controller {
 
                 map.board[clickPos.x, clickPos.y] = map.board[lPos.x, lPos.y];
                 map.board[lPos.x, lPos.y] = Option<Checker>.None();
+
                 var worldPos = ConvertToWorldPoint(clickPos);
                 map.obj[lPos.x, lPos.y].transform.position = worldPos;
                 map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
