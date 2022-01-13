@@ -26,7 +26,8 @@ namespace checkers {
         Filled = 1,
         Empty = 2,
         OutOfBoard = 4,
-        OutOrEmpty = OutOfBoard | Empty
+        OutOrEmpty = OutOfBoard | Empty,
+        OutOrFilled = OutOfBoard | Filled
     }
 
     public struct ChLocation {
@@ -58,90 +59,81 @@ namespace checkers {
             var board = loc.board;
             var pos = loc.pos;
 
-            if (board == null || cells == null || connect == null) {
-                Debug.LogError("BadParams");
+            if (board == null || cells == null || connect == null || marks == null) {
+                Debug.LogError("GetPossiblePaths: incorrect parameters");
                 return -1;
             }
 
-            if (cells.GetLength(0) < 1 || connect.GetLength(0) < 1) {
-                Debug.LogError("BadBufferSize");
+            var cell = GetCell(board, pos);
+            if ((cell.type & CellTy.OutOrEmpty) > 0) {
+                Debug.LogError("GetPossiblePaths: start position is empty or out of board");
                 return -1;
             }
 
-            var curCell = GetCell(board, pos);
-            if ((curCell.type & CellTy.OutOrEmpty) > 0) {
-                Debug.LogError("BadPos");
+            var size = 0;
+            size = AddNode(pos, graph, size);
+            if (size == -1) {
+                Debug.LogError("GetPossiblePaths: cant added node");
                 return -1;
             }
 
-            cells[0] = pos;
-            connect[0, 0] = 0;
-
-            var chOpt = board[pos.x, pos.y];
-            if (chOpt.IsNone()) return -1;
-            var ch = chOpt.Peel();
             var xDir = 1;
-            if (ch.color == ChColor.White) {
+            if (cell.ch.color == ChColor.White) {
                 xDir = -1;
             }
 
             var needAttack = false;
             var mark = 1;
-            var cellCount = 1;
 
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
-                for (int j = -1; j <= 1 && (ch.type != ChType.Checker || i == xDir); j += 2) {
+                for (int j = -1; j <= 1 && (cell.ch.type != ChType.Checker || i == xDir); j += 2) {
                     var dir = new Vector2Int(i, j);
 
                     var length = GetMaxEmpty(loc, dir);
                     if (length == -1) {
-                        Debug.LogError("BadLength");
+                        Debug.LogError("GetPossiblePaths: cant get max empty");
                         return -1;
                     }
 
                     var max = length;
-                    if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
+                    if (cell.ch.type == ChType.Checker || kind == ChKind.English) max = 1;
                     length = Mathf.Clamp(length, 0, max);
 
-                    if (ch.type != ChType.Checker && kind != ChKind.English || length != 1) {
-                        var lastPos = pos + dir * (length + 1);
-                        var lastRes = GetCell(board, lastPos);
+                    if (cell.ch.type != ChType.Checker && kind != ChKind.English || length != 1) {
+                        var afterLastPos = pos + dir * (length + 1);
+                        var afterLastCell = GetCell(board, afterLastPos);
+                        var farPos = afterLastPos + dir;
+                        var farCell = GetCell(board, farPos);
 
-                        if ((lastRes.type & CellTy.OutOfBoard) == 0) {
-                            var nextPos = pos + dir * (length + 2);
-                            var nextRes = GetCell(board, nextPos);
-
-                            var nextIsOk = (nextRes.type & CellTy.Empty) > 0;
-                            nextIsOk = nextIsOk && (nextRes.type & CellTy.OutOfBoard) == 0;
-                            if ((lastRes.type & CellTy.Filled) > 0 && nextIsOk) {
-                                needAttack = lastRes.ch.color != ch.color;
-
-                                if (needAttack) break;
-                            }
+                        var farCellIsEmpty = (farCell.type & CellTy.Empty) > 0;
+                        if ((afterLastCell.type & CellTy.Filled) > 0 && farCellIsEmpty) {
+                            needAttack = afterLastCell.ch.color != cell.ch.color;
+                            if (needAttack) break;
                         }
                     }
 
                     for (int k = 0; k < length; k++) {
-                        if (cells.Length < cellCount || marks.Length < cellCount 
-                        || connect.GetLength(0) < cellCount) {
-                            Debug.LogError("BadBufferSize");
+                        var newSize = AddNode(pos + dir * (k + 1), graph, size);
+
+                        if (newSize <= size) {
+                            Debug.LogError("GetPossiblePaths: cant added node");
                             return -1;
                         }
 
-                        cells[cellCount] = pos + dir * (k + 1);
-                        connect[0, cellCount] = 1;
-                        marks[cellCount] = mark;
-                        cellCount++;
+                        connect[0, size] = 1;
+                        marks[size] = mark;
+                        size = newSize;
                     }
+
                     mark = mark << 1;
                 }
             }
 
             if (needAttack) {
-                cellCount = GetAttackPaths(loc, kind, ch, graph, 1, 1, 1, 0);
+                size = GetAttackPaths(loc, kind, cell.ch, graph, 1, 1, 1, 0);
             }
 
-            return cellCount;
+            return size;
         }
 
         private static int GetAttackPaths(
@@ -149,7 +141,7 @@ namespace checkers {
             ChKind kind,
             Checker ch,
             PossibleGraph graph,
-            int count,
+            int size,
             int mark,
             int lastColum,
             int curRow
@@ -161,19 +153,19 @@ namespace checkers {
             var marks = graph.marks;
 
             if (board == null || cells == null || connect == null || marks == null) {
-                Debug.LogError("BadParams");
+                Debug.LogError("GetAttackPaths: incorrect parameters");
                 return -1;
             }
 
-            int startRow = count;
+            int startRow = size;
             for (int i = -1; i <= 1; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
 
-                    int curCol = count;
+                    int curCol = size;
                     var length = GetMaxEmpty(loc, dir);
                     if (length == -1) {
-                        Debug.LogError("BadLength");
+                        Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
 
@@ -182,39 +174,37 @@ namespace checkers {
                         continue;
                     }
 
-                    var lastPos = pos + dir * (length + 1);
-                    var lastRes = GetCell(board, lastPos);
-                    if ((lastRes.type & CellTy.OutOrEmpty) > 0) continue;
+                    var afterLastPos = pos + dir * (length + 1);
+                    var afterLastCell = GetCell(board, afterLastPos);
+                    if ((afterLastCell.type & CellTy.OutOrEmpty) > 0) continue;
+                    if (afterLastCell.ch.color == ch.color) continue;
 
-                    if (lastRes.ch.color == ch.color) continue;
+                    var farPos = afterLastPos + dir;
+                    var farCell = GetCell(board, farPos);
 
-                    var nextPos = pos + dir * (length + 2);
-                    var nextRes = GetCell(board, nextPos);
-                    var nextIsFilled = (nextRes.type & CellTy.Filled) > 0 && nextPos != cells[0];
-                    if (nextIsFilled || (nextRes.type & CellTy.OutOfBoard) > 0) {
-                        continue;
-                    }
+                    if ((farCell.type & CellTy.OutOrFilled) > 0 && farPos != cells[0]) continue;
 
-                    length = GetMaxEmpty(new ChLocation { board = board, pos = lastPos }, dir);
+                    var newLoc = new ChLocation { board = board, pos = afterLastPos };
+                    length = GetMaxEmpty(newLoc, dir);
                     if (length == -1) {
-                        Debug.LogError("BadLength");
+                        Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
 
                     max = length;
                     if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
                     max = Mathf.Clamp(length, 0, max);
-                    if (nextPos == cells[0]) max++;
+                    if (farPos == cells[0]) max++;
 
                     var badDir = false;
                     for (int k = 0; k <= max; k++) {
-                        for (int l = 0; l < count; l++) {
-                            var curCell = nextPos + dir * k;
+                        for (int l = 0; l < size; l++) {
+                            var curCell = farPos + dir * k;
                             if (cells[l] == curCell) {
-                                for (int n = 0; n < count; n++) {
-                                    //var isInvMove = connect[k, l] == mark && cells[l] == pos;
-                                    var isInvMove = connect[l, n] != 0 && cells[n] == pos;
-                                    isInvMove = isInvMove && (marks[n] & mark) > 0;
+                                for (int n = 0; n < size; n++) {
+                                    var isInvMove = connect[l, n] == mark && cells[n] == pos;
+                                    // var isInvMove = connect[l, n] != 0 && cells[n] == pos;
+                                    // isInvMove = isInvMove && (marks[n] & mark) > 0;
                                     if (isInvMove || ((marks[l] & mark) == mark)) badDir = true;
                                 }
                             }
@@ -223,34 +213,27 @@ namespace checkers {
 
                     if (badDir) continue;
 
-                    for (int k = 0; k < count; k++) {
-                        if (cells[k] == nextPos) {
+                    for (int k = 0; k < size; k++) {
+                        if (cells[k] == farPos) {
                             curCol = k;
                             startRow = lastColum;
                         }
                     }
 
                     for (int k = 0; k < max; k++) {
-                        if (cells.Length < curCol || marks.Length < curCol
-                        || connect.GetLength(0) < curCol) {
-                            Debug.LogError("BadBufferSize");
-                            return -1;
+                        if (size == curCol){
+                            size = AddNode(farPos + dir * k, graph, size);
                         }
-
-                        ClearBuffer(graph, count);
-                        cells[curCol] = nextPos + dir * k;
                         marks[curCol] += mark;
                         connect[startRow - 1, curCol] = mark;
-                        count++;
-
                         curCol++;
-                        var oldPos = pos;
-                        loc.pos = nextPos + dir * k;
 
+                        var oldPos = pos;
+                        loc.pos = farPos + dir * k;
                         var row = curRow + 1;
-                        count = GetAttackPaths(loc, kind, ch, graph, count, mark, curCol, row);
-                        curCol = count;
-                        if (count == -1) return -1;
+                        size = GetAttackPaths(loc, kind, ch, graph, size, mark, curCol, row);
+                        curCol = size;
+                        if (size == -1) return -1;
                         loc.pos = oldPos;
                     }
 
@@ -260,47 +243,40 @@ namespace checkers {
                 }
             }
 
-            return count;
+            return size;
         }
 
         private static int GetMaxEmpty(ChLocation loc, Vector2Int dir) {
-            if (loc.board == null) {
-                Debug.LogError("BoardIsNull");
-                return -1;
-            }
-
-            var size = new Vector2Int(loc.board.GetLength(1), loc.board.GetLength(0));
-            if (!IsOnBoard(size, loc.pos)) {
-                Debug.LogError("BadPos");
-                return -1;
-            }
-
             int len = 0;
             var pos = loc.pos + dir;
-            for (var p = pos; IsOnBoard(size, p) && loc.board[p.x, p.y].IsNone(); p += dir, ++len);
+            for (var p = pos; GetCell(loc.board, p).type == CellTy.Empty; p += dir, ++len);
 
             return len;
         }
 
         private static Cell GetCell(Option<Checker>[,] board, Vector2Int index) {
+            if (board == null) {
+                Debug.LogError("GetCell: board is null");
+                return new Cell();
+            }
+
+            var type = CellTy.Filled;
+            var checker = new Checker();
+
             var boardSize = new Vector2Int(board.GetLength(0), board.GetLength(1));
-            var cell = new Cell();
+            if (!IsOnBoard(boardSize, index)) type = CellTy.OutOfBoard;
 
-            if (!IsOnBoard(boardSize, index)) cell.type = CellTy.OutOfBoard;
-
-            if (cell.type != CellTy.OutOfBoard) {
+            if (type != CellTy.OutOfBoard) {
                 var chOpt = board[index.x, index.y];
                 if (chOpt.IsSome()) {
-                    cell.type = CellTy.Filled;
-                    cell.ch = chOpt.Peel();
+                    checker = chOpt.Peel();
                 } else {
-                    cell.type = CellTy.Empty;
+                    type = CellTy.Empty;
                 }
             }
 
-            return cell;
+            return new Cell { type = type, ch = checker };
         }
-
         private static void ClearBuffer(PossibleGraph graph, int cellCount) {
             for (int l = 0; l <= cellCount; l++) {
                 graph.connect[l, cellCount] = 0;
@@ -310,9 +286,37 @@ namespace checkers {
             graph.marks[cellCount] = 0;
         }
 
+        private static int AddNode(Vector2Int node, PossibleGraph graph, int size) {
+            var cells = graph.cells;
+            var connect = graph.connect;
+            var marks = graph.marks;
+
+            if (graph.cells == null || graph.connect == null || graph.marks == null) return -1;
+
+            var width = graph.connect.GetLength(0);
+            var height = graph.connect.GetLength(1);
+            var maxConnectionSize = Mathf.Min(width, height);
+            
+            var maxSize = size + 1;
+
+            if (cells.Length < maxSize || maxConnectionSize < maxSize || marks.Length < maxSize) {
+                Debug.LogError("AddNode: buffer overflow");
+                return -1;
+            }
+
+            cells[size] = node;
+            marks[size] = 0;
+
+            for (int i = 0; i < maxSize; i++) {
+                connect[size, i] = connect[i, size] = 0;
+            }
+
+            return maxSize;
+        }
+
         public static void ShowMatrix(PossibleGraph graph) {
             if (graph.cells == null || graph.connect == null) {
-                Debug.LogError("BadParams");
+                Debug.LogError("ShowMatrix: incorrect parameters");
                 return;
             }
 
