@@ -22,6 +22,10 @@ namespace controller {
         public Option<Checker>[,] board;
     }
 
+    public struct CheckerInfo {
+
+    }
+
     public class Controller : MonoBehaviour {
         public UnityEvent onGameOver;
         public UnityEvent onUnsuccessfulSaving;
@@ -33,8 +37,11 @@ namespace controller {
         private Map map;
         private ChKind chKind;
 
-        private Dictionary<Vector2Int, (PossibleGraph, int)> allCheckersMatrix;
-        private List<PossibleGraph> possibleGraphs = new List<PossibleGraph>();
+        private bool needRefreshBuf;
+        private int checkersCount;
+        private PossibleGraph[] possibleGraphs;
+        private int[] bufSize;
+
         private HashSet<Vector2Int> sentenced;
         private Option<Vector2Int> selected;
         private int curMark;
@@ -56,18 +63,21 @@ namespace controller {
                 return;
             }
 
+            possibleGraphs = new PossibleGraph[res.maxCheckerCount];
+            bufSize = new int[res.maxCheckerCount];
+
             boardInfo = res.board8x8;
             map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
 
-            for (int i = 0; i < 40; i++) {
+            for (int i = 0; i < res.maxCheckerCount; i++) {
                 var graph = new PossibleGraph {
-                    connect = new int[15, 15],
-                    cells = new Vector2Int[15],
-                    marks = new int[15]
+                    connect = new int[res.maxBufSize, res.maxBufSize],
+                    cells = new Vector2Int[res.maxBufSize],
+                    marks = new int[res.maxBufSize]
                 };
-                possibleGraphs.Add(graph);
+                possibleGraphs[i] = graph;
             }
         }
 
@@ -297,9 +307,9 @@ namespace controller {
                 return;
             }
 
-            if (allCheckersMatrix == null) {
-                allCheckersMatrix = new Dictionary<Vector2Int, (PossibleGraph, int)>();
-                int counter = 0;
+            if (needRefreshBuf) {
+                needRefreshBuf = false;
+                checkersCount = 0;
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
                         var cellOpt = map.board[i, j];
@@ -308,16 +318,15 @@ namespace controller {
                         var pos = new Vector2Int(i, j);
 
                         var loc = new ChLocation { board = map.board, pos = pos };
-                        var buffer = possibleGraphs[counter];
-                        Array.Clear(buffer.marks, 0, buffer.marks.Length);
+                        var buffer = possibleGraphs[checkersCount];
                         var count = Checkers.GetPossiblePaths(loc, chKind, buffer);
                         if (count == -1) {
                             Debug.LogError("CantGetPossiblePaths");
                             return;
                         }
 
-                        allCheckersMatrix.Add(pos, (buffer, count));
-                        counter++;
+                        bufSize[checkersCount] = count;
+                        checkersCount++;
                     }
                 }
                 if (IsGameOver()) {
@@ -328,19 +337,29 @@ namespace controller {
             if (!Input.GetMouseButtonDown(0)) return;
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) return;
-            var needAttack = IsNeedAttack(allCheckersMatrix);
+            var needAttack = IsNeedAttack(possibleGraphs, bufSize);
 
             var clickPos = ConvertToBoardPoint(hit.point);
             var checkerOpt = map.board[clickPos.x, clickPos.y];
             if (!secondMove) DestroyHighlightCells(storageHighlightCells.transform);
 
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove && !secondMove) {
-                if (!allCheckersMatrix.ContainsKey(clickPos)) return;
+                var isBadPos = true;
+                var graph = new PossibleGraph();
+                var count = 0;
+
+                for (int i = 0; i < checkersCount; i++) {
+                    if (possibleGraphs[i].cells[0] == clickPos) {
+                        isBadPos = false;
+                        graph = possibleGraphs[i];
+                        count = bufSize[i];
+                    }
+                }
+
+                if (isBadPos) return;
                 selected = Option<Vector2Int>.Some(clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
-                var buf = allCheckersMatrix[clickPos];
-                var graph = buf.Item1;
-                var count = buf.Item2;
+
 
                 if (needAttack && !HasAttack(graph, count)) {
                     selected = Option<Vector2Int>.None();
@@ -348,19 +367,24 @@ namespace controller {
                 }
 
                 Checkers.ShowMatrix(graph);
-                HighlightCells(buf, clickPos);
+                HighlightCells(graph, count, clickPos);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
-                var buf = allCheckersMatrix[curPos];
-                var count = buf.Item2;
-                var graph = buf.Item1;
+
+                var graph = new PossibleGraph();
+                var count = 0;
+                for (int i = 0; i < checkersCount; i++) {
+                    if (possibleGraphs[i].cells[0] == curPos) {
+                        graph = possibleGraphs[i];
+                        count = bufSize[i];
+                    }
+                }
 
                 var curInd = Array.IndexOf<Vector2Int>(graph.cells, lPos);
                 if (curInd == -1) return;
 
                 var isBadPos = true;
-
                 for (int i = 0; i < count; i++) {
                     if (graph.connect[curInd, i] != 0 && graph.cells[i] == clickPos) {
                         curMark = graph.marks[i];
@@ -409,7 +433,7 @@ namespace controller {
                 DestroyHighlightCells(storageHighlightCells.transform);
                 if (!nextMove) {
                     secondMove = false;
-                    allCheckersMatrix = null;
+                    needRefreshBuf = true;
                     selected = Option<Vector2Int>.None();
                     foreach (var sent in sentenced) {
                         Destroy(map.obj[sent.x, sent.y]);
@@ -422,15 +446,12 @@ namespace controller {
                 }
 
                 secondMove = true;
-                HighlightCells(buf, clickPos);
+                HighlightCells(graph, count, clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
             }
         }
 
-        private void HighlightCells((checkers.PossibleGraph, int) chInfo, Vector2Int targetPos) {
-            var graph = chInfo.Item1;
-            var count = chInfo.Item2;
-
+        private void HighlightCells(PossibleGraph graph, int count, Vector2Int targetPos) {
             var index = Array.IndexOf<Vector2Int>(graph.cells, targetPos);
             for (int k = 0; k < count; k++) {
                 var goodMark = (graph.marks[k] & curMark) == curMark || curMark == 0;
@@ -527,7 +548,7 @@ namespace controller {
                 return false;
             }
 
-            allCheckersMatrix = null;
+            needRefreshBuf = true;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
 
@@ -727,10 +748,10 @@ namespace controller {
             }
         }
 
-        private bool IsNeedAttack(Dictionary<Vector2Int, (PossibleGraph, int)> checkersMoves) {
-            foreach (var moves in checkersMoves) {
-                var graph = moves.Value.Item1;
-                var count = moves.Value.Item2;
+        private bool IsNeedAttack(PossibleGraph[] checkersMoves, int[] size) {
+            for (int i = 0; i < checkersCount; i++) {
+                var graph = checkersMoves[i];
+                var count = size[i];
                 if (graph.cells.GetLength(0) < 1) {
                     Debug.Log("BadLength");
                     return false;
@@ -769,12 +790,9 @@ namespace controller {
         }
 
         private bool IsGameOver() {
-            if (allCheckersMatrix == null) {
-                return false;
-            }
-
-            foreach (var checker in allCheckersMatrix) {
-                var chOpt = map.board[checker.Key.x, checker.Key.y];
+            foreach (var checker in possibleGraphs) {
+                var pos = checker.cells[0];
+                var chOpt = map.board[pos.x, pos.y];
                 if (chOpt.IsNone()) continue;
                 var ch = chOpt.Peel();
 
