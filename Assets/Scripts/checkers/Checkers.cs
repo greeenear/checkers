@@ -1,7 +1,5 @@
-using System.Collections.Generic;
 using UnityEngine;
 using option;
-using System;
 
 namespace checkers {
     public enum ChKind {
@@ -101,6 +99,7 @@ namespace checkers {
 
                     if (cell.ch.type != ChType.Checker && kind != ChKind.English || length != 1) {
                         var afterLastPos = pos + dir * (length + 1);
+
                         var afterLastCell = GetCell(board, afterLastPos);
                         var farPos = afterLastPos + dir;
                         var farCell = GetCell(board, farPos);
@@ -276,14 +275,6 @@ namespace checkers {
             }
 
             return new Cell { type = type, ch = checker };
-        }
-        private static void ClearBuffer(PossibleGraph graph, int cellCount) {
-            for (int l = 0; l <= cellCount; l++) {
-                graph.connect[l, cellCount] = 0;
-                graph.connect[cellCount, l] = 0;
-            }
-
-            graph.marks[cellCount] = 0;
         }
 
         private static int AddNode(Vector2Int node, PossibleGraph graph, int size) {
