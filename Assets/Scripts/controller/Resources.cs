@@ -10,6 +10,8 @@ namespace controller {
     }
 
     public class Resources : MonoBehaviour {
+        public int maxCheckerCount = 40;
+        public int maxBufSize = 20;
         public BoardInfo board8x8;
         public BoardInfo board10x10;
         public GameObject highlightCell;
