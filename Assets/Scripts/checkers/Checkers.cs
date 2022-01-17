@@ -180,7 +180,6 @@ namespace checkers {
 
                     var farPos = afterLastPos + dir;
                     var farCell = GetCell(board, farPos);
-
                     if ((farCell.type & CellTy.OutOrFilled) > 0 && farPos != cells[0]) continue;
 
                     var newLoc = new ChLocation { board = board, pos = afterLastPos };
@@ -287,7 +286,7 @@ namespace checkers {
             var width = graph.connect.GetLength(0);
             var height = graph.connect.GetLength(1);
             var maxConnectionSize = Mathf.Min(width, height);
-            
+
             var maxSize = size + 1;
 
             if (cells.Length < maxSize || maxConnectionSize < maxSize || marks.Length < maxSize) {
