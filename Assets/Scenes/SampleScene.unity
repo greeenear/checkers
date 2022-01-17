@@ -2036,7 +2036,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 03ca5303cf16e4d8b85f28439816e003, type: 3}
       propertyPath: m_RootOrder
@@ -9272,6 +9272,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a22df30152c9d344c92c4da8428249cc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  maxCheckerCount: 40
+  maxBufSize: 20
   board8x8:
     boardTransform: {fileID: 1888861979}
     cellTransform: {fileID: 1035263047}

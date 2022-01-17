@@ -37,7 +37,7 @@ namespace controller {
         private Map map;
         private ChKind chKind;
 
-        private bool needRefreshBuf;
+        private bool needRefreshBuffer;
         private int checkersCount;
         private PossibleGraph[] possibleGraphs;
         private int[] bufSize;
@@ -307,8 +307,8 @@ namespace controller {
                 return;
             }
 
-            if (needRefreshBuf) {
-                needRefreshBuf = false;
+            if (needRefreshBuffer) {
+                needRefreshBuffer = false;
                 checkersCount = 0;
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
@@ -433,7 +433,7 @@ namespace controller {
                 DestroyHighlightCells(storageHighlightCells.transform);
                 if (!nextMove) {
                     secondMove = false;
-                    needRefreshBuf = true;
+                    needRefreshBuffer = true;
                     selected = Option<Vector2Int>.None();
                     foreach (var sent in sentenced) {
                         Destroy(map.obj[sent.x, sent.y]);
@@ -548,7 +548,7 @@ namespace controller {
                 return false;
             }
 
-            needRefreshBuf = true;
+            needRefreshBuffer = true;
             sentenced.Clear();
             selected = Option<Vector2Int>.None();
 

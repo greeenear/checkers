@@ -21,11 +21,9 @@ namespace checkers {
     }
 
     public enum CellTy {
-        Filled = 1,
-        Empty = 2,
-        OutOfBoard = 4,
-        OutOrEmpty = OutOfBoard | Empty,
-        OutOrFilled = OutOfBoard | Filled
+        Filled,
+        Empty,
+        OutOfBoard
     }
 
     public struct ChLocation {
@@ -63,7 +61,7 @@ namespace checkers {
             }
 
             var cell = GetCell(board, pos);
-            if ((cell.type & CellTy.OutOrEmpty) > 0) {
+            if (cell.type == CellTy.OutOfBoard) {
                 Debug.LogError("GetPossiblePaths: start position is empty or out of board");
                 return -1;
             }
@@ -84,10 +82,10 @@ namespace checkers {
             var mark = 1;
 
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
-                for (int j = -1; j <= 1 && (cell.ch.type != ChType.Checker || i == xDir); j += 2) {
+                for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
 
-                    var length = GetMaxEmpty(loc, dir);
+                    var length = GetMaxApt(loc, dir, CellTy.Empty);
                     if (length == -1) {
                         Debug.LogError("GetPossiblePaths: cant get max empty");
                         return -1;
@@ -98,19 +96,18 @@ namespace checkers {
                     length = Mathf.Clamp(length, 0, max);
 
                     if (cell.ch.type != ChType.Checker && kind != ChKind.English || length != 1) {
-                        var afterLastPos = pos + dir * (length + 1);
+                        var nextLoc = new ChLocation { pos = pos + dir * length, board = board };
+                        var filledLength = GetMaxApt(nextLoc, dir, CellTy.Filled);
 
-                        var afterLastCell = GetCell(board, afterLastPos);
-                        var farPos = afterLastPos + dir;
-                        var farCell = GetCell(board, farPos);
-
-                        var farCellIsEmpty = (farCell.type & CellTy.Empty) > 0;
-                        if ((afterLastCell.type & CellTy.Filled) > 0 && farCellIsEmpty) {
+                        if (filledLength == 1) {
+                            var afterLastCell = GetCell(loc.board, pos + dir * (length + 1));
                             needAttack = afterLastCell.ch.color != cell.ch.color;
+
                             if (needAttack) break;
                         }
                     }
-
+                    
+                    if (cell.ch.type == ChType.Checker && i != xDir) continue;
                     for (int k = 0; k < length; k++) {
                         var newSize = AddNode(pos + dir * (k + 1), graph, size);
 
@@ -129,7 +126,7 @@ namespace checkers {
             }
 
             if (needAttack) {
-                size = GetAttackPaths(loc, kind, cell.ch, graph, 1, 1, 1, 0);
+                size = GetAttackPaths(loc, kind, cell.ch, graph, 1, 1, 1);
             }
 
             return size;
@@ -142,8 +139,7 @@ namespace checkers {
             PossibleGraph graph,
             int size,
             int mark,
-            int lastColum,
-            int curRow
+            int lastColum
         ) {
             var board = loc.board;
             var pos = loc.pos;
@@ -162,7 +158,7 @@ namespace checkers {
                     var dir = new Vector2Int(i, j);
 
                     int curCol = size;
-                    var length = GetMaxEmpty(loc, dir);
+                    var length = GetMaxApt(loc, dir, CellTy.Empty);
                     if (length == -1) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
@@ -174,25 +170,26 @@ namespace checkers {
                     }
 
                     var afterLastPos = pos + dir * (length + 1);
-                    var afterLastCell = GetCell(board, afterLastPos);
-                    if ((afterLastCell.type & CellTy.OutOrEmpty) > 0) continue;
-                    if (afterLastCell.ch.color == ch.color) continue;
-
                     var farPos = afterLastPos + dir;
-                    var farCell = GetCell(board, farPos);
-                    if ((farCell.type & CellTy.OutOrFilled) > 0 && farPos != cells[0]) continue;
+                    var isStart = farPos == cells[0];
+
+                    if (cells.Length < 1) continue;
+
+                    var nextLoc = new ChLocation { pos = pos + dir * length, board = board };
+                    var filledLength = GetMaxApt(nextLoc, dir, CellTy.Filled);
+                    if (filledLength != 1 && !isStart) continue;
+                    if (GetCell(board, afterLastPos).ch.color == ch.color) continue;
 
                     var newLoc = new ChLocation { board = board, pos = afterLastPos };
-                    length = GetMaxEmpty(newLoc, dir);
+                    length = GetMaxApt(newLoc, dir, CellTy.Empty);
                     if (length == -1) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
-
                     max = length;
                     if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
                     max = Mathf.Clamp(length, 0, max);
-                    if (farPos == cells[0]) max++;
+                    if (isStart) max++;
 
                     var badDir = false;
                     for (int k = 0; k <= max; k++) {
@@ -208,17 +205,15 @@ namespace checkers {
                             }
                         }
                     }
-
                     if (badDir) continue;
 
-                    for (int k = 0; k < size; k++) {
-                        if (cells[k] == farPos) {
-                            curCol = k;
-                            startRow = lastColum;
-                        }
-                    }
-
                     for (int k = 0; k < max; k++) {
+                        for (int l = 0; l < size; l++) {
+                            if (cells[l] == farPos + dir * k) {
+                                curCol = l;
+                                startRow = lastColum;
+                            }
+                        }
                         if (size == curCol){
                             size = AddNode(farPos + dir * k, graph, size);
                         }
@@ -228,14 +223,13 @@ namespace checkers {
 
                         var oldPos = pos;
                         loc.pos = farPos + dir * k;
-                        var row = curRow + 1;
-                        size = GetAttackPaths(loc, kind, ch, graph, size, mark, curCol, row);
+                        size = GetAttackPaths(loc, kind, ch, graph, size, mark, curCol);
                         curCol = size;
                         if (size == -1) return -1;
                         loc.pos = oldPos;
                     }
 
-                    if (curRow == 0) {
+                    if (startRow - 1 == 0) {
                         mark = mark << 1;
                     }
                 }
@@ -244,10 +238,10 @@ namespace checkers {
             return size;
         }
 
-        private static int GetMaxEmpty(ChLocation loc, Vector2Int dir) {
+        private static int GetMaxApt(ChLocation loc, Vector2Int dir, CellTy type) {
             int len = 0;
             var pos = loc.pos + dir;
-            for (var p = pos; GetCell(loc.board, p).type == CellTy.Empty; p += dir, ++len);
+            for (var p = pos; GetCell(loc.board, p).type == type; p += dir, ++len);
 
             return len;
         }
@@ -255,14 +249,16 @@ namespace checkers {
         private static Cell GetCell(Option<Checker>[,] board, Vector2Int index) {
             if (board == null) {
                 Debug.LogError("GetCell: board is null");
-                return new Cell();
+                return new Cell { type = CellTy.OutOfBoard };
             }
 
             var type = CellTy.Filled;
             var checker = new Checker();
 
             var boardSize = new Vector2Int(board.GetLength(0), board.GetLength(1));
-            if (!IsOnBoard(boardSize, index)) type = CellTy.OutOfBoard;
+            if (index.x < 0 || index.x >= boardSize.x || index.y < 0 || index.y >= boardSize.y) {
+                type = CellTy.OutOfBoard;
+            }
 
             if (type != CellTy.OutOfBoard) {
                 var chOpt = board[index.x, index.y];
@@ -285,11 +281,11 @@ namespace checkers {
 
             var width = graph.connect.GetLength(0);
             var height = graph.connect.GetLength(1);
-            var maxConnectionSize = Mathf.Min(width, height);
+            var minSide = Mathf.Min(width, height);
 
-            var maxSize = size + 1;
+            var nextSize = size + 1;
 
-            if (cells.Length < maxSize || maxConnectionSize < maxSize || marks.Length < maxSize) {
+            if (cells.Length < nextSize || minSide < nextSize || marks.Length < nextSize) {
                 Debug.LogError("AddNode: buffer overflow");
                 return -1;
             }
@@ -297,11 +293,11 @@ namespace checkers {
             cells[size] = node;
             marks[size] = 0;
 
-            for (int i = 0; i < maxSize; i++) {
+            for (int i = 0; i < nextSize; i++) {
                 connect[size, i] = connect[i, size] = 0;
             }
 
-            return maxSize;
+            return nextSize;
         }
 
         public static void ShowMatrix(PossibleGraph graph) {
@@ -330,13 +326,6 @@ namespace checkers {
                 }
                 Debug.Log(matrix);
             }
-        }
-
-        private static bool IsOnBoard(Vector2Int boardSize, Vector2Int pos) {
-            if (pos.x < 0 || pos.x >= boardSize.x || pos.y < 0 || pos.y >= boardSize.y) {
-                return false;
-            }
-            return true;
         }
     }
 }
