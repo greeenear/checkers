@@ -341,30 +341,54 @@ namespace controller {
             if (!secondMove) DestroyHighlightCells(storageHighlightCells.transform);
 
             if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove && !secondMove) {
-                var isBadPos = true;
                 var graph = new PossibleGraph();
-                var count = 0;
+                var size = 0;
 
+                var isBadPos = true;
+                var hasMove = false;
                 for (int i = 0; i < checkersCount; i++) {
                     if (possibleGraphs[i].cells[0] == clickPos) {
                         isBadPos = false;
                         graph = possibleGraphs[i];
-                        count = bufSize[i];
+                        size = bufSize[i];
+                        for (int j = 0; j < bufSize[i]; j++) {
+                            if (graph.connect[0, j] != 0 && needAttack && HasAttack(graph, size) || !needAttack && !HasAttack(graph, size)) {
+                                hasMove = true;
+                            }
+                        }
+                    }
+                }
+
+                if (!hasMove) {
+                    for (int i = 0; i < checkersCount; i++) {
+                        for (int j = 0; j < bufSize[i]; j++) {
+                            if (possibleGraphs[i].connect[0, j] != 0 && (needAttack && HasAttack(possibleGraphs[i], size) || !needAttack && !HasAttack(possibleGraphs[i], size))) {
+                                var pos = ConvertToWorldPoint(possibleGraphs[i].cells[0]) - new Vector3(0, 0.1f, 0);
+                                if (res.highlightCh == null) {
+                                    Debug.LogError("NoHighlightCh");
+                                } else {
+                                    var parent = storageHighlightCells.transform;
+                                    Instantiate(res.highlightCh, pos, Quaternion.identity, parent);
+                                }
+                                break;
+                            }
+                        }
                     }
                 }
 
                 if (isBadPos) return;
+
                 selected = Option<Vector2Int>.Some(clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
 
 
-                if (needAttack && !HasAttack(graph, count)) {
+                if (needAttack && !HasAttack(graph, size)) {
                     selected = Option<Vector2Int>.None();
                     return;
                 }
 
-                Checkers.ShowMatrix(graph);
-                HighlightCells(graph, count, clickPos);
+
+                HighlightCells(graph, size, clickPos);
             } else if (selected.IsSome()) {
                 
                 var curPos = selected.Peel();
@@ -378,7 +402,6 @@ namespace controller {
                         count = bufSize[i];
                     }
                 }
-                Checkers.ShowMatrix(graph);
 
                 var curInd = Array.IndexOf<Vector2Int>(graph.cells, lPos);
                 if (curInd == -1) return;
