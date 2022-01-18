@@ -163,8 +163,6 @@ namespace checkers {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
-
-                    var max = emptyLen;
                     if ((ch.type == ChType.Checker || kind == ChKind.English) && emptyLen != 0) {
                         continue;
                     }
@@ -190,7 +188,7 @@ namespace checkers {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
-                    max = emptyLen;
+                    var max = emptyLen;
                     if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
                     max = Mathf.Clamp(emptyLen, 0, max);
                     if (isStart) max++;
@@ -209,8 +207,8 @@ namespace checkers {
                     }
                     if (badDir) continue;
 
-                    int curCol = size;
                     for (int k = 0; k < max; k++) {
+                        int curCol = size;
                         for (int l = 0; l < size; l++) {
                             if (cells[l] == farPos + dir * k) {
                                 curCol = l;
@@ -228,7 +226,6 @@ namespace checkers {
                         var oldPos = pos;
                         loc.pos = farPos + dir * k;
                         size = GetAttackPaths(loc, kind, ch, graph, size, mark, curCol);
-                        curCol = size;
                         if (size == -1) return -1;
                         loc.pos = oldPos;
                     }
