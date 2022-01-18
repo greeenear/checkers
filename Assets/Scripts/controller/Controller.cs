@@ -22,10 +22,6 @@ namespace controller {
         public Option<Checker>[,] board;
     }
 
-    public struct CheckerInfo {
-
-    }
-
     public class Controller : MonoBehaviour {
         public UnityEvent onGameOver;
         public UnityEvent onUnsuccessfulSaving;
@@ -62,6 +58,7 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
+            
 
             possibleGraphs = new PossibleGraph[res.maxCheckerCount];
             bufSize = new int[res.maxCheckerCount];
@@ -369,6 +366,7 @@ namespace controller {
                 Checkers.ShowMatrix(graph);
                 HighlightCells(graph, count, clickPos);
             } else if (selected.IsSome()) {
+                
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
 
@@ -380,6 +378,7 @@ namespace controller {
                         count = bufSize[i];
                     }
                 }
+                Checkers.ShowMatrix(graph);
 
                 var curInd = Array.IndexOf<Vector2Int>(graph.cells, lPos);
                 if (curInd == -1) return;
@@ -388,7 +387,7 @@ namespace controller {
                 for (int i = 0; i < count; i++) {
                     if (graph.connect[curInd, i] != 0 && graph.cells[i] == clickPos) {
                         curMark = graph.marks[i];
-                        if ((graph.marks[i] & curMark) == curMark) {
+                        if ((graph.marks[i] & curMark) > 0) {
                             graph.marks[i] -= curMark;
                             isBadPos = false;
                         }
@@ -465,7 +464,6 @@ namespace controller {
                 }
             }
         }
-
 
         public bool Load(string path) {
             if (path == null) {
@@ -804,4 +802,4 @@ namespace controller {
             return true;
         }
     }
-} 
+}

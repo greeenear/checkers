@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using option;
 
@@ -157,38 +158,41 @@ namespace checkers {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
 
-                    int curCol = size;
-                    var length = GetMaxApt(loc, dir, CellTy.Empty);
-                    if (length == -1) {
+                    var emptyLen = GetMaxApt(loc, dir, CellTy.Empty);
+                    if (emptyLen == -1) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
 
-                    var max = length;
-                    if ((ch.type == ChType.Checker || kind == ChKind.English) && length != 0) {
+                    var max = emptyLen;
+                    if ((ch.type == ChType.Checker || kind == ChKind.English) && emptyLen != 0) {
                         continue;
                     }
 
-                    var afterLastPos = pos + dir * (length + 1);
+                    var afterLastPos = pos + dir * (emptyLen + 1);
                     var farPos = afterLastPos + dir;
+                    if (cells.Length < 1) continue;
                     var isStart = farPos == cells[0];
 
-                    if (cells.Length < 1) continue;
 
-                    var nextLoc = new ChLocation { pos = pos + dir * length, board = board };
+                    var nextLoc = new ChLocation { pos = pos + dir * emptyLen, board = board };
                     var filledLength = GetMaxApt(nextLoc, dir, CellTy.Filled);
+                    if (filledLength == -1) {
+                        Debug.LogError("GetAttackPaths: cant get max empty");
+                        return -1;
+                    }
                     if (filledLength != 1 && !isStart) continue;
                     if (GetCell(board, afterLastPos).ch.color == ch.color) continue;
 
                     var newLoc = new ChLocation { board = board, pos = afterLastPos };
-                    length = GetMaxApt(newLoc, dir, CellTy.Empty);
-                    if (length == -1) {
+                    emptyLen = GetMaxApt(newLoc, dir, CellTy.Empty);
+                    if (emptyLen == -1) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
-                    max = length;
+                    max = emptyLen;
                     if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
-                    max = Mathf.Clamp(length, 0, max);
+                    max = Mathf.Clamp(emptyLen, 0, max);
                     if (isStart) max++;
 
                     var badDir = false;
@@ -198,8 +202,6 @@ namespace checkers {
                             if (cells[l] == curCell) {
                                 for (int n = 0; n < size; n++) {
                                     var isInvMove = connect[l, n] == mark && cells[n] == pos;
-                                    // var isInvMove = connect[l, n] != 0 && cells[n] == pos;
-                                    // isInvMove = isInvMove && (marks[n] & mark) > 0;
                                     if (isInvMove || ((marks[l] & mark) == mark)) badDir = true;
                                 }
                             }
@@ -207,6 +209,7 @@ namespace checkers {
                     }
                     if (badDir) continue;
 
+                    int curCol = size;
                     for (int k = 0; k < max; k++) {
                         for (int l = 0; l < size; l++) {
                             if (cells[l] == farPos + dir * k) {
@@ -214,6 +217,7 @@ namespace checkers {
                                 startRow = lastColum;
                             }
                         }
+
                         if (size == curCol){
                             size = AddNode(farPos + dir * k, graph, size);
                         }
@@ -279,8 +283,8 @@ namespace checkers {
 
             if (graph.cells == null || graph.connect == null || graph.marks == null) return -1;
 
-            var width = graph.connect.GetLength(0);
-            var height = graph.connect.GetLength(1);
+            var width = connect.GetLength(0);
+            var height = connect.GetLength(1);
             var minSide = Mathf.Min(width, height);
 
             var nextSize = size + 1;
