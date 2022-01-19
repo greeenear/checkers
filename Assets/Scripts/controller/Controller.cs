@@ -396,10 +396,8 @@ namespace controller {
                     return;
                 }
 
-
                 HighlightCells(graph, size, clickPos);
             } else if (selected.IsSome()) {
-                
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
 

@@ -22,9 +22,10 @@ namespace checkers {
     }
 
     public enum CellTy {
-        Filled,
-        Empty,
-        OutOfBoard
+        Filled = 1,
+        Empty = 2,
+        OutOfBoard = 4,
+        Any = Filled | Empty
     }
 
     public struct ChLocation {
@@ -109,6 +110,7 @@ namespace checkers {
                     }
                     
                     if (cell.ch.type == ChType.Checker && i != xDir) continue;
+
                     for (int k = 0; k < length; k++) {
                         var newSize = AddNode(pos + dir * (k + 1), graph, size);
 
@@ -127,8 +129,9 @@ namespace checkers {
             }
 
             if (needAttack) {
-                size = GetAttackPaths(loc, kind, cell.ch, graph, 1, 1, 1);
+                size = GetAttackPaths(loc, kind, cell.ch, graph, 1, 1);
             }
+            ShowMatrix(graph);
 
             return size;
         }
@@ -139,8 +142,7 @@ namespace checkers {
             Checker ch,
             PossibleGraph graph,
             int size,
-            int mark,
-            int lastColum
+            int mark
         ) {
             var board = loc.board;
             var pos = loc.pos;
@@ -153,7 +155,12 @@ namespace checkers {
                 return -1;
             }
 
-            int startRow = size;
+            if (cells.Length < 1) {
+                Debug.LogError("GetAttackPaths: cells empty");
+                return -1;
+            }
+
+            int posIndex = size - 1;
             for (int i = -1; i <= 1; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
@@ -167,11 +174,8 @@ namespace checkers {
                         continue;
                     }
 
-                    var afterLastPos = pos + dir * (emptyLen + 1);
-                    var farPos = afterLastPos + dir;
-                    if (cells.Length < 1) continue;
-                    var isStart = farPos == cells[0];
-
+                    var enemyPos = pos + dir * (emptyLen + 1);
+                    var isStart = enemyPos + dir == cells[0];
 
                     var nextLoc = new ChLocation { pos = pos + dir * emptyLen, board = board };
                     var filledLength = GetMaxApt(nextLoc, dir, CellTy.Filled);
@@ -179,10 +183,13 @@ namespace checkers {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
-                    if (filledLength != 1 && !isStart) continue;
-                    if (GetCell(board, afterLastPos).ch.color == ch.color) continue;
 
-                    var newLoc = new ChLocation { board = board, pos = afterLastPos };
+                    if (filledLength != 1 && GetMaxApt(nextLoc, dir, CellTy.Any) < 1 && !isStart) {
+                        continue;
+                    }
+                    if (GetCell(board, enemyPos).ch.color == ch.color) continue;
+
+                    var newLoc = new ChLocation { board = board, pos = enemyPos };
                     emptyLen = GetMaxApt(newLoc, dir, CellTy.Empty);
                     if (emptyLen == -1) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
@@ -195,42 +202,48 @@ namespace checkers {
 
                     var badDir = false;
                     for (int k = 0; k <= max; k++) {
+                        var curCell = enemyPos + dir * (k + 1);
+
+                        var index = -1;
                         for (int l = 0; l < size; l++) {
-                            var curCell = farPos + dir * k;
-                            if (cells[l] == curCell) {
-                                for (int n = 0; n < size; n++) {
-                                    var isInvMove = connect[l, n] == mark && cells[n] == pos;
-                                    if (isInvMove || ((marks[l] & mark) == mark)) badDir = true;
-                                }
-                            }
+                            if (cells[l] == curCell) index = l;
+                        }
+
+                        for (int n = 0; n < size && index != -1; n++) {
+                            var isInvMove = connect[index, n] == mark && cells[n] == pos;
+                            if (isInvMove || ((marks[index] & mark) == mark)) badDir = true;
                         }
                     }
+
                     if (badDir) continue;
 
                     for (int k = 0; k < max; k++) {
-                        int curCol = size;
+                        var attackPos = enemyPos + dir * (k + 1);
+                        int nextPosInd = size;
                         for (int l = 0; l < size; l++) {
-                            if (cells[l] == farPos + dir * k) {
-                                curCol = l;
-                                startRow = lastColum;
+                            if (cells[l] == attackPos) {
+                                posIndex = Array.IndexOf(cells, pos);
+                                if (posIndex == -1) break;
+                                nextPosInd = l;
+
+                                break;
                             }
                         }
 
-                        if (size == curCol){
-                            size = AddNode(farPos + dir * k, graph, size);
+                        if (size == nextPosInd){
+                            size = AddNode(attackPos, graph, size);
                         }
-                        marks[curCol] += mark;
-                        connect[startRow - 1, curCol] = mark;
-                        curCol++;
+                        marks[nextPosInd] += mark;
+                        connect[posIndex , nextPosInd] = mark;
 
                         var oldPos = pos;
-                        loc.pos = farPos + dir * k;
-                        size = GetAttackPaths(loc, kind, ch, graph, size, mark, curCol);
+                        loc.pos = attackPos;
+                        size = GetAttackPaths(loc, kind, ch, graph, size, mark);
                         if (size == -1) return -1;
                         loc.pos = oldPos;
                     }
 
-                    if (startRow - 1 == 0) {
+                    if (posIndex == 0) {
                         mark = mark << 1;
                     }
                 }
@@ -242,7 +255,7 @@ namespace checkers {
         private static int GetMaxApt(ChLocation loc, Vector2Int dir, CellTy type) {
             int len = 0;
             var pos = loc.pos + dir;
-            for (var p = pos; GetCell(loc.board, p).type == type; p += dir, ++len);
+            for (var p = pos; (GetCell(loc.board, p).type & type) > 0; p += dir, ++len);
 
             return len;
         }
