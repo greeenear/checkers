@@ -352,7 +352,8 @@ namespace controller {
                         graph = possibleGraphs[i];
                         size = bufSize[i];
                         for (int j = 0; j < bufSize[i]; j++) {
-                            if (graph.connect[0, j] != 0 && needAttack && HasAttack(graph, size) || !needAttack && !HasAttack(graph, size)) {
+                            if (graph.connect[0, j] != 0) {
+                                if (needAttack && !HasAttack(graph, size)) break;
                                 hasMove = true;
                             }
                         }
@@ -362,8 +363,16 @@ namespace controller {
                 if (!hasMove) {
                     for (int i = 0; i < checkersCount; i++) {
                         for (int j = 0; j < bufSize[i]; j++) {
-                            if (possibleGraphs[i].connect[0, j] != 0 && (needAttack && HasAttack(possibleGraphs[i], size) || !needAttack && !HasAttack(possibleGraphs[i], size))) {
-                                var pos = ConvertToWorldPoint(possibleGraphs[i].cells[0]) - new Vector3(0, 0.1f, 0);
+                            var curGraph = possibleGraphs[i];
+                            if (curGraph.connect[0, j] != 0) {
+                                if (needAttack && !HasAttack(curGraph, bufSize[i])) break;
+
+                                var cell = Checkers.GetCell(map.board, curGraph.cells[0]);
+                                var isFilled = cell.type == CellTy.Filled;
+                                if (isFilled && cell.ch.color != whoseMove) break;
+
+                                var point = curGraph.cells[0];
+                                var pos = ConvertToWorldPoint(point) - new Vector3(0, 0.1f, 0);
                                 if (res.highlightCh == null) {
                                     Debug.LogError("NoHighlightCh");
                                 } else {

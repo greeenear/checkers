@@ -247,7 +247,7 @@ namespace checkers {
             return len;
         }
 
-        private static Cell GetCell(Option<Checker>[,] board, Vector2Int index) {
+        public static Cell GetCell(Option<Checker>[,] board, Vector2Int index) {
             if (board == null) {
                 Debug.LogError("GetCell: board is null");
                 return new Cell { type = CellTy.OutOfBoard };
