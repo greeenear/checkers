@@ -75,11 +75,6 @@ namespace checkers {
                 return -1;
             }
 
-            var xDir = 1;
-            if (cell.ch.color == ChColor.White) {
-                xDir = -1;
-            }
-
             var needAttack = false;
             var mark = 1;
 
@@ -101,7 +96,7 @@ namespace checkers {
                         var nextLoc = new ChLocation { pos = pos + dir * length, board = board };
                         var filledLength = GetMaxApt(nextLoc, dir, CellTy.Filled);
 
-                        if (filledLength == 1) {
+                        if (filledLength == 1 && GetMaxApt(nextLoc, dir, CellTy.Any) > 1) {
                             var afterLastCell = GetCell(loc.board, pos + dir * (length + 1));
                             needAttack = afterLastCell.ch.color != cell.ch.color;
 
@@ -109,7 +104,7 @@ namespace checkers {
                         }
                     }
                     
-                    if (cell.ch.type == ChType.Checker && i != xDir) continue;
+                    if (IsBadDirection(cell.ch, dir)) continue;
 
                     for (int k = 0; k < length; k++) {
                         var newSize = AddNode(pos + dir * (k + 1), graph, size);
@@ -131,7 +126,6 @@ namespace checkers {
             if (needAttack) {
                 size = GetAttackPaths(loc, kind, cell.ch, graph, 1, 1);
             }
-            ShowMatrix(graph);
 
             return size;
         }
@@ -165,6 +159,10 @@ namespace checkers {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
 
+                    if (kind == ChKind.English && IsBadDirection(ch, dir)) {
+                        continue;
+                    }
+
                     var emptyLen = GetMaxApt(loc, dir, CellTy.Empty);
                     if (emptyLen == -1) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
@@ -173,6 +171,7 @@ namespace checkers {
                     if ((ch.type == ChType.Checker || kind == ChKind.English) && emptyLen != 0) {
                         continue;
                     }
+
 
                     var enemyPos = pos + dir * (emptyLen + 1);
                     var isStart = enemyPos + dir == cells[0];
@@ -219,22 +218,22 @@ namespace checkers {
 
                     for (int k = 0; k < max; k++) {
                         var attackPos = enemyPos + dir * (k + 1);
-                        int nextPosInd = size;
+                        int attackPosInd = size;
                         for (int l = 0; l < size; l++) {
                             if (cells[l] == attackPos) {
                                 posIndex = Array.IndexOf(cells, pos);
                                 if (posIndex == -1) break;
-                                nextPosInd = l;
+                                attackPosInd = l;
 
                                 break;
                             }
                         }
 
-                        if (size == nextPosInd){
+                        if (size == attackPosInd){
                             size = AddNode(attackPos, graph, size);
                         }
-                        marks[nextPosInd] += mark;
-                        connect[posIndex , nextPosInd] = mark;
+                        marks[attackPosInd] += mark;
+                        connect[posIndex , attackPosInd] = mark;
 
                         var oldPos = pos;
                         loc.pos = attackPos;
@@ -312,6 +311,17 @@ namespace checkers {
             }
 
             return nextSize;
+        }
+
+        private static bool IsBadDirection(Checker ch, Vector2Int dir) {
+            var xDir = 1;
+            if (ch.color == ChColor.White) {
+                xDir = -1;
+            }
+
+            if (dir.x != xDir && ch.type == ChType.Checker) return true;
+
+            return false;
         }
 
         public static void ShowMatrix(PossibleGraph graph) {

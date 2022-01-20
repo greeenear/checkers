@@ -396,6 +396,7 @@ namespace controller {
                     return;
                 }
 
+                Checkers.ShowMatrix(graph);
                 HighlightCells(graph, size, clickPos);
             } else if (selected.IsSome()) {
                 var curPos = selected.Peel();
