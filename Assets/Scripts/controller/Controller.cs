@@ -6,7 +6,6 @@ using checkers;
 using option;
 using UnityEngine.Events;
 using UnityEditor;
-using ai;
 
 namespace controller {
     public struct Map {
@@ -58,7 +57,6 @@ namespace controller {
                 this.enabled = false;
                 return;
             }
-            
 
             possibleGraphs = new PossibleGraph[res.maxCheckerCount];
             bufSize = new int[res.maxCheckerCount];
@@ -78,225 +76,6 @@ namespace controller {
             }
         }
 
-        // private void Update() {
-        //     if (res == null) {
-        //         Debug.LogError("CantGetResources");
-        //         this.enabled = false;
-        //         return;
-        //     }
-        //     if (allCheckerMoves == null) {
-        //         allCheckerMoves = new Dictionary<Vector2Int, Dictionary<Vector2Int, bool>>();
-        //         var size = boardInfo.boardSize;
-        //         for (int i = 0; i < map.board.GetLength(0); i++) {
-        //             for (int j = 0; j < map.board.GetLength(1); j++) {
-
-        //                 var cellOpt = map.board[i, j];
-        //                 if (cellOpt.IsNone()) continue;
-        //                 var curCh = cellOpt.Peel();
-
-        //                 var xDir = 1;
-        //                 if (curCh.color == ChColor.White) {
-        //                     xDir = -1;
-        //                 }
-
-        //                 var pos = new Vector2Int(i, j);
-        //                 var checkerMoves = new Dictionary<Vector2Int, bool>();
-        //                 foreach (var dir in res.directions) {
-        //                     var chFound = false;
-        //                     for (var next = pos + dir; IsOnBoard(size, next); next += dir) {
-        //                         var nextOpt = map.board[next.x, next.y];
-        //                         if (nextOpt.IsSome()) {
-        //                             var nextColor = nextOpt.Peel().color;
-        //                             var isSentenced = sentenced.Contains(next);
-        //                             if (isSentenced || chFound || nextColor == curCh.color) break;
-
-        //                             chFound = true;
-        //                         } else {
-        //                             var wrongMove = curCh.type == ChType.Checker && dir.x != xDir;
-        //                             switch (chKind) {
-        //                                 case ChKind.Pool:
-        //                                 case ChKind.Russian:
-        //                                 case ChKind.International:
-        //                                     wrongMove = wrongMove && !chFound;
-        //                                     break;
-        //                             }
-
-        //                             if (!wrongMove) {
-        //                                 checkerMoves.Add(next, chFound);
-        //                             }
-
-        //                             if (curCh.type == ChType.Checker || chKind == ChKind.English) {
-        //                                 break;
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-        //                 allCheckerMoves.Add(pos, checkerMoves);
-        //             }
-        //         }
-        //     }
-
-        //     if (IsGameOver()) {
-        //         onGameOver?.Invoke();
-        //         this.enabled = false;
-        //         return;
-        //     }
-
-        //     if (!Input.GetMouseButtonDown(0)) return;
-
-        //     var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        //     if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) return;
-
-        //     DestroyHighlightCells(storageHighlightCells.transform);
-        //     var clickPos = ConvertToBoardPoint(hit.point);
-
-        //     var checkerOpt = map.board[clickPos.x, clickPos.y];
-
-        //     var isAttack = IsNeedAttack(allCheckerMoves);
-        //     if (checkerOpt.IsSome()) {
-        //         if (!allCheckerMoves.ContainsKey(clickPos)) return;
-        //         var curMoves = allCheckerMoves[clickPos];
-        //         var isDifColor = checkerOpt.Peel().color != whoseMove;
-        //         var cantAttack = isAttack && !HasAttack(curMoves);
-
-        //         if (curMoves.Count == 0 || cantAttack || isDifColor) {
-        //             foreach (var checker in allCheckerMoves) {
-        //                 if (checker.Value.Count != 0) {
-        //                     var curChOpt = map.board[checker.Key.x, checker.Key.y];
-        //                     if (curChOpt.IsNone() || curChOpt.Peel().color != whoseMove) continue;
-
-        //                     if (isAttack && !HasAttack(checker.Value)) {
-        //                         continue;
-        //                     }
-
-        //                     var parent = storageHighlightCells.transform;
-        //                     var pos = ConvertToWorldPoint(checker.Key) - new Vector3(0, 0.1f, 0);
-        //                     if (res.highlightCh == null) {
-        //                         Debug.LogError("NoHighlightCh");
-        //                     } else {
-        //                         Instantiate(res.highlightCh, pos, Quaternion.identity, parent);
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //         if (checkerOpt.Peel().color != whoseMove) return;
-
-        //         selected = Option<Vector2Int>.Some(clickPos);
-        //         HighlightCells(allCheckerMoves[clickPos], isAttack);
-        //     } else if (selected.IsSome()) {
-        //         var curPos = selected.Peel();
-        //         if (map.board[curPos.x, curPos.y].IsNone()) return;
-        //         var curCh = map.board[curPos.x, curPos.y].Peel();
-        //         var origCurCh = curCh;
-
-        //         var curChMoves = allCheckerMoves[curPos];
-        //         if (!curChMoves.ContainsKey(clickPos)) {
-        //             selected = Option<Vector2Int>.None();
-        //             return;
-        //         }
-
-        //         var isClickAttack = curChMoves[clickPos];
-        //         if (!isClickAttack && isAttack) return;
-
-        //         map.board[clickPos.x, clickPos.y] = map.board[curPos.x, curPos.y];
-        //         map.board[curPos.x, curPos.y] = Option<Checker>.None();
-        //         allCheckerMoves.Clear();
-
-        //         var worldPos = ConvertToWorldPoint(clickPos);
-        //         map.obj[curPos.x, curPos.y].transform.position = worldPos;
-        //         map.obj[clickPos.x, clickPos.y] = map.obj[curPos.x, curPos.y];
-
-        //         var edgeBoard = 0;
-        //         if (curCh.color == ChColor.Black) {
-        //             edgeBoard = boardInfo.boardSize.x - 1;
-        //         }
-
-        //         var dir = clickPos - curPos;
-        //         var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
-        //         for (var next = curPos + nDir; next != clickPos; next += nDir) {
-        //             if (map.board[next.x, next.y].IsSome()) {
-        //                 sentenced.Add(next);
-        //             }
-        //         }
-
-        //         var onEdgeBoard = clickPos.x == edgeBoard;
-        //         if (onEdgeBoard && !(chKind == ChKind.International && sentenced.Count != 0)) {
-        //             var king = new Checker { type = ChType.King, color = whoseMove };
-        //             map.board[clickPos.x, clickPos.y] = Option<Checker>.Some(king);
-        //             var reverse = Quaternion.Euler(180, 0, 0);
-        //             map.obj[clickPos.x, clickPos.y].transform.rotation = reverse;
-        //             curCh = king;
-        //         }
-
-        //         var secondMoveInfos = new Dictionary<Vector2Int, bool>();
-        //         var secondMove = chKind != ChKind.Pool || !onEdgeBoard;
-        //         var anySentenced = sentenced.Count != 0;
-        //         if (anySentenced && secondMove) {
-        //             var xDir = 1;
-        //             if (curCh.color == ChColor.White) {
-        //                 xDir = -1;
-        //             }
-
-        //             var size = boardInfo.boardSize;
-        //             foreach (var moveDir in res.directions) {
-        //                 var last = clickPos + moveDir;
-        //                 var chFound = false;
-        //                 for (last = clickPos + moveDir; IsOnBoard(size, last); last += moveDir) {
-        //                     var nextOpt = map.board[last.x, last.y];
-        //                     if (nextOpt.IsSome()) {
-        //                         var nextColor = nextOpt.Peel().color;
-        //                         var isSentenced = sentenced.Contains(last);
-
-        //                         if (isSentenced || chFound || nextColor == curCh.color) break;
-        //                         chFound = true;
-        //                     } else {
-        //                         var wrongMove = curCh.type == ChType.Checker && dir.x != xDir;
-        //                         switch (chKind) {
-        //                             case ChKind.Pool:
-        //                             case ChKind.Russian:
-        //                             case ChKind.International:
-        //                                 wrongMove = wrongMove && !chFound;
-        //                                 break;
-        //                         }
-
-        //                         if (!wrongMove && chFound) {
-        //                             secondMoveInfos.Add(last, chFound);
-        //                         }
-
-        //                         if (curCh.type == ChType.Checker || chKind == ChKind.English) {
-        //                             break;
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
-
-        //         if (secondMoveInfos.Count != 0) {
-        //             allCheckerMoves.Add(clickPos, secondMoveInfos);
-        //             HighlightCells(secondMoveInfos, true);
-        //             selected = Option<Vector2Int>.Some(clickPos);
-        //         }  else {
-        //             if (onEdgeBoard && chKind == ChKind.International) {
-        //                 var king = new Checker { type = ChType.King, color = whoseMove };
-        //                 map.board[clickPos.x, clickPos.y] = Option<Checker>.Some(king);
-        //                 var reverse = Quaternion.Euler(180, 0, 0);
-        //                 map.obj[clickPos.x, clickPos.y].transform.rotation = reverse;
-        //                 curCh = king;
-        //             }
-
-        //             foreach (var sentencedPos in sentenced) {
-        //                 map.board[sentencedPos.x, sentencedPos.y] = Option<Checker>.None();
-        //                 Destroy(map.obj[sentencedPos.x, sentencedPos.y]);
-        //             }
-
-        //             selected = Option<Vector2Int>.None();
-        //             sentenced.Clear();
-        //             allCheckerMoves = null;
-        //             whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
-        //         }
-        //     }
-        // }
-
         private void Update() {
             if (res == null) {
                 Debug.LogError("CantGetResources");
@@ -309,9 +88,8 @@ namespace controller {
                 checkersCount = 0;
                 for (int i = 0; i < map.board.GetLength(0); i++) {
                     for (int j = 0; j < map.board.GetLength(1); j++) {
-                        var cellOpt = map.board[i, j];
-                        if (cellOpt.IsNone()) continue;
-                        var curCh = cellOpt.Peel();
+                        var curCell = Checkers.GetCell(map.board, new Vector2Int(i, j));
+                        if (curCell.type == CellTy.Empty) continue;
                         var pos = new Vector2Int(i, j);
 
                         var loc = new ChLocation { board = map.board, pos = pos };
@@ -326,6 +104,7 @@ namespace controller {
                         checkersCount++;
                     }
                 }
+
                 if (IsGameOver()) {
                     onGameOver?.Invoke();
                 }
@@ -337,10 +116,11 @@ namespace controller {
             var needAttack = IsNeedAttack(possibleGraphs, bufSize);
 
             var clickPos = ConvertToBoardPoint(hit.point);
-            var checkerOpt = map.board[clickPos.x, clickPos.y];
+            var cell = Checkers.GetCell(map.board, clickPos);
+
             if (!secondMove) DestroyHighlightCells(storageHighlightCells.transform);
 
-            if (checkerOpt.IsSome() && checkerOpt.Peel().color == whoseMove && !secondMove) {
+            if (cell.type == CellTy.Filled && cell.ch.color == whoseMove && !secondMove) {
                 var graph = new PossibleGraph();
                 var size = 0;
 
@@ -367,9 +147,9 @@ namespace controller {
                             if (curGraph.connect[0, j] != 0) {
                                 if (needAttack && !HasAttack(curGraph, bufSize[i])) break;
 
-                                var cell = Checkers.GetCell(map.board, curGraph.cells[0]);
-                                var isFilled = cell.type == CellTy.Filled;
-                                if (isFilled && cell.ch.color != whoseMove) break;
+                                var curCell = Checkers.GetCell(map.board, curGraph.cells[0]);
+                                var isFilled = curCell.type == CellTy.Filled;
+                                if (isFilled && curCell.ch.color != whoseMove) break;
 
                                 var point = curGraph.cells[0];
                                 var pos = ConvertToWorldPoint(point) - new Vector3(0, 0.1f, 0);
@@ -389,7 +169,6 @@ namespace controller {
 
                 selected = Option<Vector2Int>.Some(clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
-
 
                 if (needAttack && !HasAttack(graph, size)) {
                     selected = Option<Vector2Int>.None();
