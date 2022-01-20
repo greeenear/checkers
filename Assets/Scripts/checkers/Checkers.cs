@@ -194,13 +194,21 @@ namespace checkers {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
-                    var max = emptyLen;
-                    if (ch.type == ChType.Checker || kind == ChKind.English) max = 1;
-                    max = Mathf.Clamp(emptyLen, 0, max);
-                    if (isStart) max++;
+
+                    var maxEmptyLen = emptyLen;
+                    if (ch.type == ChType.Checker || kind == ChKind.English) maxEmptyLen = 1;
+                    maxEmptyLen = Mathf.Clamp(emptyLen, 0, maxEmptyLen);
+                    isStart = enemyPos + dir * (maxEmptyLen + 1) == cells[0];
+                    if (enemyPos + dir * (maxEmptyLen + 1) == cells[0]) {
+                        for (var n = enemyPos; n != enemyPos + dir * (maxEmptyLen + 2); n += dir) {
+                            Debug.Log(n);
+                        }
+                        Debug.Log("--------------------------");
+                    }
+                    if (isStart) maxEmptyLen++;
 
                     var badDir = false;
-                    for (int k = 0; k <= max; k++) {
+                    for (int k = 0; k <= maxEmptyLen; k++) {
                         var curCell = enemyPos + dir * (k + 1);
 
                         var index = -1;
@@ -216,7 +224,7 @@ namespace checkers {
 
                     if (badDir) continue;
 
-                    for (int k = 0; k < max; k++) {
+                    for (int k = 0; k < maxEmptyLen; k++) {
                         var attackPos = enemyPos + dir * (k + 1);
                         int attackPosInd = size;
                         for (int l = 0; l < size; l++) {
