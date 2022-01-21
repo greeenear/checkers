@@ -82,12 +82,17 @@ namespace checkers {
             var needAttack = false;
             var mark = 1;
 
+            var xDir = 1;
+            if (cell.ch.color == ChColor.White) {
+                xDir = -1;
+            }
+
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
 
                     var length = GetMaxApt(loc, dir, CellTy.Empty);
-                    if (length == -1) {
+                    if (length < 0) {
                         Debug.LogError("GetPossiblePaths: cant get max empty");
                         return -1;
                     }
@@ -107,8 +112,8 @@ namespace checkers {
                             if (needAttack) break;
                         }
                     }
-                    
-                    if (IsBadDirection(cell.ch, dir)) continue;
+
+                    if ((dir.x != xDir && cell.ch.type == ChType.Checker)) continue;
 
                     for (int k = 0; k < length; k++) {
                         var newSize = AddNode(pos + dir * (k + 1), graph, size);
@@ -157,17 +162,26 @@ namespace checkers {
                 Debug.LogError("GetAttackPaths: cells empty");
                 return -1;
             }
+            var posIndex = Array.IndexOf(cells, pos);
 
-            int posIndex = size - 1;
+            if (posIndex < 0) {
+                Debug.LogError("GetAttackPaths: incorrect position");
+            }
+
+            var xDir = 1;
+            if (ch.color == ChColor.White) {
+                xDir = -1;
+            }
+
             for (int i = -1; i <= 1; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
-                    if (kind == ChKind.English && IsBadDirection(ch, dir)) {
+                    if (kind == ChKind.English && dir.x != xDir && ch.type == ChType.Checker) {
                         continue;
                     }
 
                     var emptyLen = GetMaxApt(loc, dir, CellTy.Empty);
-                    if (emptyLen == -1) {
+                    if (emptyLen < 0) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
