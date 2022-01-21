@@ -31,6 +31,10 @@ namespace checkers {
     public struct ChLocation {
         public Option<Checker>[,] board;
         public Vector2Int pos;
+
+        public static ChLocation Mk(Option<Checker>[,] board, Vector2Int pos) {
+            return new ChLocation { board = board, pos = pos };
+        }
     }
 
     public struct PossibleGraph {
@@ -93,7 +97,7 @@ namespace checkers {
                     length = Mathf.Clamp(length, 0, max);
 
                     if (cell.ch.type != ChType.Checker && kind != ChKind.English || length != 1) {
-                        var nextLoc = new ChLocation { pos = pos + dir * length, board = board };
+                        var nextLoc = ChLocation.Mk(board, pos + dir * length);
                         var filledLength = GetMaxApt(nextLoc, dir, CellTy.Filled);
 
                         if (filledLength == 1 && GetMaxApt(nextLoc, dir, CellTy.Any) > 1) {
