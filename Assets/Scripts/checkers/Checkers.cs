@@ -74,7 +74,7 @@ namespace checkers {
 
             var size = 0;
             size = AddNode(pos, graph, size);
-            if (size == -1) {
+            if (size < 0) {
                 Debug.LogError("GetPossiblePaths: cant added node");
                 return -1;
             }
