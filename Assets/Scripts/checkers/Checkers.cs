@@ -133,7 +133,10 @@ namespace checkers {
             }
 
             if (needAttack) {
+                var checker = cell.ch;
+                loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.None();
                 size = GetAttackPaths(loc, kind, cell.ch, graph, 1, 1);
+                loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(checker);
             }
 
             return size;
@@ -191,36 +194,32 @@ namespace checkers {
                     }
 
                     var enemyPos = pos + dir * (emptyLen + 1);
-                    var isStart = enemyPos + dir == cells[0];
 
-                    var nextLoc = new ChLocation { pos = pos + dir * emptyLen, board = board };
+                    var nextLoc = ChLocation.Mk(board, enemyPos - dir);
                     var filledLength = GetMaxApt(nextLoc, dir, CellTy.Filled);
-                    if (filledLength == -1) {
+                    if (filledLength < 0) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
 
-                    if (filledLength != 1 && GetMaxApt(nextLoc, dir, CellTy.Any) < 1 && !isStart) {
+                    if (filledLength != 1 || GetMaxApt(nextLoc, dir, CellTy.Any) < 2) {
                         continue;
                     }
                     if (GetCell(board, enemyPos).ch.color == ch.color) continue;
 
-                    var newLoc = new ChLocation { board = board, pos = enemyPos };
-                    emptyLen = GetMaxApt(newLoc, dir, CellTy.Empty);
-                    if (emptyLen == -1) {
+                    var enemyLoc = ChLocation.Mk(board, enemyPos);
+                    emptyLen = GetMaxApt(enemyLoc, dir, CellTy.Empty);
+                    if (emptyLen < 0) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
 
                     var maxEmptyLen = emptyLen;
                     if (ch.type == ChType.Checker || kind == ChKind.English) maxEmptyLen = 1;
-                    maxEmptyLen = Mathf.Clamp(emptyLen, 0, maxEmptyLen);
-
-                    isStart = enemyPos + dir * (maxEmptyLen + 1) == cells[0];
-                    if (isStart) maxEmptyLen++;
+                    emptyLen = Mathf.Clamp(emptyLen, 0, maxEmptyLen);
 
                     var badDir = false;
-                    for (int k = 0; k <= maxEmptyLen; k++) {
+                    for (int k = 0; k <= emptyLen; k++) {
                         var curCell = enemyPos + dir * (k + 1);
 
                         var index = -1;
@@ -236,30 +235,23 @@ namespace checkers {
 
                     if (badDir) continue;
 
-                    for (int k = 0; k < maxEmptyLen; k++) {
+                    for (int k = 0; k < emptyLen; k++) {
                         var attackPos = enemyPos + dir * (k + 1);
-                        int attackPosInd = size;
-                        for (int l = 0; l < size; l++) {
-                            if (cells[l] == attackPos) {
-                                posIndex = Array.IndexOf(cells, pos);
-                                if (posIndex == -1) break;
-                                attackPosInd = l;
+                        int attackPosInd = Array.IndexOf(cells, attackPos, 0, size);
 
-                                break;
-                            }
-                        }
-
-                        if (size == attackPosInd){
+                        if (attackPosInd < 0) {
+                            attackPosInd = size;
                             size = AddNode(attackPos, graph, size);
+
+                            if (size < 0) return -1;
                         }
                         marks[attackPosInd] += mark;
                         connect[posIndex , attackPosInd] = mark;
 
-                        var oldPos = pos;
-                        loc.pos = attackPos;
-                        size = GetAttackPaths(loc, kind, ch, graph, size, mark);
-                        if (size == -1) return -1;
-                        loc.pos = oldPos;
+
+                        var newLoc = ChLocation.Mk(board, attackPos);
+                        size = GetAttackPaths(newLoc, kind, ch, graph, size, mark);
+                        if (size < 0) return -1;
                     }
 
                     if (posIndex == 0) {
@@ -331,17 +323,6 @@ namespace checkers {
             }
 
             return nextSize;
-        }
-
-        private static bool IsBadDirection(Checker ch, Vector2Int dir) {
-            var xDir = 1;
-            if (ch.color == ChColor.White) {
-                xDir = -1;
-            }
-
-            if (dir.x != xDir && ch.type == ChType.Checker) return true;
-
-            return false;
         }
 
         public static void ShowMatrix(PossibleGraph graph) {
