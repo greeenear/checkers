@@ -135,7 +135,7 @@ namespace checkers {
             if (needAttack) {
                 var checker = cell.ch;
                 loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.None();
-                size = GetAttackPaths(loc, kind, cell.ch, graph, 1, 1);
+                size = GetAttackPaths(loc, kind, cell.ch, graph, Vector2Int.zero, 1, 1);
                 loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(checker);
             }
 
@@ -147,6 +147,7 @@ namespace checkers {
             ChKind kind,
             Checker ch,
             PossibleGraph graph,
+            Vector2Int badDir,
             int size,
             int mark
         ) {
@@ -179,6 +180,8 @@ namespace checkers {
             for (int i = -1; i <= 1; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
+                    if (dir == badDir) continue;
+
                     if (kind == ChKind.English && dir.x != xDir && ch.type == ChType.Checker) {
                         continue;
                     }
@@ -218,22 +221,16 @@ namespace checkers {
                     if (ch.type == ChType.Checker || kind == ChKind.English) maxEmptyLen = 1;
                     emptyLen = Mathf.Clamp(emptyLen, 0, maxEmptyLen);
 
-                    var badDir = false;
-                    for (int k = 0; k <= emptyLen; k++) {
-                        var curCell = enemyPos + dir * (k + 1);
+                    var badDirr = false;
+                    for (var p = enemyPos + dir; p != enemyPos + dir * (emptyLen + 1); p += dir) {
+                        var curCellIndex = Array.IndexOf(cells, p);
 
-                        var index = -1;
-                        for (int l = 0; l < size; l++) {
-                            if (cells[l] == curCell) index = l;
-                        }
-
-                        for (int n = 0; n < size && index != -1; n++) {
-                            var isInvMove = connect[index, n] == mark && cells[n] == pos;
-                            if (isInvMove || ((marks[index] & mark) == mark)) badDir = true;
+                        for (int n = 0; n < size && curCellIndex > 0; n++) {
+                            if ((marks[curCellIndex] & mark) > 0) badDirr = true;
                         }
                     }
 
-                    if (badDir) continue;
+                    if (badDirr) continue;
 
                     for (int k = 0; k < emptyLen; k++) {
                         var attackPos = enemyPos + dir * (k + 1);
@@ -246,11 +243,11 @@ namespace checkers {
                             if (size < 0) return -1;
                         }
                         marks[attackPosInd] += mark;
-                        connect[posIndex , attackPosInd] = mark;
+                        connect[posIndex, attackPosInd] = mark;
 
 
                         var newLoc = ChLocation.Mk(board, attackPos);
-                        size = GetAttackPaths(newLoc, kind, ch, graph, size, mark);
+                        size = GetAttackPaths(newLoc, kind, ch, graph, -dir, size, mark);
                         if (size < 0) return -1;
                     }
 
