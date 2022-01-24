@@ -197,13 +197,15 @@ namespace controller {
                 var isBadPos = true;
                 for (int i = 0; i < count; i++) {
                     if (graph.connect[curInd, i] != 0 && graph.cells[i] == clickPos) {
-                        curMark = graph.marks[i];
+                        curMark = graph.connect[curInd, i];
                         if ((graph.marks[i] & curMark) > 0) {
                             graph.marks[i] -= curMark;
                             isBadPos = false;
+                            break;
                         }
                     }
                 }
+                if (isBadPos) return;
 
                 var dir = clickPos - lPos;
                 var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
@@ -213,11 +215,10 @@ namespace controller {
                             sentenced.Add(next);
                             break;
                         }
-                        isBadPos = true;
+
+                        return;
                     }
                 }
-
-                if (isBadPos) return;
                 badDir = nDir;
 
                 map.board[clickPos.x, clickPos.y] = map.board[lPos.x, lPos.y];
@@ -261,6 +262,7 @@ namespace controller {
                     sentenced.Clear();
                     whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
                     curMark = 0;
+                    badDir = Vector2Int.zero;
                     return;
                 }
 

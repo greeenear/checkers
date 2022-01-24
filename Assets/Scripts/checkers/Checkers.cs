@@ -123,7 +123,7 @@ namespace checkers {
                             return -1;
                         }
 
-                        connect[0, size] = 1;
+                        connect[0, size] = mark;
                         marks[size] = mark;
                         size = newSize;
                     }
