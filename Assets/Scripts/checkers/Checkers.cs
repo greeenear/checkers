@@ -128,7 +128,7 @@ namespace checkers {
                         size = newSize;
                     }
 
-                    mark = mark << 1;
+                    mark = mark * 2;
                 }
             }
 
@@ -205,9 +205,8 @@ namespace checkers {
                         return -1;
                     }
 
-                    if (filledLength != 1 || GetMaxApt(nextLoc, dir, CellTy.Any) < 2) {
-                        continue;
-                    }
+                    if (filledLength != 1 || GetMaxApt(nextLoc, dir, CellTy.Any) < 2) continue;
+
                     if (GetCell(board, enemyPos).ch.color == ch.color) continue;
 
                     var enemyLoc = ChLocation.Mk(board, enemyPos);
@@ -223,7 +222,7 @@ namespace checkers {
 
                     var badDirr = false;
                     for (var p = enemyPos + dir; p != enemyPos + dir * (emptyLen + 1); p += dir) {
-                        var curCellIndex = Array.IndexOf(cells, p);
+                        var curCellIndex = Array.IndexOf(cells, p, 0, size);
 
                         for (int n = 0; n < size && curCellIndex > 0; n++) {
                             if ((marks[curCellIndex] & mark) > 0) badDirr = true;
@@ -243,7 +242,7 @@ namespace checkers {
                             if (size < 0) return -1;
                         }
                         marks[attackPosInd] += mark;
-                        connect[posIndex, attackPosInd] = mark;
+                        connect[posIndex, attackPosInd] += mark;
 
 
                         var newLoc = ChLocation.Mk(board, attackPos);
@@ -252,7 +251,7 @@ namespace checkers {
                     }
 
                     if (posIndex == 0) {
-                        mark = mark << 1;
+                        mark = mark * 2;
                     }
                 }
             }

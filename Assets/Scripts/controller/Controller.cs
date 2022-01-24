@@ -42,6 +42,7 @@ namespace controller {
         private int curMark;
         private Option<Vector2Int> lastPos;
         private bool secondMove;
+        private Vector2Int badDir;
 
         private ChColor whoseMove;
 
@@ -203,7 +204,21 @@ namespace controller {
                         }
                     }
                 }
+
+                var dir = clickPos - lPos;
+                var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
+                for (var next = lPos + nDir; next != clickPos; next += nDir) {
+                    if (map.board[next.x, next.y].IsSome()) {
+                        if (!sentenced.Contains(next)) {
+                            sentenced.Add(next);
+                            break;
+                        }
+                        isBadPos = true;
+                    }
+                }
+
                 if (isBadPos) return;
+                badDir = nDir;
 
                 map.board[clickPos.x, clickPos.y] = map.board[lPos.x, lPos.y];
                 map.board[lPos.x, lPos.y] = Option<Checker>.None();
@@ -212,11 +227,6 @@ namespace controller {
                 map.obj[lPos.x, lPos.y].transform.position = worldPos;
                 map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
 
-                var dir = clickPos - lPos;
-                var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
-                for (var next = lPos + nDir; next != clickPos; next += nDir) {
-                    if (map.board[next.x, next.y].IsSome()) sentenced.Add(next);
-                }
 
                 var edgeBoard = 0;
                 var chOpt = map.board[clickPos.x, clickPos.y];
@@ -263,8 +273,12 @@ namespace controller {
         private void HighlightCells(PossibleGraph graph, int count, Vector2Int targetPos) {
             var index = Array.IndexOf<Vector2Int>(graph.cells, targetPos);
             for (int k = 0; k < count; k++) {
-                var goodMark = (graph.marks[k] & curMark) == curMark || curMark == 0;
+                var goodMark = (graph.marks[k] & curMark) > 0 || curMark == 0;
                 if (graph.connect[index, k] != 0 && goodMark) {
+                    var dir = graph.cells[k] - targetPos;
+                    var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
+                    if (nDir == -badDir) continue;
+
                     var cellPos = graph.cells[k];
                     var boardPos = boardInfo.boardTransform.transform.position;
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
