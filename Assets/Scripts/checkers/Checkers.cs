@@ -79,14 +79,13 @@ namespace checkers {
                 return -1;
             }
 
-            var needAttack = false;
-            var mark = 1;
-
             var xDir = 1;
             if (cell.ch.color == ChColor.White) {
                 xDir = -1;
             }
 
+            var mark = 1;
+            var needAttack = false;
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
@@ -170,6 +169,7 @@ namespace checkers {
 
             if (posIndex < 0) {
                 Debug.LogError("GetAttackPaths: incorrect position");
+                return -1;
             }
 
             var xDir = 1;
@@ -228,7 +228,6 @@ namespace checkers {
                             if ((marks[curCellIndex] & mark) > 0) badDirr = true;
                         }
                     }
-
                     if (badDirr) continue;
 
                     for (int k = 0; k < emptyLen; k++) {
@@ -243,7 +242,6 @@ namespace checkers {
                         }
                         marks[attackPosInd] += mark;
                         connect[posIndex, attackPosInd] += mark;
-
 
                         var newLoc = ChLocation.Mk(board, attackPos);
                         size = GetAttackPaths(newLoc, kind, ch, graph, -dir, size, mark);

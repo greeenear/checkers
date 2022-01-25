@@ -215,7 +215,6 @@ namespace controller {
                             sentenced.Add(next);
                             break;
                         }
-
                         return;
                     }
                 }
@@ -227,7 +226,6 @@ namespace controller {
                 var worldPos = ConvertToWorldPoint(clickPos);
                 map.obj[lPos.x, lPos.y].transform.position = worldPos;
                 map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
-
 
                 var edgeBoard = 0;
                 var chOpt = map.board[clickPos.x, clickPos.y];
@@ -259,6 +257,7 @@ namespace controller {
                         Destroy(map.obj[sent.x, sent.y]);
                         map.board[sent.x, sent.y] = Option<Checker>.None();
                     }
+
                     sentenced.Clear();
                     whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
                     curMark = 0;
