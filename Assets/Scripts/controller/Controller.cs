@@ -93,7 +93,7 @@ namespace controller {
                         if (curCell.type == CellTy.Empty) continue;
                         var pos = new Vector2Int(i, j);
 
-                        var loc = new ChLocation { board = map.board, pos = pos };
+                        var loc = new ChLoc { board = map.board, pos = pos };
                         var buffer = possibleGraphs[checkersCount];
                         var count = Checkers.GetPossiblePaths(loc, chKind, buffer);
                         if (count == -1) {
@@ -383,6 +383,7 @@ namespace controller {
                 Debug.LogError("CantLoadNewGame");
                 return;
             }
+
             path = Path.Combine(Application.streamingAssetsPath, path);
             Load(path);
         }

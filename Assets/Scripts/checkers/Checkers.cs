@@ -28,12 +28,12 @@ namespace checkers {
         Any = Filled | Empty
     }
 
-    public struct ChLocation {
+    public struct ChLoc {
         public Option<Checker>[,] board;
         public Vector2Int pos;
 
-        public static ChLocation Mk(Option<Checker>[,] board, Vector2Int pos) {
-            return new ChLocation { board = board, pos = pos };
+        public static ChLoc Mk(Option<Checker>[,] board, Vector2Int pos) {
+            return new ChLoc { board = board, pos = pos };
         }
     }
 
@@ -54,7 +54,7 @@ namespace checkers {
     }
 
     public static class Checkers {
-        public static int GetPossiblePaths(ChLocation loc, ChKind kind, PossibleGraph graph) {
+        public static int GetPossiblePaths(ChLoc loc, ChKind kind, PossibleGraph graph) {
             var cells = graph.cells;
             var connect = graph.connect;
             var marks = graph.marks;
@@ -67,10 +67,11 @@ namespace checkers {
             }
 
             var cell = GetCell(board, pos);
-            if (cell.type == CellTy.OutOfBoard) {
+            if (cell.type != CellTy.Filled) {
                 Debug.LogError("GetPossiblePaths: start position is empty or out of board");
                 return -1;
             }
+            var ch = cell.ch;
 
             var size = 0;
             size = AddNode(pos, graph, size);
@@ -80,7 +81,7 @@ namespace checkers {
             }
 
             var xDir = 1;
-            if (cell.ch.color == ChColor.White) {
+            if (ch.color == ChColor.White) {
                 xDir = -1;
             }
 
@@ -89,31 +90,23 @@ namespace checkers {
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
+                    if ((dir.x != xDir && ch.type == ChType.Checker)) continue;
 
-                    var length = GetMaxApt(loc, dir, CellTy.Empty);
-                    if (length < 0) {
-                        Debug.LogError("GetPossiblePaths: cant get max empty");
-                        return -1;
+                    var length = 0;
+                    if (ch.type == ChType.King) {
+                        length = GetMaxApt(loc, dir, CellTy.Empty);
                     }
 
-                    var max = length;
-                    if (cell.ch.type == ChType.Checker || kind == ChKind.English) max = 1;
-                    length = Mathf.Clamp(length, 0, max);
+                    var enemyPos = loc.pos + dir * (length + 1);
+                    var filled = GetMaxApt(ChLoc.Mk(board, enemyPos - dir), dir, CellTy.Filled);
+                    var any = GetMaxApt(ChLoc.Mk(board, enemyPos - dir), dir, CellTy.Any);
+                    
+                    var enemyColor = GetCell(board, enemyPos).ch.color;
 
-                    if (cell.ch.type != ChType.Checker && kind != ChKind.English || length != 1) {
-                        var nextLoc = ChLocation.Mk(board, pos + dir * length);
-                        var filledLength = GetMaxApt(nextLoc, dir, CellTy.Filled);
+                    needAttack = filled == 1 && any > 1 && enemyColor != ch.color;
+                    if (needAttack) break;
 
-                        if (filledLength == 1 && GetMaxApt(nextLoc, dir, CellTy.Any) > 1) {
-                            var afterLastCell = GetCell(loc.board, pos + dir * (length + 1));
-                            needAttack = afterLastCell.ch.color != cell.ch.color;
-
-                            if (needAttack) break;
-                        }
-                    }
-
-                    if ((dir.x != xDir && cell.ch.type == ChType.Checker)) continue;
-
+                    if (ch.type == ChType.Checker && filled == 0 && any > 0) length++;
                     for (int k = 0; k < length; k++) {
                         var newSize = AddNode(pos + dir * (k + 1), graph, size);
 
@@ -122,31 +115,30 @@ namespace checkers {
                             return -1;
                         }
 
-                        connect[0, size] = mark;
-                        marks[size] = mark;
+                        connect[0, size] |= mark;
+                        marks[size] |= mark;
                         size = newSize;
                     }
 
-                    mark = mark * 2;
+                    mark = mark << 1;
                 }
             }
 
             if (needAttack) {
-                var checker = cell.ch;
                 loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.None();
-                size = GetAttackPaths(loc, kind, cell.ch, graph, Vector2Int.zero, 1, 1);
-                loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(checker);
+                size = GetAttackPaths(loc, kind, ch, graph, Vector2Int.zero, 1, 1);
+                loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(ch);
             }
 
             return size;
         }
 
         private static int GetAttackPaths(
-            ChLocation loc,
+            ChLoc loc,
             ChKind kind,
             Checker ch,
             PossibleGraph graph,
-            Vector2Int badDir,
+            Vector2Int prevDir,
             int size,
             int mark
         ) {
@@ -180,36 +172,23 @@ namespace checkers {
             for (int i = -1; i <= 1; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
-                    if (dir == badDir) continue;
+                    if (dir == prevDir) continue;
 
                     if (kind == ChKind.English && dir.x != xDir && ch.type == ChType.Checker) {
                         continue;
                     }
+                    var emptyLen = 0;
+                    if (ch.type == ChType.King) emptyLen = GetMaxApt(loc, dir, CellTy.Empty);
 
-                    var emptyLen = GetMaxApt(loc, dir, CellTy.Empty);
-                    if (emptyLen < 0) {
-                        Debug.LogError("GetAttackPaths: cant get max empty");
-                        return -1;
-                    }
+                    var enemyPos = loc.pos + dir * (emptyLen + 1);
+                    var filled = GetMaxApt(ChLoc.Mk(board, enemyPos - dir), dir, CellTy.Filled);
+                    var any = GetMaxApt(ChLoc.Mk(board, enemyPos - dir), dir, CellTy.Any);
 
-                    if ((ch.type == ChType.Checker || kind == ChKind.English) && emptyLen != 0) {
-                        continue;
-                    }
-
-                    var enemyPos = pos + dir * (emptyLen + 1);
-
-                    var nextLoc = ChLocation.Mk(board, enemyPos - dir);
-                    var filledLength = GetMaxApt(nextLoc, dir, CellTy.Filled);
-                    if (filledLength < 0) {
-                        Debug.LogError("GetAttackPaths: cant get max empty");
-                        return -1;
-                    }
-
-                    if (filledLength != 1 || GetMaxApt(nextLoc, dir, CellTy.Any) < 2) continue;
+                    if (filled != 1 || any < 2) continue;
 
                     if (GetCell(board, enemyPos).ch.color == ch.color) continue;
 
-                    var enemyLoc = ChLocation.Mk(board, enemyPos);
+                    var enemyLoc = ChLoc.Mk(board, enemyPos);
                     emptyLen = GetMaxApt(enemyLoc, dir, CellTy.Empty);
                     if (emptyLen < 0) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
@@ -220,15 +199,15 @@ namespace checkers {
                     if (ch.type == ChType.Checker || kind == ChKind.English) maxEmptyLen = 1;
                     emptyLen = Mathf.Clamp(emptyLen, 0, maxEmptyLen);
 
-                    var badDirr = false;
+                    var circleDir = false;
                     for (var p = enemyPos + dir; p != enemyPos + dir * (emptyLen + 1); p += dir) {
                         var curCellIndex = Array.IndexOf(cells, p, 0, size);
 
                         for (int n = 0; n < size && curCellIndex > 0; n++) {
-                            if ((marks[curCellIndex] & mark) > 0) badDirr = true;
+                            if ((marks[curCellIndex] & mark) > 0) circleDir = true;
                         }
                     }
-                    if (badDirr) continue;
+                    if (circleDir) continue;
 
                     for (int k = 0; k < emptyLen; k++) {
                         var attackPos = enemyPos + dir * (k + 1);
@@ -240,16 +219,16 @@ namespace checkers {
 
                             if (size < 0) return -1;
                         }
-                        marks[attackPosInd] += mark;
-                        connect[posIndex, attackPosInd] += mark;
+                        marks[attackPosInd] |= mark;
+                        connect[posIndex, attackPosInd] |= mark;
 
-                        var newLoc = ChLocation.Mk(board, attackPos);
+                        var newLoc = ChLoc.Mk(board, attackPos);
                         size = GetAttackPaths(newLoc, kind, ch, graph, -dir, size, mark);
                         if (size < 0) return -1;
                     }
 
                     if (posIndex == 0) {
-                        mark = mark * 2;
+                        mark = mark << 1;
                     }
                 }
             }
@@ -257,10 +236,9 @@ namespace checkers {
             return size;
         }
 
-        private static int GetMaxApt(ChLocation loc, Vector2Int dir, CellTy type) {
+        private static int GetMaxApt(ChLoc loc, Vector2Int dir, CellTy type) {
             int len = 0;
-            var pos = loc.pos + dir;
-            for (var p = pos; (GetCell(loc.board, p).type & type) > 0; p += dir, ++len);
+            for (var p = loc.pos + dir; (GetCell(loc.board, p).type & type) > 0; p += dir, ++len);
 
             return len;
         }
