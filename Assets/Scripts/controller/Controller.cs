@@ -9,7 +9,7 @@ using UnityEditor;
 
 namespace controller {
     public struct Map {
-        public Option<Checker>[,] board;
+        public int[,] board;
         public GameObject[,] obj;
     }
 
@@ -18,7 +18,7 @@ namespace controller {
         public DateTime saveDate;
         public ChKind checkerKind;
         public ChColor whoseMove;
-        public Option<Checker>[,] board;
+        public int[,] board;
     }
 
     public class Controller : MonoBehaviour {
@@ -63,7 +63,7 @@ namespace controller {
             bufSize = new int[res.maxCheckerCount];
 
             boardInfo = res.board8x8;
-            map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
+            map.board = new int[boardInfo.boardSize.x, boardInfo.boardSize.y];
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
             sentenced = new HashSet<Vector2Int>();
 
@@ -121,7 +121,7 @@ namespace controller {
 
             if (!secondMove) DestroyHighlightCells(storageHighlightCells.transform);
 
-            if (cell.type == CellTy.Filled && cell.ch.color == whoseMove && !secondMove) {
+            if (cell.type == CellTy.Filled && (cell.ch & (int)whoseMove) > 0 && !secondMove) {
                 var graph = new PossibleGraph();
                 var size = 0;
 
@@ -150,7 +150,7 @@ namespace controller {
 
                                 var curCell = Checkers.GetCell(map.board, curGraph.cells[0]);
                                 var isFilled = curCell.type == CellTy.Filled;
-                                if (isFilled && curCell.ch.color != whoseMove) break;
+                                if (isFilled && (curCell.ch & (int)whoseMove) == 0) break;
 
                                 var point = curGraph.cells[0];
                                 var pos = ConvertToWorldPoint(point) - new Vector3(0, 0.1f, 0);
@@ -210,7 +210,7 @@ namespace controller {
                 var dir = clickPos - lPos;
                 var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
                 for (var next = lPos + nDir; next != clickPos; next += nDir) {
-                    if (map.board[next.x, next.y].IsSome()) {
+                    if (map.board[next.x, next.y] != 0) {
                         if (!sentenced.Contains(next)) {
                             sentenced.Add(next);
                             break;
@@ -221,21 +221,21 @@ namespace controller {
                 badDir = nDir;
 
                 map.board[clickPos.x, clickPos.y] = map.board[lPos.x, lPos.y];
-                map.board[lPos.x, lPos.y] = Option<Checker>.None();
+                map.board[lPos.x, lPos.y] = 0;
 
                 var worldPos = ConvertToWorldPoint(clickPos);
                 map.obj[lPos.x, lPos.y].transform.position = worldPos;
                 map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
 
                 var edgeBoard = 0;
-                var chOpt = map.board[clickPos.x, clickPos.y];
-                if (chOpt.IsSome() && chOpt.Peel().color == ChColor.Black) {
+                var ch = map.board[clickPos.x, clickPos.y];
+                if (ch != 0 && (ch & (int)ChColor.Black) > 0) {
                     edgeBoard = boardInfo.boardSize.x - 1;
                 }
 
                 if (clickPos.x == edgeBoard) {
-                    var king = new Checker { type = ChType.King, color = whoseMove };
-                    map.board[clickPos.x, clickPos.y] = Option<Checker>.Some(king);
+                    var king = (int)ChType.King + (int)whoseMove;
+                    map.board[clickPos.x, clickPos.y] = king;
                     var reverse = Quaternion.Euler(180, 0, 0);
                     map.obj[clickPos.x, clickPos.y].transform.rotation = reverse;
                 }
@@ -255,11 +255,11 @@ namespace controller {
                     selected = Option<Vector2Int>.None();
                     foreach (var sent in sentenced) {
                         Destroy(map.obj[sent.x, sent.y]);
-                        map.board[sent.x, sent.y] = Option<Checker>.None();
+                        map.board[sent.x, sent.y] = 0;
                     }
 
                     sentenced.Clear();
-                    whoseMove = (ChColor)((int)(whoseMove + 1) % (int)ChColor.Count);
+                    whoseMove = (ChColor)(((int)whoseMove << 1) % 3);
                     curMark = 0;
                     badDir = Vector2Int.zero;
                     return;
@@ -345,7 +345,7 @@ namespace controller {
             }
 
             map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
-            map.board = new Option<Checker>[boardInfo.boardSize.x, boardInfo.boardSize.y];
+            map.board = new int[boardInfo.boardSize.x, boardInfo.boardSize.y];
             for (int i = 0; i < parseRes.rows.Count; i++) {
                 for (int j = 0; j < parseRes.rows[0].Count; j++) {
                     if (parseRes.rows[i][j] == "WhoseMove") {
@@ -359,8 +359,8 @@ namespace controller {
                     if (int.TryParse(parseRes.rows[i][j], out int res)) {
                         if (res % 2 != 0) color = ChColor.Black;
                         if (res > 1) type = ChType.King;
-                        var checker = new Checker { color = color, type = type };
-                        map.board[i, j] = Option<Checker>.Some(checker);
+                        int checker = (int)color + (int)type;
+                        map.board[i, j] = checker;
                     }
                 }
             }
@@ -399,13 +399,12 @@ namespace controller {
             for (int i = 0; i < map.board.GetLength(1); i++) {
                 rows.Add(new List<string>());
                 for (int j = 0; j < map.board.GetLength(0); j++) {
-                    char cellInf = '-';
-                    if (map.board[i, j].IsSome()) {
-                        var checker = map.board[i, j].Peel();
-                        int typeNum = (int)checker.color + (int)checker.type * 2;
-                        cellInf = (char)(48 + typeNum);
+                    string cellInf = "-";
+                    if (map.board[i, j] != 0) {
+                        var checker = map.board[i, j] % 5;
+                        cellInf = checker.ToString();
                     }
-                    rows[i].Add(cellInf.ToString());
+                    rows[i].Add(cellInf);
                 }
             }
 
@@ -434,9 +433,9 @@ namespace controller {
             saveInfo.fileName = filePath;
             saveInfo.saveDate = File.GetLastWriteTime(filePath);
 
-            saveInfo.board = new Option<Checker>[10, 10];
+            saveInfo.board = new int[10, 10];
             if (parseRes.rows.Count < 10) {
-                saveInfo.board = new Option<Checker>[8, 8];
+                saveInfo.board = new int[8, 8];
             }
             for (int i = 0; i < parseRes.rows.Count; i++) {
                 if (parseRes.rows[i][0] == "WhoseMove") {
@@ -458,8 +457,8 @@ namespace controller {
                         if (res % 2 != 0) color = ChColor.Black;
                         if (res > 1) type = ChType.King;
 
-                        var checker = new Checker { type = type, color = color };
-                        saveInfo.board[i,j] = Option<Checker>.Some(checker);
+                        var checker = (int)type + (int)color;
+                        saveInfo.board[i,j] = checker;
                     }
                 }
             }
@@ -514,7 +513,7 @@ namespace controller {
             return point;
         }
 
-        private bool SpawnCheckers(Option<Checker>[,] board) {
+        private bool SpawnCheckers(int[,] board) {
             if (res == null) {
                 Debug.LogError("CantGetResources");
                 this.enabled = false;
@@ -538,13 +537,13 @@ namespace controller {
 
             for (int i = 0; i < board.GetLength(0); i++) {
                 for (int j = 0; j < board.GetLength(1); j++) {
-                    if (board[i, j].IsNone()) {
+                    if (board[i, j] == 0) {
                         continue;
                     }
 
-                    var checker = board[i, j].Peel();
+                    var checker = board[i, j];
                     var pref = res.whiteChecker;
-                    if (checker.color == ChColor.Black) {
+                    if ((checker & (int)ChColor.Black) > 0) {
                         pref = res.blackChecker;
                     }
 
@@ -552,7 +551,7 @@ namespace controller {
                     var parent = boardInfo.boardTransform;
                     map.obj[i, j] = Instantiate(pref, spawnWorldPos, Quaternion.identity, parent);
 
-                    if (checker.type == ChType.King) {
+                    if ((checker & (int)ChType.King) > 0) {
                         map.obj[i, j].transform.rotation = Quaternion.Euler(180, 0, 0);
                     }
                 }
@@ -581,8 +580,8 @@ namespace controller {
                     return false;
                 }
 
-                var chOpt = map.board[graph.cells[0].x, graph.cells[0].y];
-                if (HasAttack(graph, count) && chOpt.IsSome() && chOpt.Peel().color == whoseMove) {
+                var ch = map.board[graph.cells[0].x, graph.cells[0].y];
+                if (HasAttack(graph, count) && ch != 0 && (ch & (int)whoseMove) > 0) {
                     return true;
                 }
             }
@@ -598,7 +597,7 @@ namespace controller {
                     var dir = to - from;
                     var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
                     for (var next = from + nDir; next != to; next += nDir) {
-                        if (map.board[next.x, next.y].IsSome()) return true;
+                        if (map.board[next.x, next.y] != 0) return true;
                     }
                 }
             }
@@ -616,11 +615,10 @@ namespace controller {
         private bool IsGameOver() {
             foreach (var checker in possibleGraphs) {
                 var pos = checker.cells[0];
-                var chOpt = map.board[pos.x, pos.y];
-                if (chOpt.IsNone()) continue;
-                var ch = chOpt.Peel();
+                var ch = map.board[pos.x, pos.y];
+                if (ch == 0) continue;
 
-                if (ch.color == whoseMove) {
+                if ((ch & (int)whoseMove) > 0) {
                     return false;
                 }
             }

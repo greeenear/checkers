@@ -273,22 +273,21 @@ namespace ui {
                         cellsRef[saveNum].cell.texture = emptyCell.cell.texture;
                         cellsRef[saveNum].cell.color = emptyCell.cell.color;
 
-                        var checkerOpt = curSave.board[k, j];
-                        if (checkerOpt.IsNone()) continue;
+                        var ch = curSave.board[k, j];
+                        if (ch == 0) continue;
 
-                        var checker = checkerOpt.Peel();
                         var checkerImage = res.checkerImages.checkerImg;
 
                         var color = res.checkerImages.checkerImg.color;
-                        if (checker.color == ChColor.White) {
-                            if (checker.type == ChType.King) {
+                        if ((ch & (int)ChColor.White) > 0) {
+                            if ((ch & (int)ChType.King) > 0) {
                                 checkerImage = res.checkerImages.kingImg;
                             }
-                        } else if (checker.color == ChColor.Black) {
+                        } else if ((ch & (int)ChColor.Black) > 0) {
                             color = Color.gray;
-                            if (checker.type == ChType.King) {
+                            if ((ch & (int)ChType.King) > 0) {
                                 checkerImage = res.checkerImages.kingImg;
-                            } else if (checker.type == ChType.Checker) {
+                            } else if ((ch & (int)ChType.Checker) > 0) {
                                 checkerImage = res.checkerImages.checkerImg;
                             }
                         }

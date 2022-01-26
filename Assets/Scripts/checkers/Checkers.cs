@@ -11,14 +11,13 @@ namespace checkers {
     }
 
     public enum ChType {
-        Checker,
-        King
+        Checker = 4,
+        King = 8
     }
 
     public enum ChColor {
-        White,
-        Black,
-        Count
+        White = 1,
+        Black = 2
     }
 
     public enum CellTy {
@@ -29,10 +28,10 @@ namespace checkers {
     }
 
     public struct ChLoc {
-        public Option<Checker>[,] board;
+        public int[,] board;
         public Vector2Int pos;
 
-        public static ChLoc Mk(Option<Checker>[,] board, Vector2Int pos) {
+        public static ChLoc Mk(int[,] board, Vector2Int pos) {
             return new ChLoc { board = board, pos = pos };
         }
     }
@@ -43,14 +42,9 @@ namespace checkers {
         public int[] marks;
     }
 
-    public struct Checker {
-        public ChType type;
-        public ChColor color;
-    }
-
     public struct Cell {
         public CellTy type;
-        public Checker ch;
+        public int ch;
     }
 
     public static class Checkers {
@@ -72,6 +66,7 @@ namespace checkers {
                 return -1;
             }
             var ch = cell.ch;
+            var chIsWhite = (ch & (int)ChColor.White) > 0;
 
             var size = 0;
             size = AddNode(pos, graph, size);
@@ -81,7 +76,7 @@ namespace checkers {
             }
 
             var xDir = 1;
-            if (ch.color == ChColor.White) {
+            if ((ch & (int)ChColor.White) > 0) {
                 xDir = -1;
             }
 
@@ -90,23 +85,24 @@ namespace checkers {
             for (int i = -1; i <= 1 && !needAttack; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
-                    if ((dir.x != xDir && ch.type == ChType.Checker)) continue;
 
                     var length = 0;
-                    if (ch.type == ChType.King) {
-                        length = GetMaxApt(loc, dir, CellTy.Empty);
+                    if ((ch & (int)ChType.King) > 0) {
+                        length = GetMaxApt(board, pos, dir, CellTy.Empty);
                     }
 
                     var enemyPos = loc.pos + dir * (length + 1);
-                    var filled = GetMaxApt(ChLoc.Mk(board, enemyPos - dir), dir, CellTy.Filled);
-                    var any = GetMaxApt(ChLoc.Mk(board, enemyPos - dir), dir, CellTy.Any);
+                    var filled = GetMaxApt(board, enemyPos - dir, dir, CellTy.Filled);
+                    var any = GetMaxApt(board, enemyPos - dir, dir, CellTy.Any);
                     
-                    var enemyColor = GetCell(board, enemyPos).ch.color;
+                    var enemyIsWhite = (GetCell(board, enemyPos).ch & (int)ChColor.White) > 0;
 
-                    needAttack = filled == 1 && any > 1 && enemyColor != ch.color;
+                    needAttack = filled == 1 && any > 1 && enemyIsWhite != chIsWhite;
                     if (needAttack) break;
 
-                    if (ch.type == ChType.Checker && filled == 0 && any > 0) length++;
+                    if ((dir.x != xDir && (ch & (int)ChType.Checker) > 0)) continue;
+
+                    if ((ch & (int)ChType.Checker) > 0 && filled == 0 && any > 0) length++;
                     for (int k = 0; k < length; k++) {
                         var newSize = AddNode(pos + dir * (k + 1), graph, size);
 
@@ -125,9 +121,9 @@ namespace checkers {
             }
 
             if (needAttack) {
-                loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.None();
+                loc.board[loc.pos.x, loc.pos.y] = 0;
                 size = GetAttackPaths(loc, kind, ch, graph, Vector2Int.zero, 1, 1);
-                loc.board[loc.pos.x, loc.pos.y] = Option<Checker>.Some(ch);
+                loc.board[loc.pos.x, loc.pos.y] = ch;
             }
 
             return size;
@@ -136,7 +132,7 @@ namespace checkers {
         private static int GetAttackPaths(
             ChLoc loc,
             ChKind kind,
-            Checker ch,
+            int ch,
             PossibleGraph graph,
             Vector2Int prevDir,
             int size,
@@ -165,7 +161,7 @@ namespace checkers {
             }
 
             var xDir = 1;
-            if (ch.color == ChColor.White) {
+            if ((ch & (int)ChColor.White) > 0) {
                 xDir = -1;
             }
 
@@ -174,29 +170,34 @@ namespace checkers {
                     var dir = new Vector2Int(i, j);
                     if (dir == prevDir) continue;
 
-                    if (kind == ChKind.English && dir.x != xDir && ch.type == ChType.Checker) {
+                    var isChecker = (ch & (int)ChType.Checker) > 0;
+                    if (kind == ChKind.English && dir.x != xDir && isChecker) {
                         continue;
                     }
                     var emptyLen = 0;
-                    if (ch.type == ChType.King) emptyLen = GetMaxApt(loc, dir, CellTy.Empty);
+                    if ((ch & (int)ChType.King) > 0) {
+                        emptyLen = GetMaxApt(loc.board, loc.pos, dir, CellTy.Empty);
+                    }
 
                     var enemyPos = loc.pos + dir * (emptyLen + 1);
-                    var filled = GetMaxApt(ChLoc.Mk(board, enemyPos - dir), dir, CellTy.Filled);
-                    var any = GetMaxApt(ChLoc.Mk(board, enemyPos - dir), dir, CellTy.Any);
+                    var filled = GetMaxApt(board, enemyPos - dir, dir, CellTy.Filled);
+                    var any = GetMaxApt(board, enemyPos - dir, dir, CellTy.Any);
 
                     if (filled != 1 || any < 2) continue;
 
-                    if (GetCell(board, enemyPos).ch.color == ch.color) continue;
+                    var chIsWhite = (ch & (int)ChColor.White) > 0;
+                    var enIsWhite = (GetCell(board, enemyPos).ch & (int)ChColor.White) > 0;
 
-                    var enemyLoc = ChLoc.Mk(board, enemyPos);
-                    emptyLen = GetMaxApt(enemyLoc, dir, CellTy.Empty);
+                    if (chIsWhite == enIsWhite) continue;
+
+                    emptyLen = GetMaxApt(board, enemyPos, dir, CellTy.Empty);
                     if (emptyLen < 0) {
                         Debug.LogError("GetAttackPaths: cant get max empty");
                         return -1;
                     }
 
                     var maxEmptyLen = emptyLen;
-                    if (ch.type == ChType.Checker || kind == ChKind.English) maxEmptyLen = 1;
+                    if ((ch & (int)ChType.Checker) > 0 || kind == ChKind.English) maxEmptyLen = 1;
                     emptyLen = Mathf.Clamp(emptyLen, 0, maxEmptyLen);
 
                     var circleDir = false;
@@ -236,21 +237,21 @@ namespace checkers {
             return size;
         }
 
-        private static int GetMaxApt(ChLoc loc, Vector2Int dir, CellTy type) {
+        private static int GetMaxApt(int[,] board, Vector2Int pos, Vector2Int dir, CellTy type) {
             int len = 0;
-            for (var p = loc.pos + dir; (GetCell(loc.board, p).type & type) > 0; p += dir, ++len);
+            for (var p = pos + dir; (GetCell(board, p).type & type) > 0; p += dir, ++len);
 
             return len;
         }
 
-        public static Cell GetCell(Option<Checker>[,] board, Vector2Int index) {
+        public static Cell GetCell(int[,] board, Vector2Int index) {
             if (board == null) {
                 Debug.LogError("GetCell: board is null");
                 return new Cell { type = CellTy.OutOfBoard };
             }
 
             var type = CellTy.Filled;
-            var checker = new Checker();
+            int checker = 0;
 
             var boardSize = new Vector2Int(board.GetLength(0), board.GetLength(1));
             if (index.x < 0 || index.x >= boardSize.x || index.y < 0 || index.y >= boardSize.y) {
@@ -258,9 +259,9 @@ namespace checkers {
             }
 
             if (type != CellTy.OutOfBoard) {
-                var chOpt = board[index.x, index.y];
-                if (chOpt.IsSome()) {
-                    checker = chOpt.Peel();
+                var ch = board[index.x, index.y];
+                if (ch != 0) {
+                    checker = ch;
                 } else {
                     type = CellTy.Empty;
                 }
