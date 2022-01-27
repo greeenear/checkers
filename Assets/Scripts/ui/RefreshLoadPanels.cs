@@ -219,7 +219,7 @@ namespace ui {
                 } else {
                     curPanel.whoseMove.texture = res.checkerImages.checkerImg.texture;
                     curPanel.whoseMove.color = res.checkerImages.checkerImg.color;
-                    if (curSave.whoseMove == ChColor.Black) {
+                    if (curSave.whoseMove == 0) {
                         curPanel.whoseMove.color = Color.grey;
                     }
                 }
@@ -279,15 +279,15 @@ namespace ui {
                         var checkerImage = res.checkerImages.checkerImg;
 
                         var color = res.checkerImages.checkerImg.color;
-                        if ((ch & (int)ChColor.White) > 0) {
-                            if ((ch & (int)ChType.King) > 0) {
+                        if ((ch & Checkers.WHITE) > 0) {
+                            if ((ch & Checkers.KING) > 0) {
                                 checkerImage = res.checkerImages.kingImg;
                             }
-                        } else if ((ch & (int)ChColor.Black) > 0) {
+                        } else if ((ch & Checkers.WHITE) == 0) {
                             color = Color.gray;
-                            if ((ch & (int)ChType.King) > 0) {
+                            if ((ch & Checkers.KING) > 0) {
                                 checkerImage = res.checkerImages.kingImg;
-                            } else if ((ch & (int)ChType.Checker) > 0) {
+                            } else if ((ch & Checkers.KING) == 0) {
                                 checkerImage = res.checkerImages.checkerImg;
                             }
                         }
