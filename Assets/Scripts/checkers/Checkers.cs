@@ -148,7 +148,6 @@ namespace checkers {
             }
 
             var chType = ch & KING;
-
             var xDir = 1;
             if ((ch & WHITE) > 0) {
                 xDir = -1;
