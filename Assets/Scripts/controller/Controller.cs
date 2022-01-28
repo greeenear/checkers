@@ -71,7 +71,8 @@ namespace controller {
                 var graph = new PossibleGraph {
                     connect = new int[res.maxBufSize, res.maxBufSize],
                     cells = new Vector2Int[res.maxBufSize],
-                    marks = new int[res.maxBufSize]
+                    marks = new int[res.maxBufSize],
+                    enemies = new EnemyInfo[res.maxBufSize]
                 };
                 possibleGraphs[i] = graph;
             }

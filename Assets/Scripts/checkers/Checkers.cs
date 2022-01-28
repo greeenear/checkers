@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using UnityEngine;
 using option;
@@ -19,6 +20,12 @@ namespace checkers {
         public Vector2Int[] cells;
         public int[,] connect;
         public int[] marks;
+        public EnemyInfo[] enemies;
+    }
+
+    public struct EnemyInfo {
+        public Vector2Int pos;
+        public int mark;
     }
 
 
@@ -101,20 +108,20 @@ namespace checkers {
 
             if (needAttack) {
                 loc.board[loc.pos.x, loc.pos.y] = 0;
-                size = GetAttackPaths(loc, kind, ch, graph, Vector2Int.zero, 1, 1);
+                size = GetAttackPaths(loc, kind, ch, graph, 1, 0, 1).Item1;
                 loc.board[loc.pos.x, loc.pos.y] = ch;
             }
 
             return size;
         }
 
-        private static int GetAttackPaths(
+        private static (int, int) GetAttackPaths(
             ChLoc loc,
             ChKind kind,
             int ch,
             PossibleGraph graph,
-            Vector2Int prevDir,
             int size,
+            int enCount,
             int mark
         ) {
             var board = loc.board;
@@ -122,21 +129,22 @@ namespace checkers {
             var connect = graph.connect;
             var cells = graph.cells;
             var marks = graph.marks;
+            var enemies = graph.enemies;
 
             if (board == null || cells == null || connect == null || marks == null) {
                 Debug.LogError("GetAttackPaths: incorrect parameters");
-                return -1;
+                return (-1, -1);
             }
 
             if (cells.Length < 1) {
                 Debug.LogError("GetAttackPaths: cells empty");
-                return -1;
+                return (-1, -1);
             }
             var posIndex = Array.IndexOf(cells, pos);
 
             if (posIndex < 0) {
                 Debug.LogError("GetAttackPaths: incorrect position");
-                return -1;
+                return (-1, -1);
             }
 
             var chType = ch & KING;
@@ -149,7 +157,6 @@ namespace checkers {
             for (int i = -1; i <= 1; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
                     var dir = new Vector2Int(i, j);
-                    if (dir == prevDir) continue;
 
                     if (kind == ChKind.English && dir.x != xDir && chType == 0) {
                         continue;
@@ -174,17 +181,17 @@ namespace checkers {
 
                     var maxEmptyLen = emptyLen;
                     if (chType == 0 || kind == ChKind.English) maxEmptyLen = 1;
+
                     emptyLen = Mathf.Clamp(emptyLen, 0, maxEmptyLen);
 
-                    var circleDir = false;
-                    for (var p = enemyPos + dir; p != enemyPos + dir * (emptyLen + 1); p += dir) {
-                        var curCellIndex = Array.IndexOf(cells, p, 0, size);
-
-                        for (int n = 0; n < size && curCellIndex > 0; n++) {
-                            if ((marks[curCellIndex] & mark) > 0) circleDir = true;
-                        }
+                    var newEnInfo =  new EnemyInfo { pos = enemyPos, mark = mark };
+                    var enInd = Array.IndexOf(enemies, newEnInfo, 0, enCount);
+                    if (enInd < 0) {
+                        enemies[enCount] = newEnInfo;
+                        enCount++;
+                    } else {
+                        continue;
                     }
-                    if (circleDir) continue;
 
                     for (int k = 0; k < emptyLen; k++) {
                         var attackPos = enemyPos + dir * (k + 1);
@@ -194,14 +201,16 @@ namespace checkers {
                             attackPosInd = size;
                             size = AddNode(attackPos, graph, size);
 
-                            if (size < 0) return -1;
+                            if (size < 0) return (-1, -1);
                         }
                         marks[attackPosInd] |= mark;
                         connect[posIndex, attackPosInd] |= mark;
 
                         var newLoc = new ChLoc { board = board, pos = attackPos };
-                        size = GetAttackPaths(newLoc, kind, ch, graph, -dir, size, mark);
-                        if (size < 0) return -1;
+                        var curSize = GetAttackPaths(newLoc, kind, ch, graph, size, enCount, mark);
+                        size = curSize.Item1;
+                        enCount = curSize.Item2;
+                        if (size < 0) return (-1, -1);
                     }
 
                     if (posIndex == 0) {
@@ -210,7 +219,7 @@ namespace checkers {
                 }
             }
 
-            return size;
+            return (size, enCount);
         }
 
         private static int GetMaxApt(int[,] board, Vector2Int pos, Vector2Int dir, int type) {
