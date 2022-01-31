@@ -62,9 +62,7 @@ namespace checkers {
             }
 
             var xDir = 1;
-            if ((ch & WHITE) > 0) {
-                xDir = -1;
-            }
+            if ((ch & WHITE) > 0) xDir = -1;
 
             var mark = 1;
             var needAttack = false;
@@ -73,9 +71,7 @@ namespace checkers {
                     var dir = new Vector2Int(i, j);
 
                     var length = 0;
-                    if (chType > 0) {
-                        length = GetMaxApt(board, pos, dir, 0);
-                    }
+                    if (chType > 0) length = GetMaxApt(board, pos, dir, 0);
 
                     var enemyPos = loc.pos + dir * (length + 1);
                     var filled = GetMaxApt(board, enemyPos - dir, dir, 1);
@@ -149,9 +145,7 @@ namespace checkers {
 
             var chType = ch & KING;
             var xDir = 1;
-            if ((ch & WHITE) > 0) {
-                xDir = -1;
-            }
+            if ((ch & WHITE) > 0) xDir = -1;
 
             for (int i = -1; i <= 1; i += 2) {
                 for (int j = -1; j <= 1; j += 2) {
@@ -226,7 +220,7 @@ namespace checkers {
             for (var p = pos + dir ; ; p += dir, ++len) {
                 var cell = GetCell(board, p);
 
-                if (cell != 0 && type == 0) break;
+                if (cell % 2 != 0 && type == 0) break;
 
                 if (((cell & type) == 0 || cell == -1) && type == 1) break;
 
@@ -249,9 +243,7 @@ namespace checkers {
                 checker = -1;
             }
 
-            if (checker != -1) {
-                checker = board[index.x, index.y];
-            }
+            if (checker != -1) checker = board[index.x, index.y];
 
             return checker;
         }
