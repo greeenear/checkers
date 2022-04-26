@@ -6,6 +6,8 @@ using checkers;
 using option;
 using UnityEngine.Events;
 using UnityEditor;
+using UnityEngine.XR.ARFoundation;
+using UnityEngine.XR.ARSubsystems;
 
 namespace controller {
     public struct Map {
@@ -27,6 +29,7 @@ namespace controller {
         public UnityEvent onSuccessfulSaving;
         public Resources res;
         public GameObject storageHighlightCells;
+        public Camera camera;
 
         private BoardInfo boardInfo;
         private Map map;
@@ -45,6 +48,9 @@ namespace controller {
         private Vector2Int badDir;
 
         private int whoseMove;
+        [SerializeField]
+        private ARRaycastManager raycastManager;
+        private List<ARRaycastHit> hits = new List<ARRaycastHit>();
 
         private void Awake() {
             if (res == null) {
@@ -111,13 +117,36 @@ namespace controller {
                 //     onGameOver?.Invoke();
                 // }
             }
+            Vector2Int clickPos = new Vector2Int();
+            #if UNITY_EDITOR || UNITY_STANDALONE_WIN
+                if (!Input.GetMouseButtonDown(0)) return;
+                var ray = camera.ScreenPointToRay(Input.mousePosition);
+                if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) return;
+                clickPos = ConvertToBoardPoint(hit.point);
+            #endif
 
-            if (!Input.GetMouseButtonDown(0)) return;
-            var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (!Physics.Raycast(ray, out RaycastHit hit, 100f)) return;
+            #if UNITY_ANDROID && !UNITY_EDITOR
+                Touch touch;
+                if (Input.touchCount < 1 || (touch = Input.GetTouch(0)).phase != TouchPhase.Began) {
+                    return;
+                }
+                if (Physics.Raycast(camera.ScreenPointToRay(touch.position), out RaycastHit hit2)) {
+                    Debug.Log(hit2.point);
+                    clickPos = ConvertToBoardPoint(hit2.point);
+                }
+                // if (Input.touchCount < 1 || (touch = Input.GetTouch(0)).phase != TouchPhase.Began) {
+                //     return;
+                // }
+                // raycastManager.Raycast(touch.position, hits, TrackableType.PlaneWithinPolygon);
+                // if (hits.Count > 0) {
+                //     Debug.Log(hits[0].pose.position);
+                //     clickPos = ConvertToBoardPoint(hits[0].pose.position);
+                //     hits.Clear();
+                // }
+            #endif
+
             var needAttack = IsNeedAttack(possibleGraphs, bufSize);
 
-            var clickPos = ConvertToBoardPoint(hit.point);
             var cell = Checkers.GetCell(map.board, clickPos);
 
             if (!secondMove) DestroyHighlightCells(storageHighlightCells.transform);
@@ -125,6 +154,7 @@ namespace controller {
             var color = cell & Checkers.WHITE;
 
             if (cell % 2 != 0 && color == whoseMove && !secondMove) {
+                Debug.Log("trySelect");
                 var graph = new PossibleGraph();
                 var size = 0;
 
@@ -181,7 +211,9 @@ namespace controller {
 
                 Checkers.ShowMatrix(graph);
                 HighlightCells(graph, size, clickPos);
+                Debug.Log("selectIsOk");
             } else if (selected.IsSome()) {
+                Debug.Log("tryMove");
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
 
@@ -229,6 +261,7 @@ namespace controller {
                 var worldPos = ConvertToWorldPoint(clickPos);
                 map.obj[lPos.x, lPos.y].transform.position = worldPos;
                 map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
+                Debug.Log("moveIsOK");
 
                 var edgeBoard = 0;
                 var ch = map.board[clickPos.x, clickPos.y];
@@ -386,9 +419,42 @@ namespace controller {
                 Debug.LogError("CantLoadNewGame");
                 return;
             }
+            #if UNITY_EDITOR || UNITY_STANDALONE_WIN
+                path = Path.Combine(Application.streamingAssetsPath, path);
+                Load(path);
+                return;
+            #elif UNITY_ANDROID
+                map.obj = new GameObject[boardInfo.boardSize.x, boardInfo.boardSize.y];
+                map.board = new int[boardInfo.boardSize.x, boardInfo.boardSize.y];
+                whoseMove = 2;
+                chKind = ChKind.Russian;
+                for (int i = 0; i < 8; i++) {
+                    for (int j = 0; j < 8; j++) {
+                        if (i < 3 && (j + i) % 2 != 0)
+                        {
+                            var type = 0;
+                            var color = 0;
+                            int checker = color + type + 1;
+                            map.board[i, j] = checker;
+                        }
+                        if (i > 4 && (j + i) % 2 != 0)
+                        {
+                            var type = 0;
+                            var color = 2;
+                            int checker = color + type + 1;
+                            map.board[i, j] = checker;
+                        }
 
-            path = Path.Combine(Application.streamingAssetsPath, path);
-            Load(path);
+                    }
+                }
+
+                DestroyHighlightCells(storageHighlightCells.transform);
+                needRefreshBuffer = true;
+                sentenced.Clear();
+                selected = Option<Vector2Int>.None();
+                SpawnCheckers(map.board);
+                return;
+            #endif
         }
 
         public void Save() {
@@ -404,7 +470,19 @@ namespace controller {
                 for (int j = 0; j < map.board.GetLength(0); j++) {
                     string cellInf = "-";
                     if (map.board[i, j] != 0) {
-                        var checker = map.board[i, j] % 5;
+                        var checker = map.board[i, j];
+                        switch (checker)
+                        {
+                            case 3:
+                                checker = 0;
+                                break;
+                            case 5:
+                                checker = 3;
+                                break;
+                            case 7:
+                                checker = 2;
+                                break;
+                        }
                         cellInf = checker.ToString();
                     }
                     rows[i].Add(cellInf);
@@ -498,10 +576,13 @@ namespace controller {
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
+            var offset = boardInfo.boardTransform.position;
             var size = boardInfo.cellTransform.localScale;
             var floatVec = new Vector3(boardPoint.x, 0.1f, boardPoint.y);
             var cellLoc = boardInfo.cellTransform.localPosition;
             var point = size.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + size / 2f;
+            point.x += offset.x;
+            point.z += offset.z;
 
             return point;
         }

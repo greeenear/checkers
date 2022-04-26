@@ -9,6 +9,8 @@
     "com.unity.timeline": "1.4.8",
     "com.unity.toolchain.win-x86_64-linux-x86_64": "0.1.21-preview",
     "com.unity.ugui": "1.0.0",
+    "com.unity.xr.arcore": "4.1.9",
+    "com.unity.xr.arfoundation": "4.1.9",
     "xyz.coderiftel.csv": "https://github.com/codeRiftel/csv.git",
     "xyz.coderiftel.jonson": "https://github.com/codeRiftel/jonson.git",
     "xyz.coderiftel.jonson-reflect": "https://github.com/codeRiftel/jonson-reflect.git",
