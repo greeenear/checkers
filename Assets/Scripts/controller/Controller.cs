@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using checkers;
+using ai;
 using option;
 using UnityEngine.Events;
 using UnityEditor;
@@ -10,6 +11,11 @@ using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
 namespace controller {
+    public enum GameMode {
+        PlayerVsPlayer,
+        PlayerVsPC
+    }
+
     public struct Map {
         public int[,] board;
         public GameObject[,] obj;
@@ -24,6 +30,7 @@ namespace controller {
     }
 
     public class Controller : MonoBehaviour {
+        public GameMode gameMode;
         public UnityEvent onGameOver;
         public UnityEvent onUnsuccessfulSaving;
         public UnityEvent onSuccessfulSaving;
@@ -112,11 +119,12 @@ namespace controller {
                         checkersCount++;
                     }
                 }
-
-                // if (IsGameOver()) {
-                //     onGameOver?.Invoke();
-                // }
+                if (gameMode == GameMode.PlayerVsPC) {
+                    AIController.GetAIPaths(possibleGraphs, bufSize, whoseMove, map.board);
+                }
             }
+
+
             Vector2Int clickPos = new Vector2Int();
             #if UNITY_EDITOR || UNITY_STANDALONE_WIN
                 if (!Input.GetMouseButtonDown(0)) return;
@@ -154,7 +162,6 @@ namespace controller {
             var color = cell & Checkers.WHITE;
 
             if (cell % 2 != 0 && color == whoseMove && !secondMove) {
-                Debug.Log("trySelect");
                 var graph = new PossibleGraph();
                 var size = 0;
 
@@ -162,6 +169,7 @@ namespace controller {
                 var hasMove = false;
                 for (int i = 0; i < checkersCount; i++) {
                     if (possibleGraphs[i].cells[0] == clickPos) {
+                        Debug.Log(bufSize[i]);
                         isBadPos = false;
                         graph = possibleGraphs[i];
                         size = bufSize[i];
@@ -211,9 +219,7 @@ namespace controller {
 
                 Checkers.ShowMatrix(graph);
                 HighlightCells(graph, size, clickPos);
-                Debug.Log("selectIsOk");
             } else if (selected.IsSome()) {
-                Debug.Log("tryMove");
                 var curPos = selected.Peel();
                 var lPos = lastPos.Peel();
 
@@ -420,7 +426,7 @@ namespace controller {
                 return;
             }
             #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-                path = Path.Combine(Application.streamingAssetsPath, path);
+                path = System.IO.Path.Combine(Application.streamingAssetsPath, path);
                 Load(path);
                 return;
             #elif UNITY_ANDROID
@@ -458,7 +464,7 @@ namespace controller {
         }
 
         public void Save() {
-            var path = Path.Combine(Application.persistentDataPath, Guid.NewGuid() + ".save");
+            var path = System.IO.Path.Combine(Application.persistentDataPath, Guid.NewGuid() + ".save");
 
             if (map.board == null) {
                 return;
