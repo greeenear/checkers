@@ -53,6 +53,7 @@ namespace controller {
         private Option<Vector2Int> lastPos;
         private bool secondMove;
         private Vector2Int badDir;
+        private ChPath bestAiPath;
 
         private int whoseMove;
         [SerializeField]
@@ -119,11 +120,46 @@ namespace controller {
                         checkersCount++;
                     }
                 }
-                if (gameMode == GameMode.PlayerVsPC) {
-                    AIController.GetAIPaths(possibleGraphs, bufSize, whoseMove, map.board);
+                if (gameMode == GameMode.PlayerVsPC && whoseMove == 0) {
+                    var allPaths = AIController.GetAIPaths(
+                        possibleGraphs,
+                        bufSize,
+                        whoseMove,
+                        map.board
+                    );
+                    bestAiPath = AIController.GetBestPath(allPaths);
+
+                    for (int i = 0; i < bestAiPath.path.Count - 1; i++)
+                    {
+                        var curPos = bestAiPath.path[i];
+                        var nextPos = bestAiPath.path[i + 1];
+                        map.board[nextPos.x, nextPos.y] = map.board[curPos.x, curPos.y];
+                        map.board[curPos.x, curPos.y] = 0;
+
+                        var worldPos = ConvertToWorldPoint(nextPos);
+                        map.obj[curPos.x, curPos.y].transform.position = worldPos;
+                        map.obj[nextPos.x, nextPos.y] = map.obj[curPos.x, curPos.y];
+
+                        var dir = nextPos - curPos;
+                        var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
+                        for (var next = curPos + nDir; next != nextPos; next += nDir) {
+                            if (map.board[next.x, next.y] != 0) {
+                                if (!sentenced.Contains(next)) sentenced.Add(next);
+                            }
+                        }
+                    }
+
+                    foreach (var sent in sentenced) {
+                        Debug.Log(sent);
+                        Destroy(map.obj[sent.x, sent.y]);
+                        map.board[sent.x, sent.y] = 0;
+                    }
+
+                    sentenced.Clear();
+                    whoseMove = (whoseMove + 2) % 4;
+                    needRefreshBuffer = true;
                 }
             }
-
 
             Vector2Int clickPos = new Vector2Int();
             #if UNITY_EDITOR || UNITY_STANDALONE_WIN
@@ -267,7 +303,6 @@ namespace controller {
                 var worldPos = ConvertToWorldPoint(clickPos);
                 map.obj[lPos.x, lPos.y].transform.position = worldPos;
                 map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
-                Debug.Log("moveIsOK");
 
                 var edgeBoard = 0;
                 var ch = map.board[clickPos.x, clickPos.y];
@@ -311,6 +346,10 @@ namespace controller {
                 HighlightCells(graph, count, clickPos);
                 lastPos = Option<Vector2Int>.Some(clickPos);
             }
+        }
+
+        private void Move(Vector2Int clickPos) {
+            
         }
 
         private void HighlightCells(PossibleGraph graph, int count, Vector2Int targetPos) {

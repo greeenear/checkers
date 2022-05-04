@@ -6,9 +6,9 @@ using System.Collections.Generic;
 namespace ai {
     public struct ChPath {
         public int weight;
-        public List<Vector2> path;
+        public List<Vector2Int> path;
 
-        public static ChPath Mk(int weight, List<Vector2> path) {
+        public static ChPath Mk(int weight, List<Vector2Int> path) {
             return new ChPath { path = path, weight = weight };
         }
     }
@@ -35,7 +35,7 @@ namespace ai {
                 for (int k = 0; k < GetMarkCount(possibleGraphs[i].marks); k++) {
                     var startRow = 0;
                     var weight = 0;
-                    var possibleCells = new List<Vector2>();
+                    var possibleCells = new List<Vector2Int>();
                     possibleCells.Add(possibleGraphs[i].cells[startRow]);
                     //Debug.Log(possibleCells[possibleCells.Count - 1]);
 
@@ -71,14 +71,14 @@ namespace ai {
                 }
             }
 
-            for (int i = 0; i < checkerPaths.Count; i++) {
-                Debug.Log(checkerPaths[i].weight);
-                foreach (var path in checkerPaths[i].path)
-                {
-                    Debug.Log(path);
-                }
-                Debug.Log("______");
-            }
+            // for (int i = 0; i < checkerPaths.Count; i++) {
+            //     Debug.Log(checkerPaths[i].weight);
+            //     foreach (var path in checkerPaths[i].path)
+            //     {
+            //         Debug.Log(path);
+            //     }
+            //     Debug.Log("______");
+            // }
             return checkerPaths;
         }
 
@@ -97,7 +97,7 @@ namespace ai {
             return result;
         }
 
-        public static ChPath GetPerfetcPath(List<ChPath> paths) {
+        public static ChPath GetBestPath(List<ChPath> paths) {
             var maxWeight = 0;
             var pathIndex = 0;
             for (int i = 0; i < paths.Count; i++) {
@@ -107,7 +107,13 @@ namespace ai {
                 }
             }
 
-            return paths[pathIndex];
+            var equalPaths = new List<ChPath>();
+            foreach (var path in paths)
+            {
+                if (path.weight == maxWeight) equalPaths.Add(path);
+            }
+
+            return equalPaths[Random.Range(0, equalPaths.Count)];
         }
     }
 }
