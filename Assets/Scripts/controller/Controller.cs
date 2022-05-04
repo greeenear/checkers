@@ -133,6 +133,7 @@ namespace controller {
                     {
                         var curPos = bestAiPath.path[i];
                         var nextPos = bestAiPath.path[i + 1];
+                        Debug.Log(curPos + " " + nextPos);
                         map.board[nextPos.x, nextPos.y] = map.board[curPos.x, curPos.y];
                         map.board[curPos.x, curPos.y] = 0;
 
@@ -640,7 +641,6 @@ namespace controller {
             var size = boardInfo.cellTransform.localScale;
             var floatVec = (inversePoint + new Vector3(pos.x, 0, pos.z)) / size.x;
             var point = new Vector2Int(Mathf.Abs((int)(floatVec.x)), Mathf.Abs((int)floatVec.z));
-            Debug.Log(point);
 
             return point;
         }

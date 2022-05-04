@@ -51,13 +51,15 @@ namespace ai {
                                 var curCh = Checkers.GetCell(board, next);
                                 if (curCh != 0) {
                                     if ((curCh & Checkers.KING) > 0) {
-                                        weight += 4;
+                                        weight += 20;
                                     } else {
-                                        weight += 2;
+                                        weight += 10;
                                     }
                                     break;
                                 }
                                 if (next == secondPos) weight++;
+                                if (secondPos.x > 4) weight += 2;
+                                if (secondPos.x == 7) weight += 2;
                             }
                             if (firstPos + nDir == secondPos) weight++;
                             possibleGraphs[i].connect[startRow, j] -= startMark;
@@ -89,12 +91,13 @@ namespace ai {
             return result;
         }
 
-        public static ChPath GetBestPath(List<ChPath> paths, int [,] board) {
+        public static ChPath GetBestPath(List<ChPath> paths, int[,] board) {
             CheckNextMove(paths, board);
             var maxWeight = 0;
             var pathIndex = 0;
             for (int i = 0; i < paths.Count; i++) {
                 if (paths[i].weight > maxWeight) {
+                    if (paths[i].path.Count < 2) continue;
                     maxWeight = paths[i].weight;
                     pathIndex = i;
                 }
@@ -117,9 +120,10 @@ namespace ai {
                 var weight = paths[i].weight;
                 var firsCell = Checkers.GetCell(board, new Vector2Int(lastPos.x + 1, lastPos.y - 1));
                 var secondCell = Checkers.GetCell(board, new Vector2Int(lastPos.x + 1, lastPos.y + 1));
-                if (((firsCell & Checkers.WHITE) & color) == 0
-                    && ((secondCell & Checkers.WHITE) & color) == 0) {
-                    weight++;
+
+                if ((firsCell & Checkers.WHITE) == color &&
+                    (secondCell & Checkers.WHITE) == color || firsCell <= 0 && secondCell <= 0) {
+                    weight += 4;
                 }
                 paths[i] = ChPath.Mk(weight, paths[i].path);
             }

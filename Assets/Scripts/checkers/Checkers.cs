@@ -277,31 +277,31 @@ namespace checkers {
         }
 
         public static void ShowMatrix(PossibleGraph graph) {
-            if (graph.cells == null || graph.connect == null) {
-                Debug.LogError("ShowMatrix: incorrect parameters");
-                return;
-            }
+        //     if (graph.cells == null || graph.connect == null) {
+        //         Debug.LogError("ShowMatrix: incorrect parameters");
+        //         return;
+        //     }
 
-            var nodes = "";
-            foreach (var a in graph.cells) {
-                nodes += a.ToString() + "   ";
-            }
-            Debug.Log(nodes);
+        //     var nodes = "";
+        //     foreach (var a in graph.cells) {
+        //         nodes += a.ToString() + "   ";
+        //     }
+        //     Debug.Log(nodes);
 
-            var marks = "";
-            foreach (var a in graph.marks) {
-                marks += a.ToString() + "   ";
-            }
-            Debug.Log(marks);
+        //     var marks = "";
+        //     foreach (var a in graph.marks) {
+        //         marks += a.ToString() + "   ";
+        //     }
+        //     Debug.Log(marks);
 
-            var matrix = "";
-            for (int i = 0; i < graph.connect.GetLength(1); i++) {
-                matrix = "";
-                for (int j = 0; j < graph.connect.GetLength(0); j++) {
-                    matrix += "        " + graph.connect[i,j].ToString();
-                }
-                Debug.Log(matrix);
-            }
+        //     var matrix = "";
+        //     for (int i = 0; i < graph.connect.GetLength(1); i++) {
+        //         matrix = "";
+        //         for (int j = 0; j < graph.connect.GetLength(0); j++) {
+        //             matrix += "        " + graph.connect[i,j].ToString();
+        //         }
+        //         Debug.Log(matrix);
+        //     }
         }
     }
 }
