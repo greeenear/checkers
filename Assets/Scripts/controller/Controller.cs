@@ -127,7 +127,7 @@ namespace controller {
                         whoseMove,
                         map.board
                     );
-                    bestAiPath = AIController.GetBestPath(allPaths);
+                    bestAiPath = AIController.GetBestPath(allPaths, map.board);
 
                     for (int i = 0; i < bestAiPath.path.Count - 1; i++)
                     {
@@ -137,7 +137,7 @@ namespace controller {
                         map.board[curPos.x, curPos.y] = 0;
 
                         var worldPos = ConvertToWorldPoint(nextPos);
-                        map.obj[curPos.x, curPos.y].transform.position = worldPos;
+                        map.obj[curPos.x, curPos.y].transform.localPosition = worldPos;
                         map.obj[nextPos.x, nextPos.y] = map.obj[curPos.x, curPos.y];
 
                         var dir = nextPos - curPos;
@@ -150,7 +150,6 @@ namespace controller {
                     }
 
                     foreach (var sent in sentenced) {
-                        Debug.Log(sent);
                         Destroy(map.obj[sent.x, sent.y]);
                         map.board[sent.x, sent.y] = 0;
                     }
@@ -235,7 +234,8 @@ namespace controller {
                                     Debug.LogError("NoHighlightCh");
                                 } else {
                                     var parent = storageHighlightCells.transform;
-                                    Instantiate(res.highlightCh, pos, Quaternion.identity, parent);
+                                    var obj = Instantiate(res.highlightCh, pos, Quaternion.identity, parent);
+                                    obj.transform.localPosition = pos;
                                 }
                                 break;
                             }
@@ -301,7 +301,7 @@ namespace controller {
                 map.board[lPos.x, lPos.y] = 0;
 
                 var worldPos = ConvertToWorldPoint(clickPos);
-                map.obj[lPos.x, lPos.y].transform.position = worldPos;
+                map.obj[lPos.x, lPos.y].transform.localPosition = worldPos;
                 map.obj[clickPos.x, clickPos.y] = map.obj[lPos.x, lPos.y];
 
                 var edgeBoard = 0;
@@ -366,7 +366,8 @@ namespace controller {
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
                     var parent = storageHighlightCells.transform;
 
-                    Instantiate(res.highlightCell, spawnWorldPos, Quaternion.identity, parent);
+                    var b = Instantiate(res.highlightCell, spawnWorldPos, Quaternion.identity, parent);
+                    b.transform.localPosition = spawnWorldPos;
                 }
             }
         }
@@ -621,13 +622,14 @@ namespace controller {
         }
 
         private Vector3 ConvertToWorldPoint(Vector2Int boardPoint) {
-            var offset = boardInfo.boardTransform.position;
+            var offset = boardInfo.boardTransform.localPosition;
             var size = boardInfo.cellTransform.localScale;
             var floatVec = new Vector3(boardPoint.x, 0.1f, boardPoint.y);
             var cellLoc = boardInfo.cellTransform.localPosition;
             var point = size.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + size / 2f;
             point.x += offset.x;
             point.z += offset.z;
+            point.y += offset.y;
 
             return point;
         }
@@ -636,8 +638,9 @@ namespace controller {
             var inversePoint = boardInfo.boardTransform.InverseTransformPoint(selectedPoint);
             var pos = boardInfo.cellTransform.localPosition;
             var size = boardInfo.cellTransform.localScale;
-            var floatVec = (inversePoint + new Vector3(-pos.x, 0, pos.z)) / size.x;
-            var point = new Vector2Int(Mathf.Abs((int)(floatVec.z)), Mathf.Abs((int)floatVec.x));
+            var floatVec = (inversePoint + new Vector3(pos.x, 0, pos.z)) / size.x;
+            var point = new Vector2Int(Mathf.Abs((int)(floatVec.x)), Mathf.Abs((int)floatVec.z));
+            Debug.Log(point);
 
             return point;
         }
@@ -679,7 +682,7 @@ namespace controller {
                     var spawnWorldPos = ConvertToWorldPoint(new Vector2Int(i, j));
                     var parent = boardInfo.boardTransform;
                     map.obj[i, j] = Instantiate(pref, spawnWorldPos, Quaternion.identity, parent);
-
+                    map.obj[i, j].transform.localPosition = spawnWorldPos;
                     if ((checker & Checkers.KING) > 0) {
                         map.obj[i, j].transform.rotation = Quaternion.Euler(180, 0, 0);
                     }

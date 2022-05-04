@@ -71,14 +71,6 @@ namespace ai {
                 }
             }
 
-            // for (int i = 0; i < checkerPaths.Count; i++) {
-            //     Debug.Log(checkerPaths[i].weight);
-            //     foreach (var path in checkerPaths[i].path)
-            //     {
-            //         Debug.Log(path);
-            //     }
-            //     Debug.Log("______");
-            // }
             return checkerPaths;
         }
 
@@ -97,7 +89,8 @@ namespace ai {
             return result;
         }
 
-        public static ChPath GetBestPath(List<ChPath> paths) {
+        public static ChPath GetBestPath(List<ChPath> paths, int [,] board) {
+            CheckNextMove(paths, board);
             var maxWeight = 0;
             var pathIndex = 0;
             for (int i = 0; i < paths.Count; i++) {
@@ -114,6 +107,22 @@ namespace ai {
             }
 
             return equalPaths[Random.Range(0, equalPaths.Count)];
+        }
+
+        private static void CheckNextMove(List<ChPath> paths, int [,] board) {
+            for (int i = 0; i < paths.Count; i++) {
+                var startPos = paths[i].path[0];
+                var lastPos = paths[i].path[paths[i].path.Count - 1];
+                var color = board[startPos.x, startPos.y] & Checkers.WHITE;
+                var weight = paths[i].weight;
+                var firsCell = Checkers.GetCell(board, new Vector2Int(lastPos.x + 1, lastPos.y - 1));
+                var secondCell = Checkers.GetCell(board, new Vector2Int(lastPos.x + 1, lastPos.y + 1));
+                if (((firsCell & Checkers.WHITE) & color) == 0
+                    && ((secondCell & Checkers.WHITE) & color) == 0) {
+                    weight++;
+                }
+                paths[i] = ChPath.Mk(weight, paths[i].path);
+            }
         }
     }
 }
