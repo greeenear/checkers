@@ -28,7 +28,6 @@ namespace checkers {
         public int mark;
     }
 
-
     public static class Checkers {
         public static int FILLED = 1;
         public static int WHITE = 2;

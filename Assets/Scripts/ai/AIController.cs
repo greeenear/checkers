@@ -37,7 +37,6 @@ namespace ai {
                     var weight = 0;
                     var possibleCells = new List<Vector2Int>();
                     possibleCells.Add(possibleGraphs[i].cells[startRow]);
-                    //Debug.Log(possibleCells[possibleCells.Count - 1]);
 
                     for (int j = 0; j < buffSize[i]; j++) {
                         var startCell = possibleGraphs[i].cells[startRow];
@@ -46,7 +45,11 @@ namespace ai {
                             var firstPos = possibleGraphs[i].cells[startRow];
 
                             var dir = secondPos - firstPos;
-                            var nDir = new Vector2Int(dir.x / Mathf.Abs(dir.x), dir.y / Mathf.Abs(dir.y));
+                            var nDir = new Vector2Int(
+                                dir.x / Mathf.Abs(dir.x),
+                                dir.y / Mathf.Abs(dir.y)
+                            );
+
                             for (var next = firstPos + nDir; next != secondPos; next += nDir) {
                                 var curCh = Checkers.GetCell(board, next);
                                 if (curCh != 0) {
@@ -118,8 +121,14 @@ namespace ai {
                 var lastPos = paths[i].path[paths[i].path.Count - 1];
                 var color = board[startPos.x, startPos.y] & Checkers.WHITE;
                 var weight = paths[i].weight;
-                var firsCell = Checkers.GetCell(board, new Vector2Int(lastPos.x + 1, lastPos.y - 1));
-                var secondCell = Checkers.GetCell(board, new Vector2Int(lastPos.x + 1, lastPos.y + 1));
+                var firsCell = Checkers.GetCell(
+                    board,
+                    new Vector2Int(lastPos.x + 1, lastPos.y - 1)
+                );
+                var secondCell = Checkers.GetCell(
+                    board,
+                    new Vector2Int(lastPos.x + 1, lastPos.y + 1)
+                );
 
                 if ((firsCell & Checkers.WHITE) == color &&
                     (secondCell & Checkers.WHITE) == color || firsCell <= 0 && secondCell <= 0) {

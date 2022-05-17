@@ -133,7 +133,6 @@ namespace controller {
                     {
                         var curPos = bestAiPath.path[i];
                         var nextPos = bestAiPath.path[i + 1];
-                        Debug.Log(curPos + " " + nextPos);
                         map.board[nextPos.x, nextPos.y] = map.board[curPos.x, curPos.y];
                         map.board[curPos.x, curPos.y] = 0;
 
@@ -178,15 +177,6 @@ namespace controller {
                     Debug.Log(hit2.point);
                     clickPos = ConvertToBoardPoint(hit2.point);
                 }
-                // if (Input.touchCount < 1 || (touch = Input.GetTouch(0)).phase != TouchPhase.Began) {
-                //     return;
-                // }
-                // raycastManager.Raycast(touch.position, hits, TrackableType.PlaneWithinPolygon);
-                // if (hits.Count > 0) {
-                //     Debug.Log(hits[0].pose.position);
-                //     clickPos = ConvertToBoardPoint(hits[0].pose.position);
-                //     hits.Clear();
-                // }
             #endif
 
             var needAttack = IsNeedAttack(possibleGraphs, bufSize);
@@ -205,7 +195,6 @@ namespace controller {
                 var hasMove = false;
                 for (int i = 0; i < checkersCount; i++) {
                     if (possibleGraphs[i].cells[0] == clickPos) {
-                        Debug.Log(bufSize[i]);
                         isBadPos = false;
                         graph = possibleGraphs[i];
                         size = bufSize[i];
@@ -367,8 +356,12 @@ namespace controller {
                     var spawnWorldPos = ConvertToWorldPoint(cellPos);
                     var parent = storageHighlightCells.transform;
 
-                    var b = Instantiate(res.highlightCell, spawnWorldPos, Quaternion.identity, parent);
-                    b.transform.localPosition = spawnWorldPos;
+                    var highlight = Instantiate(
+                        res.highlightCell,
+                        spawnWorldPos,
+                        Quaternion.identity, parent
+                    );
+                    highlight.transform.localPosition = spawnWorldPos;
                 }
             }
         }
@@ -552,10 +545,11 @@ namespace controller {
         }
 
         public SaveInfo GetSaveInfo(string filePath) {
+            var saveInfo = new SaveInfo();
             if (filePath == null) {
                 Debug.LogError("NoPath");
+                return saveInfo;
             }
-            var saveInfo = new SaveInfo();
             var parseRes = CSV.Parse(File.ReadAllText(filePath));
 
             saveInfo.fileName = filePath;
@@ -628,9 +622,7 @@ namespace controller {
             var floatVec = new Vector3(boardPoint.x, 0.1f, boardPoint.y);
             var cellLoc = boardInfo.cellTransform.localPosition;
             var point = size.x * floatVec - new Vector3(cellLoc.x, 0, cellLoc.z) + size / 2f;
-            point.x += offset.x;
-            point.z += offset.z;
-            point.y += offset.y;
+            point += offset;
 
             return point;
         }
